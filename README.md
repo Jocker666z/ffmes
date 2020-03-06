@@ -131,7 +131,8 @@ This function limited to Linux x86_64, it embeds binaries compiled for this plat
 Encoding automated apply 0db peak normalization and false stereo files detection.
 
 Files supported :
-* Amiga/Atari: snd, sndh
+* Amiga/Atari: mod, snd, sndh
+* Microsoft Xbox: xwav
 * Nintendo GB & GBC: gbs
 * Nintendo GameCube: dsp, hps, adp, thp
 * Nintendo N64: miniusf

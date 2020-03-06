@@ -1,5 +1,13 @@
 # Changelog
 v0.35:
+* Video:
+	* fix - resolution change now work (error "height not divisible by 2")
+	* fix - concatenate now work with several stream
+* VGM:
+	* modified - refactor bin/cue treatment to prevent infinite loops
+	* add - support of xbox xwav files
+	* update - vgmstream to r1050-2812-g24e9d177 Feb 23 2020
+	* update - replace info68 and sc68 by static build
 
 v0.34:
 * Video:

@@ -23,25 +23,28 @@ VGM_TAG="/home/$USER/.cache/ffmes/vgmtag.info"												# vgm tag cache
 DVD_DEVICE="/dev/$(cat /proc/sys/dev/cdrom/info 2>/dev/null | grep "drive name:" | awk '{print $3}')"	# CD/DVD player drive name
 
 # General variables
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"					# Comment for view all ffmpeg log
 NPROC=$(nproc --all| awk '{ print $1 - 1 }')							# Set number of processor
 KERNEL_TYPE=$(uname -sm)												# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')	# Get terminal width, and truncate
 COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd mkvmerge dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk)
-AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
-SUBTI_EXT_AVAILABLE="srt|ssa"
 CUE_EXT_AVAILABLE="cue"
-ISO_EXT_AVAILABLE="iso"
-VOB_EXT_AVAILABLE="vob"
-M3U_EXT_AVAILABLE="m3u"
 
 # Video variables
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"					# Comment for view all ffmpeg log
 VIDEO_EXT_AVAILABLE="mkv|vp9|m4v|m2ts|avi|ts|mts|mpg|flv|mp4|mov|wmv|3gp|vob|mpeg|webm|ogv|bik"
+SUBTI_EXT_AVAILABLE="srt|ssa"
+ISO_EXT_AVAILABLE="iso"
+VOB_EXT_AVAILABLE="vob"
 X265_LOG_LVL="log-level=error:"											# Comment for view all x265 codec log
 NVENC="1"																# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
 
+# Audio variables
+AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
+
 # VGM variables
-VGM_EXT_AVAILABLE="ads|adp|adx|ast|at3|bfstm|bfwav|bin|gbs|dat|dsp|dsf|eam|hps|int|minipsf|miniusf|minipsf2|mod|mus|rak|raw|snd|sndh|spsd|ss2|ssf|spc|psf|psf2|vag|vgm|vgz|vpk|tak|thp|voc|xa"
+VGM_EXT_AVAILABLE="ads|adp|adx|ast|at3|bfstm|bfwav|gbs|dat|dsp|dsf|eam|hps|int|minipsf|miniusf|minipsf2|mod|mus|rak|raw|snd|sndh|spsd|ss2|ssf|spc|psf|psf2|vag|vgm|vgz|vpk|tak|thp|voc|xa|xwav"
+VGM_ISO_EXT_AVAILABLE="bin"
+M3U_EXT_AVAILABLE="m3u"
 SPC_VSPCPLAY=""																	# Experimental, spc encoding with vspcplay, leave empty for desactivate, note '1' for activate.
 PULSE_MONITOR="pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor"	# Experimental, used for encoding spc with vspcplay, to get to know him typing: = 'pacmd list | grep ".monitor"', example output: 'pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor'
 
@@ -104,13 +107,13 @@ gbsinfo() {
 "$FFMES_PATH"/bin/gbsinfo "$@"
 	}
 info68() { 
-env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/info68 "$@"
+"$FFMES_PATH"/bin/info68 "$@"
 	}
 opustags() { 
 "$FFMES_PATH"/bin/opustags "$@"
 	}
 sc68() { 
-env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/sc68 "$@"
+"$FFMES_PATH"/bin/sc68 "$@"
 	}
 vgm2wav() { 
 "$FFMES_PATH"/bin/vgm2wav "$@"
@@ -159,6 +162,8 @@ SetGlobalVariables() {
 	# List source(s) VGM file(s) & number of differents extentions
 	mapfile -t LSTVGM < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.+.('$VGM_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	mapfile -t LSTVGMEXT < <(echo "${LSTVGM[@]##*.}")
+	# List source(s) VGM ISO file(s)
+	mapfile -t LSTVGMISO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.+.('$VGM_ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	# List source(s) M3U file(s)
 	mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.+.('$M3U_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
@@ -171,7 +176,10 @@ SetGlobalVariables() {
 	NBCUE="${#LSTCUE[@]}"
 	NBISO="${#LSTISO[@]}"
 	NBVOB="${#LSTVOB[@]}"
+	## VGM
 	NBVGM="${#LSTVGM[@]}"
+	NBVGMISO="${#LSTVGMISO[@]}"
+	NBGBS=$(echo "${LSTVGMEXT[@]##*.}" | uniq -u | grep gbs | wc -w)
 	NBM3U="${#LSTM3U[@]}"
 }
 Restart () {					# Restart script, for keep argument
@@ -720,9 +728,8 @@ CustomVideoEncod() {
 					[100-5000]*)
 						nbvfilter=$((nbvfilter+1))
 						RATIO=$(echo "$SWIDTH/$WIDTH" | bc -l | awk 'sub("\\.*0+$","")')
-						HEIGHT=$(echo "$SHEIGHT/$RATIO" | bc -l | awk 'sub("\\.*0+$","")')
-						if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]]
-							then
+						HEIGHT=$(echo $(echo "scale=1;$SHEIGHT/$RATIO" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//'))		# display decimal only if not integer
+						if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
 								if [ "$nbvfilter" -gt 1 ] ; then
 									vfilter+=",scale=$WIDTH:-2"
 								else
@@ -735,7 +742,8 @@ CustomVideoEncod() {
 									vfilter="-vf scale=$WIDTH:-1"
 								fi
 						fi
-						chwidth=("$WIDTH"x"$HEIGHT")
+						DHEIGHT=$(echo $(echo "scale=0;$SHEIGHT/$RATIO" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//'))		# not decimal
+						chwidth=("$WIDTH"x"$DHEIGHT")
 						break
 					;;
 					"c"|"C")
@@ -1511,7 +1519,7 @@ ConcatenateVideo() {
 		done
 
 		# Concatenate
-		ffmpeg $FFMPEG_LOG_LVL -f concat -safe 0 -i concat-list.info -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
+		ffmpeg $FFMPEG_LOG_LVL -f concat -safe 0 -i concat-list.info -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
 
 		# Clean
 		rm concat-list.info
@@ -3239,6 +3247,72 @@ VGMRip() {
 	echo " VGM Rip"
 	echo
 
+	# VGM ISO
+	if [ "$NBCUE" -eq "0" ]; then                                         # If 0 cue
+		echo "  No CUE file in the working directory"
+		echo
+	elif [ "$NBCUE" -gt "1" ]; then                                       # If more than 1 cue
+		echo "  More than one CUE file in working directory"
+		echo
+	elif [ "$NBCUE" -eq "1" ] & [ "$NBVGMISO" -gt "1" ]; then              # If more than 1 bin = merge
+		echo "  More than one bin files in working directory, merge it"
+		binmerge "${LSTCUE[0]}" "${LSTCUE[0]%.*}"-Merged
+		mkdir iso-backup
+		for files in "${LSTVGMISO[@]}"; do
+			mv "$files" iso-backup/
+		done
+		mv "${LSTCUE[0]}" iso-backup/
+		SetGlobalVariables                                                 # Rebuild global variable
+		echo
+	fi
+
+	if [ "$NBCUE" -eq "1" ] & [ "$NBVGMISO" -eq "1" ]; then                # If 1 cue and bin file
+	# Extract Tag
+		if test -z "$TAG_GAME"; then
+			echo "Please indicate the game title"
+			read -e -p " -> " TAG_GAME
+			echo
+		fi
+		if test -z "$TAG_ARTIST"; then
+			echo "Please indicate the artist"
+			read -e -p " -> " TAG_ARTIST
+			echo
+		fi
+		if test -z "$TAG_DATE"; then
+			echo "Please indicate the date of release"
+			read -e -p " -> " TAG_DATE
+			echo
+		fi
+		if test -z "$TAG_MACHINE"; then
+			echo "Please indicate the platform of release"
+			read -e -p " -> " TAG_MACHINE
+			echo
+		fi
+		TAG_SONG="[untitled]"
+		TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
+		# Extract VGM
+		bchunk -w "${LSTVGMISO[0]}" "${LSTCUE[0]}" Track-
+		# Clean
+		rm Track-01.iso			# Remove data track
+		# Encoding Flac
+		AUDIO_EXT_AVAILABLE="wav"
+		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.+.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+		for files in "${LSTAUDIO[@]}"; do
+			# Track tag (counter)
+			TAG_TRACK=$(($COUNTER+1))
+			COUNTER=$TAG_TRACK
+			(
+			FFmpeg_vgm_cmd
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
+		done
+		wait
+	fi
+
+
+	# VGM Files
 	for files in "${LSTVGM[@]}"; do
 
 		# Track tag (counter)
@@ -3247,66 +3321,6 @@ VGMRip() {
 
 			# Extract VGM
 			case "${LSTVGM[@]##*.}" in
-
-				*bin|*BIN)				# bin/cue image with audio
-					if [ "$NBCUE" -eq "0" ]; then                                         # If 0 cue
-						echo "  No CUE file in the working directory"
-						echo
-					elif [ "$NBCUE" -gt "1" ]; then                                       # If more than 1 cue
-						echo "  More than one CUE file in working directory"
-						echo
-					elif [ "$NBCUE" -eq "1" ] & [ "$NBVGM" -gt "1" ]; then                # One cue and bin file supported
-						mkdir MergedBin
-						binmerge "${LSTCUE[0]}" MergedBin -o MergedBin
-						cd MergedBin
-						#mkdir back
-						#for files in "${LSTVGM[@]}"; do
-						#	mv "$file" back/
-						#done
-						#mv "${LSTCUE[0]}" back/
-						SetGlobalVariables
-					elif [ "$NBCUE" -eq "1" ] & [ "$NBVGM" -eq "1" ]; then                # One cue and bin file supported
-						# Extract Tag
-						if test -z "$TAG_GAME"; then
-							echo "Please indicate the game title"
-							read -e -p " -> " TAG_GAME
-							echo
-						fi
-						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
-							read -e -p " -> " TAG_ARTIST
-							echo
-						fi
-						if test -z "$TAG_DATE"; then
-							echo "Please indicate the date of release"
-							read -e -p " -> " TAG_DATE
-							echo
-						fi
-						if test -z "$TAG_MACHINE"; then
-							echo "Please indicate the platform of release"
-							read -e -p " -> " TAG_MACHINE
-							echo
-						fi
-						TAG_SONG="${files%.*}"
-						TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
-						# Extract VGM
-						bchunk -w "${LSTVGM[0]}" "${LSTCUE[0]}" Track-
-						# Clean
-						rm Track-01.iso			# Remove data track
-						# Encoding Flac
-						AUDIO_EXT_AVAILABLE="wav"
-						mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.+.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-						for files in "${LSTAUDIO[@]}"; do
-							(
-							FFmpeg_vgm_cmd
-							) &
-							if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
-								wait -n
-							fi
-						done
-
-					fi
-				;;
 
 				*gbs|*GBS)				# Nintendo Game Boy and Game Boy Color - gbsplay decode
 					# Extract Tag
@@ -3784,7 +3798,7 @@ VGMRip() {
 					fi
 				;;
 
-				*ads|*ADS|*adp|*ADP|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*spsd|*SPSD|*thp|*THP|*vag|*VAG|*vpk|*VPK)					# Various Machines
+				*ads|*ADS|*adp|*ADP|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*spsd|*SPSD|*thp|*THP|*vag|*VAG|*vpk|*VPK|*xwav|*Xwav)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -3908,7 +3922,7 @@ VGMRip() {
 					fi
 				;;
 
-				*mod|*MOD)						# PC
+				*mod|*MOD)						# PC, Amiga
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -3928,7 +3942,11 @@ VGMRip() {
 						read -e -p TAG_DATE
 						echo
 					fi
-					TAG_MACHINE="PC"
+					if test -z "$TAG_MACHINE"; then
+						echo "Please indicate the platform of release"
+						read -e -p " -> " TAG_MACHINE
+						echo
+					fi
 					TAG_SONG="${files%.*}"
 					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
 					# Extract VGM
@@ -4146,8 +4164,7 @@ case $reps in
 	;;
 
  21 ) # vgm ->  audio
-	GBSCOUNT=$(echo "${LSTVGMEXT[@]##*.}" | uniq -u | grep gbs | wc -w)
-	if [ "$KERNEL_TYPE" = "Linux x86_64" ] && [ "$NBVGM" -gt "0" ] && [ "$GBSCOUNT" -le "1" ]; then
+	if [ "$KERNEL_TYPE" = "Linux x86_64" ] && [[ "$NBVGM" -gt "0" || "$NBVGMISO" -gt "0" ]] && [ "$NBGBS" -le "1" ]; then
 	VGMRip
     Clean                                          # clean temp files
     fi
