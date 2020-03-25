@@ -134,6 +134,7 @@ Files supported :
 * Amiga/Atari: mod, snd, sndh
 * Microsoft Xbox: xwav
 * Nintendo GB & GBC: gbs
+* Nintendo GBA: minigsf
 * Nintendo GameCube: dsp, hps, adp, thp
 * Nintendo N64: miniusf
 * Nintendo SNES: spc
@@ -141,6 +142,7 @@ Files supported :
 * Sega Dreamcast: dsf, spsd
 * Sony Playstation: psf, minipsf, xa, vag
 * Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk
+* Panasonic 3DO: aifc, str
 * PC: mod, voc
 * Various machines: vgm, vgz, adx, ads, bfstm, bfwav, rak, tak, mus, dat, eam, at3, raw, bin/cue
 
@@ -176,6 +178,7 @@ Files supported :
 
 ### Option 30 details - tag editor
 Options:
+* Change or add tag disc number
 * Rename files in "Track - Title" (add track number if not present)
 * Change or add tag track, by alphabetic sorting, to use if no file has this tag
 * Change or add tag album
@@ -185,7 +188,7 @@ Options:
 * Change tag title for untitled
 * Remove N character at begin of tag title, but limited to 9 characters.
 Limitation:
-* max depth directory 1
+* max depth directory 2
 * asian character not supported (display in degrading mode)
 
 ### In script options (variables)

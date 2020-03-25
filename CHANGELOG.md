@@ -1,4 +1,18 @@
 # Changelog
+v0.36:
+* Video:
+	* fix - x265 bit depth change, now work
+* Audio tag:
+	* add - disc number implementation
+	* modified - max depth directory 1 to 2
+* VGM:
+	* add - support of 3DO aifc, str files
+	* add - support of Nintendo GBA minigsf files
+	* add - add sox command for remove silence
+	* modified - split ffmpeg filter and encoding flac
+	* fix - audio normalization
+	* fix - undo to v0.34 build of sc68 and info68
+
 v0.35:
 * Video:
 	* fix - resolution change now work (error "height not divisible by 2")
