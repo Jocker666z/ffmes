@@ -5,7 +5,7 @@ Terminal tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
 * Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv
-* VGM in *.bfstm *.bfwav *.gbs *.minipsf *.miniusf *.minissf *.rak *.ssf *.spc *.psf *.vgm *.vgz *.xa *.psf2 *.minipsf2 *.ads *.mod *.mus *.tak *.adx *.ss2 *.adp *.dsp *.hps *.snd *.sndh *.vag *.int *.thp *.vpk *.voc *.dsf *.spsd *.dat *.eam *.at3 *.raw *.bin
+* VGM in *.bfstm *.bfwav *.gbs *.minipsf *.miniusf *.minissf *.rak *.ssf *.spc *.psf *.vgm *.vgz *.xa *.psf2 *.minipsf2 *.ads *.mod *.mus *.tak *.adx *.ss2 *.adp *.dsp *.hps *.snd *.sndh *.vag *.int *.thp *.vpk *.voc *.dsf *.spsd *.dat *.eam *.at3 *.raw *.bin *.vgs *.aifc *.str *.minigsf *.sng *.wem
 * Subtitle in *.srt *.ssa
 
 --------------------------------------------------------------------------------------------------
@@ -55,10 +55,10 @@ All binaries come from open source programs.
 * info68 - https://sourceforge.net/projects/sc68/
 * opustags - https://github.com/fmang/opustags
 * sc68 - https://sourceforge.net/projects/sc68/
-* vspcplay - https://github.com/raphnet/vspcplay
 * vgm2wav - https://github.com/vgmrips/vgmplay
 * vgmstream-cli - https://github.com/losnoco/vgmstream
 * vgmtag - https://github.com/vgmrips/vgmtools
+* vspcplay - https://github.com/raphnet/vspcplay
 * zxtune - https://zxtune.bitbucket.io/
 
 --------------------------------------------------------------------------------------------------
@@ -82,9 +82,8 @@ All binaries come from open source programs.
 	* 23, audio to wav
 	* 24, audio to flac
 	* 25, audio to mp3
-	* 26, audio to aac
-	* 27, audio to ogg
-	* 28, audio to opus
+	* 26, audio to ogg
+	* 27, audio to opus
 * Audio tools :
 	* 30, tag editor
 	* 31, view detailed audio file informations
@@ -114,13 +113,12 @@ All binaries come from open source programs.
 	* Stream copy or encoding
 	* Encoding options (apply to all streams):
 		* codecs:
-			* aac (libfdk_aac): bitrate (vbr & cbr)
-			* ogg (libvorbis): bitrate (vbr & cbr)
-			* mp3 (libmp3lame): bitrate (vbr & cbr)
 			* ac3 (ac3): bitrate (vbr & cbr)
 			* opus (libopus): bitrate (vbr)
 			* flac (libflac): compression
 		* Channels layout 1.0 to 5.1 (depending on the support of the chosen codec)
+* Container selection
+	* mkv & mp4 support
 * Map streams selection
 
 ### Option 2 details - copy stream to mkv with map option
@@ -138,13 +136,15 @@ Files supported :
 * Nintendo GameCube: dsp, hps, adp, thp
 * Nintendo N64: miniusf
 * Nintendo SNES: spc
+* Nintendo Switch: bfstm, bfwav
 * Sega Saturn: minissf, ssf
 * Sega Dreamcast: dsf, spsd
 * Sony Playstation: psf, minipsf, xa, vag
-* Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk
+* Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk, sng, vgs
+* Sony Playstation 4: wem
 * Panasonic 3DO: aifc, str
 * PC: mod, voc
-* Various machines: vgm, vgz, adx, ads, bfstm, bfwav, rak, tak, mus, dat, eam, at3, raw, bin/cue
+* Various machines: vgm, vgz, adx, ads, bfstm, bfwav, rak, tak, mus, dat, eam, at3, raw, bin/cue, iso/cue, wem
 
 ### Option 23 details - PCM encoding
 * Encoding options:
@@ -157,6 +157,7 @@ Files supported :
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection
 	* 0db peak normalization
+	* Silence detect & remove, at start & end (only wav & flac source)
 
 ### Option 24 details - FLAC encoding
 * Encoding options:
@@ -166,6 +167,7 @@ Files supported :
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection
 	* 0db peak normalization
+	* Silence detect & remove, at start & end (only wav & flac source)
 
 ### Option 28 details - opus encoding
 * Encoding options:
@@ -175,6 +177,7 @@ Files supported :
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection
 	* 0db peak normalization
+	* Silence detect & remove, at start & end (only wav & flac source)
 
 ### Option 30 details - tag editor
 Options:
@@ -192,7 +195,7 @@ Limitation:
 * asian character not supported (display in degrading mode)
 
 ### In script options (variables)
-* NVENC = Set number of video encoding in same time, default 2 encoding at time. The countdown starts at 0. So 0 is worth one encoding at a time (0=1;1=2...)
+* NVENC = Set number of video encoding in same time, default 2 encoding. The countdown starts at 0. So 0 is worth one encoding at a time (0=1;1=2...)
 
 --------------------------------------------------------------------------------------------------
 ## Issue

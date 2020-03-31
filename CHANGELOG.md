@@ -1,4 +1,30 @@
 # Changelog
+v0.37:
+* Video:
+	* fix - now map option work for mp4 (include subtitle)
+	* remove - avi container output, now too old and hard to maintain
+	* remove - mp3 as audio option for video, too old and limited
+	* remove - ogg as audio option for video, appears to be a less effective duplicate than the opus
+	* remove - libfdk_aac option, non-free, libopus more powerful, removing it makes ffmes compatible with distributions that don't deliver ffmpeg in a non-free version.
+* Audio:
+	* add - silence detect & remove, at start & end, only for wav and flac source
+	* add - it is now possible to encode files with the same extension as the source
+	* fix - audio normalization in batch
+	* remove - libfdk_aac option 26, non-free, libopus more powerful, removing it makes ffmes compatible with distributions that don't deliver ffmpeg in a non-free version.
+* VGM:
+	* add - support of PS2 vgs, sng files
+	* add - support of PS4 wem files
+	* add - support of iso/cue files
+	* add - support of amiga files, with uade, now instable, option hidden (211)
+	* modified - remove silence refine to 0.01% of volume
+	* fix - audio normalization in batch
+	* update - vgmstream to r1050-2861-g126e3b41-11-ge7da81ef Mar 27 2020
+	* update - vgm2wav to git Mar 15 2020
+* Various:
+	* add - Lib needed info
+	* add - many comments
+	* modified - readability improvement
+
 v0.36:
 * Video:
 	* fix - x265 bit depth change, now work
