@@ -6,19 +6,16 @@ Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
 * Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv
 * VGM in *.bfstm *.bfwav *.gbs *.minipsf *.miniusf *.minissf *.rak *.ssf *.spc *.psf *.vgm *.vgz *.xa *.psf2 *.minipsf2 *.ads *.mod *.mus *.tak *.adx *.ss2 *.adp *.dsp *.hps *.snd *.sndh *.vag *.int *.thp *.vpk *.voc *.dsf *.spsd *.dat *.eam *.at3 *.raw *.bin *.vgs *.aifc *.str *.minigsf *.sng *.wem
-* Subtitle in *.srt *.ssa
+* Subtitle in *.srt *.ssa *.sub *.sup
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
-`ffmpeg mkvtoolnix abcde sox mediainfo lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk`
+`ffmpeg mkvtoolnix abcde sox mediainfo lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd`
 
 ## Install
-* `cd`
-* `wget https://github.com/Jocker666z/ffmes/archive/master.zip`
-* `unzip master.zip && mv ffmes-master ffmes`
-* `rm master.zip`
-* `cd ffmes`
-* `chmod a+x ffmes.sh`
+* `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
+* `unzip master.zip && mv ffmes-master ffmes && rm master.zip`
+* `cd ffmes && chmod a+x ffmes.sh`
 * `echo "alias ffmes=\"bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
 
 ## Use
@@ -75,6 +72,7 @@ All binaries come from open source programs.
 	* 12, concatenate video files
 	* 13, extract stream(s) of video file
 	* 14, cut video file
+	* 15, add audio stream with night normalization
 * Audio :
 	* 20, CD rip
 	* 21, VGM Rip to flac (Linux x86_64 only)
@@ -117,12 +115,17 @@ All binaries come from open source programs.
 			* opus (libopus): bitrate (vbr)
 			* flac (libflac): compression
 		* Channels layout 1.0 to 5.1 (depending on the support of the chosen codec)
+		* Night normalization with acompressor and loudnorm
 * Container selection
 	* mkv & mp4 support
 * Map streams selection
 
 ### Option 2 details - copy stream to mkv with map option
-* Copy stream in mkv file, with streams selection if source have more than 2 streams.
+Copy stream in mkv file, with streams selection if source have more than 2 streams.
+
+### Option 15 details - add audio stream with night normalization
+From inplace audio, add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
+The new stream is in opus, stereo, 320kb.
 
 ### Option 21 details - VGM Rip to flac
 This function limited to Linux x86_64, it embeds binaries compiled for this platform, so it remains (and will) unstable as a whole.
@@ -195,7 +198,19 @@ Limitation:
 * asian character not supported (display in degrading mode)
 
 ### In script options (variables)
-* NVENC = Set number of video encoding in same time, default 2 encoding. The countdown starts at 0. So 0 is worth one encoding at a time (0=1;1=2...)
+## Video
+* NVENC (default=2)
+	* Description: Set number of video encoding in same time encoding, the countdown starts at 0 (0=1;1=2...)
+## Audio
+* ExtractCover (default=0)
+	* Description: action performed during encoding
+	* 0=extract cover from source and remove in output
+	* 1=keep cover from source in output (not compatible with opus muxer)
+	* empty=remove cover in output
+* RemoveM3U (default=1)
+	* Description: action performed after encoding at "Remove source audio?" question
+	* 0=no remove
+	* 1=remove
 
 --------------------------------------------------------------------------------------------------
 ## Issue

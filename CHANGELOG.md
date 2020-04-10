@@ -1,4 +1,20 @@
 # Changelog
+v0.38:
+* Video:
+	* add - extract dvd_subtitle with .idx/.sub extention (with mkvextract)
+	* add - merge hdmv_pgs_subtitle & dvd_subtitle with .idx/.sub & .sup extention (with mkvmerge)
+	* add - option 15, add night normalization audio stream, with night "acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm"
+	* fix - merge, multiple audio and sub with same extention, now no longer multiplies by the number of files
+	* fix - dvdrip, mapfile use for extract all title, if error now not displayed
+* Audio:
+	* add - it is now possible to remove files with the same extension as the source
+	* add - ExtractCover variable, 0=extract cover from files and remove from files, 1=keep cover in outpout files, empty=remove cover from files
+	* add - AudioSourceInfo, now test db peak of first source audio file, and display at end of the audio stream line
+* Various
+	* add - setcd in command needed
+	* modified - improve find command for populate array, much mode accurate
+	* modified - menu standardization
+
 v0.37:
 * Video:
 	* fix - now map option work for mp4 (include subtitle)
