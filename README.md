@@ -114,8 +114,7 @@ All binaries come from open source programs.
 			* ac3 (ac3): bitrate (vbr & cbr)
 			* opus (libopus): bitrate (vbr)
 			* flac (libflac): compression
-		* Channels layout 1.0 to 5.1 (depending on the support of the chosen codec)
-		* Night normalization with acompressor and loudnorm
+		* Channels layout 1.0 to 5.1
 * Container selection
 	* mkv & mp4 support
 * Map streams selection
@@ -124,7 +123,7 @@ All binaries come from open source programs.
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
 ### Option 15 details - add audio stream with night normalization
-From inplace audio, add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
+From inplace video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
 
 ### Option 21 details - VGM Rip to flac
