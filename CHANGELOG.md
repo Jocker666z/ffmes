@@ -1,4 +1,9 @@
 # Changelog
+v0.39:
+* Video:
+	* add - option 15, night normalization, now display audio stream number 0,1,2...
+	* fix - option 15, night normalization, now work with all audio stream after 0
+
 v0.38:
 * Video:
 	* add - extract dvd_subtitle with .idx/.sub extention (with mkvextract)
@@ -12,7 +17,7 @@ v0.38:
 	* add - AudioSourceInfo, now test db peak of first source audio file, and display at end of the audio stream line
 * Various
 	* add - setcd in command needed
-	* modified - improve find command for populate array, much mode accurate
+	* modified - improve find command for populate array, much more accurate
 	* modified - menu standardization
 
 v0.37:

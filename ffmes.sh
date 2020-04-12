@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.38
+VERSION=v0.39
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -566,6 +566,37 @@ VideoSourceInfo() {				# Video source stats
 	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "$LSTVIDEO")
 	SWIDTH=$(mediainfo --Inform="Video;%Width%" "$LSTVIDEO")
 	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "$LSTVIDEO")
+}
+VideoAudioSourceInfo() {				# Video source stats / Audio only with stream order
+	# Add all stats in temp.stat.info
+	ffprobe -analyzeduration 1G -probesize 1G -i "$LSTVIDEO" 2> "$FFMES_CACHE"/temp.stat.info
+
+	# Grep stream in stat.info
+	< "$FFMES_CACHE"/temp.stat.info grep Audio > "$FFMES_CACHE_STAT"
+
+	# Add audio stream number
+	awk '{$0 = "     Audio Steam:"i++ "    -" OFS $0} 1' "$FFMES_CACHE_STAT" > "$FFMES_CACHE"/temp2.stat.info
+	mv "$FFMES_CACHE"/temp2.stat.info "$FFMES_CACHE_STAT"
+
+	# Remove line with "Guessed Channel" (not used)
+	sed -i '/Guessed Channel/d' "$FFMES_CACHE_STAT"
+
+	# Grep & add source duration
+	SourceDuration=$(< $FFMES_CACHE/temp.stat.info grep Duration)
+	sed -i '1 i\  '"$SourceDuration"'' "$FFMES_CACHE_STAT"
+
+	# Grep source size & add file name and size
+	SourceSize=$(wc -c "$LSTVIDEO" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
+	sed -i '1 i\    '"$LSTVIDEO, size: $SourceSize MB"'' "$FFMES_CACHE_STAT"
+
+	# Add title & complete formatting
+	sed -i '1 i\ Source file stats:' "$FFMES_CACHE_STAT"
+	sed -i '1 i\--------------------------------------------------------------------------------------------------' "$FFMES_CACHE_STAT"
+	sed -i -e '$a--------------------------------------------------------------------------------------------------' "$FFMES_CACHE_STAT"
+
+	# Clean temp file
+	rm "$FFMES_CACHE"/temp.stat.info &>/dev/null
+	rm "$FFMES_CACHE"/temp2.stat.info &>/dev/null
 }
 DVDRip() {						# Option 0  	- DVD Rip
     clear
@@ -1855,7 +1886,7 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
     echo
     cat "$FFMES_CACHE_STAT"
 
-    echo " Select one audio stream:"
+    echo " Select one audio stream (first in the line):"
     echo " Note: The selected audio will be encoded in a new stream in opus/stereo/320kb with night normalization."
     echo "       To summarize the amplitude of sound between heavy and weak sounds will decrease."
 	echo
@@ -1890,19 +1921,18 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 		filesReject=()
 		for i in ${!VINDEX[*]}; do
 
-				StartLoading "" "${files%.*}-NightNorm.mkv"
+			echo "FFmpeg processing: "${files%.*}"-NightNorm.mkv"
+			#ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a? -c:a copy -map 0:a:0? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
+			ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s -c:s copy -map 0:a -c:a copy -map 0:a:${VINDEX[i]}? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
 
-					ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a? -c:a copy -map 0:a:0? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv &>/dev/null
 
-				StopLoading $?
-
-				# Check Target if valid (size test) and clean
-				if [[ $(stat --printf="%s" "${files%.*}"-NightNorm.mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-					filesPass+=("${files%.*}"-NightNorm.mkv)
-				else																	# if file<30 KBytes rejected
-					filesReject+=("${files%.*}"-NightNorm.mkv)
-					rm "${files%.*}"-NightNorm.mkv 2>/dev/null
-				fi
+			# Check Target if valid (size test) and clean
+			if [[ $(stat --printf="%s" "${files%.*}"-NightNorm.mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+				filesPass+=("${files%.*}"-NightNorm.mkv)
+			else																	# if file<30 KBytes rejected
+				filesReject+=("${files%.*}"-NightNorm.mkv)
+				rm "${files%.*}"-NightNorm.mkv 2>/dev/null
+			fi
 
 			done
 	done
@@ -3116,7 +3146,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	echo "  [ftitle]   > | change title by filenam]   |                                                                                   |"
 	echo "  [utitle]   > | change title by [untitled] |                                                                                   |"
 	echo "  [stitle x] > | remove N in begin of title | ex. of input [stitle 3] -> remove 3 first characters in all titles (limited to 9) |"
-	echo "  [r]        > | restart tag edition"
+	echo "  [r]        > | for restart tag edition"
 	echo "  [q]        > | for exit"
 	echo
 	while :
@@ -3172,7 +3202,6 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 			AudioTagEditor
 		;;
 		disc?[0-9])
-		#disc*)
 			ParsedDisc=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
 			for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 				(
@@ -4337,7 +4366,7 @@ case $reps in
  15 ) # Extract stream video
 	if [[ "$NBV" -eq "1" ]]; then
     StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
-	VideoSourceInfo
+	VideoAudioSourceInfo
 	StopLoading $?
     AddAudioNightNorm
 	Clean                                          # clean temp files
