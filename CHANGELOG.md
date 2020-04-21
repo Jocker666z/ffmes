@@ -1,4 +1,10 @@
 # Changelog
+v0.40:
+* Video:
+	* add - option 1, now HDR to SDR option, displayed only if source is in HDR, option set SDR by default
+	* add - option 1, libx265, now option for make HDR encoding
+	* fix - option 15, night normalization, now work with video without subtitle
+
 v0.39:
 * Video:
 	* add - option 15, night normalization, now display audio stream number 0,1,2...

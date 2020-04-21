@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.39
+VERSION=v0.40
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -562,8 +562,9 @@ VideoSourceInfo() {				# Video source stats
 	# Clean temp file
 	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
 
-	# Grep if interlaced video and width/height of source (with mediainfo)
+	# Grep if interlaced video, hdr, and width/height of source (with mediainfo)
 	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "$LSTVIDEO")
+	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "$LSTVIDEO")
 	SWIDTH=$(mediainfo --Inform="Video;%Width%" "$LSTVIDEO")
 	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "$LSTVIDEO")
 }
@@ -773,6 +774,9 @@ CustomInfoChoice() {			# Option 1  	- Summary of configuration
 	if [ "$ENCODV" = "1" ]; then
 		echo "   * Crop: $cropresult"
 		echo "   * Rotation: $chrotation"
+		if test -n "$HDR"; then						# display only if HDR source
+			echo "   * HDR to SDR: $chsdr2hdr"
+		fi
 		echo "   * Resolution: $chwidth"
 		echo "   * Deinterlace: $chdes"
 		echo "   * Frame rate: $chfps"
@@ -827,11 +831,9 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 				echo
 				echo " Enter desired crop: "
 				echo
-				echo "$MESS_SEPARATOR"
-				echo " [crop=688:448:18:56] -> Example of input format"
-				echo
-				echo "  [c] > for no change"
-				echo "  [q] > for exit"
+				echo " [crop=688:448:18:56] > Example of input format"
+				echo " [c]                  > for no change"
+				echo " [q]                  > for exit"
 				while :
 				do
 				read -e -p "-> " cropresult
@@ -917,6 +919,40 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 		esac
 		done
 
+		# HDR / SDR
+		if test -n "$HDR"; then						# display only if HDR source
+        CustomInfoChoice
+        echo " Apply HDR to SDR filter:"
+        echo " Note: * This option is necessary to keep an acceptable colorimetry,"
+        echo "         if the source video is in HDR and you don't want to keep it."
+        echo "       * if you want to keep the HDR, do no here, HDR option is in libx265 parameters."
+        echo "       * for no fail, in stream selection, remove attached pic if present."
+        echo
+        echo "  [n] > for no"
+        echo " *[↵] > for yes"
+        echo "  [q] > for exit"
+        read -e -p "-> " yn
+        case $yn in
+			"n"|"N")
+					chsdr2hdr="No change"
+					break
+				;;
+			"q"|"Q")
+					Restart
+					break
+				;;
+			*)
+				nbvfilter=$((nbvfilter+1))
+				chsdr2hdr="Yes"
+				if [ "$nbvfilter" -gt 1 ] ; then
+					vfilter+=",zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+				else
+					vfilter="-vf zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+				fi
+				;;
+		esac
+		fi
+
 		# Resolution
         CustomInfoChoice
         echo " Resolution changed:"
@@ -932,11 +968,9 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 				echo " Notes: * Width must be a integer"
 				echo "        * Original ratio is respected"
 				echo
-				echo "$MESS_SEPARATOR"
-				echo " [1280] -> example for 1280px width"
-				echo
-				echo "  [c]     for no change"
-				echo "  [q]     for exit"
+				echo " [1280] > example for 1280px width"
+				echo " [c]    > for no change"
+				echo " [q]    > for exit"
 				while :
 				do
 				read -e -p "-> " WIDTH1
@@ -992,7 +1026,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 		# Deinterlace
 		CustomInfoChoice
 		if [ "$INTERLACED" = "Interlaced" ]; then
-			echo "Video seems interlaced, you want deinterlace:"
+			echo " Video seems interlaced, you want deinterlace:"
 		else
 			echo " Video seems not interlaced, you want force deinterlace:"
 		fi
@@ -1186,10 +1220,9 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 			echo -e "      [!] Be careful you have selected previously no audio stream, do not \e[1m\033[31mmap\033[0m them."
 		fi
 		echo
-		echo "  [map 0 3 1] -> Example of input format for select stream"
-		echo
-		echo " *[enter] > for no change"
-		echo "  [q]     > for exit"
+		echo "  [map 0 3 1] > Example of input format for select stream"
+		echo " *[enter]     > for no change"
+		echo "  [q]         > for exit"
 		read -e -p "-> " rpstreamch
 		if [ "$rpstreamch" = "q" ]; then
 			Restart
@@ -1465,19 +1498,22 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 		echo "$MESS_SEPARATOR"
 		echo " ffmes predefined profiles:"
 		echo
-		echo "                                              | max db | max definition/fps by level |"
-		echo "         | lvl | hight | intra | bit | chroma | Mb/s   | res.     >fps               |"
-		echo "         |-----|-------|-------|-----|--------|--------|-----------------------------|"
-		echo "   [1] > | 3.1 | 0     | 0     | 8   | 4:2:0  | 10     | 1280×720 >30                |"
-		echo "   [2] > | 4.1 | 0     | 0     | 8   | 4:2:0  | 20     | 2048×1080>60                |"
-		echo "  *[3] > | 4.1 | 1     | 0     | 8   | 4:2:0  | 50     | 2048×1080>60                |"
-		echo "   [4] > | 4.1 | 1     | 0     | 12  | 4:4:4  | 150    | 2048×1080>60                |"
-		echo "   [5] > | 4.1 | 1     | 1     | 12  | 4:4:4  | 1800   | 2048×1080>60                |"
-		echo "   [6] > | 5.2 | 1     | 0     | 8   | 4:2:0  | 240    | 4096×2160>120               |"
-		echo "   [7] > | 5.2 | 1     | 0     | 12  | 4:4:4  | 720    | 4096×2160>120               |"
-		echo "   [8] > | 5.2 | 1     | 1     | 12  | 4:4:4  | 8640   | 4096×2160>120               |"
-		echo "   [9] > | 6.2 | 1     | 0     | 12  | 4:4:4  | 2400   | 8192×4320>120               |"
-		echo "  [10] > | 6.2 | 1     | 1     | 12  | 4:4:4  | 28800  | 8192×4320>120               |"
+		echo "                                                    | max db | max definition/fps by level |"
+		echo "         | lvl | hight | intra | bit | HDR | chroma | Mb/s   | res.     >fps               |"
+		echo "         |-----|-------|-------|-----|-----|--------|--------|-----------------------------|"
+		echo "   [1] > | 3.1 | 0     | 0     | 8   | 0   | 4:2:0  | 10     | 1280×720 >30                |"
+		echo "   [2] > | 4.1 | 0     | 0     | 8   | 0   | 4:2:0  | 20     | 2048×1080>60                |"
+		echo "  *[3] > | 4.1 | 1     | 0     | 8   | 0   | 4:2:0  | 50     | 2048×1080>60                |"
+		echo "   [4] > | 4.1 | 1     | 0     | 12  | 0   | 4:4:4  | 150    | 2048×1080>60                |"
+		echo "   [5] > | 4.1 | 1     | 0     | 12  | 1   | 4:4:4  | 150    | 2048×1080>60                |"
+		echo "   [6] > | 4.1 | 1     | 1     | 12  | 0   | 4:4:4  | 1800   | 2048×1080>60                |"
+		echo "   [7] > | 5.2 | 1     | 0     | 8   | 0   | 4:2:0  | 240    | 4096×2160>120               |"
+		echo "   [8] > | 5.2 | 1     | 0     | 12  | 0   | 4:4:4  | 720    | 4096×2160>120               |"
+		echo "   [9] > | 5.2 | 1     | 0     | 12  | 1   | 4:4:4  | 720    | 4096×2160>120               |"
+		echo "  [10] > | 5.2 | 1     | 1     | 12  | 0   | 4:4:4  | 8640   | 4096×2160>120               |"
+		echo "  [11] > | 6.2 | 1     | 0     | 12  | 0   | 4:4:4  | 2400   | 8192×4320>120               |"
+		echo "  [12] > | 6.2 | 1     | 0     | 12  | 1   | 4:4:4  | 2400   | 8192×4320>120               |"
+		echo "  [13] > | 6.2 | 1     | 1     | 12  | 0   | 4:4:4  | 28800  | 8192×4320>120               |"
 		read -e -p "-> " repprofile
 		if echo "$repprofile" | grep -q 'profil'; then
 				profile="$rep"
@@ -1495,21 +1531,30 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p12le"
 				chprofile="4.1 - 12 bit - 4:4:4"
 		elif [ "$repprofile" = "5" ]; then
+				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+				chprofile="4.1 - 12 bit - 4:4:4 - HDR"
+		elif [ "$repprofile" = "6" ]; then
 				profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p12le"
 				chprofile="4.1 - 12 bit - 4:4:4 - intra"
-		elif [ "$repprofile" = "6" ]; then
+		elif [ "$repprofile" = "7" ]; then
 				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p"
 				chprofile="5.2 - 8 bit - 4:2:0"
-		elif [ "$repprofile" = "7" ]; then
+		elif [ "$repprofile" = "8" ]; then
 				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p12le"
 				chprofile="5.2 - 12 bit - 4:4:4"
-		elif [ "$repprofile" = "8" ]; then
+		elif [ "$repprofile" = "9" ]; then
+				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+				chprofile="5.2 - 12 bit - 4:4:4 - HDR"
+		elif [ "$repprofile" = "10" ]; then
 				profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p12le"
 				chprofile="5.2 - 12 bit - 4:4:4 - intra"
-		elif [ "$repprofile" = "9" ]; then
+		elif [ "$repprofile" = "11" ]; then
 				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1 -pix_fmt yuv420p12le"
 				chprofile="6.2 - 12 bit - 4:4:4"
-		elif [ "$repprofile" = "10" ]; then
+		elif [ "$repprofile" = "12" ]; then
+				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+				chprofile="6.2 - 12 bit - 4:4:4 - HDR"
+		elif [ "$repprofile" = "13" ]; then
 				profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1 -pix_fmt yuv420p12le"
 				chprofile="6.2 - 12 bit - 4:4:4 - intra"
 		else
@@ -1532,7 +1577,7 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	echo "  [3] > for crf 10  U| |S"
 	echo "  [4] > for crf 15  A| |I"
 	echo "  [5] > for crf 20  L| |Z"
-	echo " *[6] > for crf 23  I| |E"
+	echo " *[6] > for crf 22  I| |E"
 	echo "  [7] > for crf 25  T| |"
 	echo "  [8] > for crf 30  Y| |"
 	echo "  [9] > for crf 35   | ∨"
@@ -1560,7 +1605,7 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	elif [ "$rpvkb" = "9" ]; then
 		vkb="-crf 35"
 	else
-		vkb="-crf 23"
+		vkb="-crf 22"
 	fi
 	}
 ConcatenateVideo() {			# Option 12 	- Concatenate video
@@ -1923,7 +1968,7 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 
 			echo "FFmpeg processing: "${files%.*}"-NightNorm.mkv"
 			#ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a? -c:a copy -map 0:a:0? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
-			ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s -c:s copy -map 0:a -c:a copy -map 0:a:${VINDEX[i]}? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
+			ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -c:a copy -map 0:a:${VINDEX[i]}? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
 
 
 			# Check Target if valid (size test) and clean
@@ -4363,7 +4408,7 @@ case $reps in
 	;;
 
 
- 15 ) # Extract stream video
+ 15 ) # Audio night normalization
 	if [[ "$NBV" -eq "1" ]]; then
     StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
 	VideoAudioSourceInfo

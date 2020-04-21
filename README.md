@@ -100,12 +100,13 @@ All binaries come from open source programs.
 	* Encoding options:
 		* crop video
 		* rotate video
+		* HDR to SDR
 		* change resolution
 		* deinterlace
 		* fix frame rate to 24fps
 		* codecs:
 			* x264: profile, tune, preset & bitrate (crf & cbr)
-			* x265: profile, tune, preset & bitrate (crf & cbr)
+			* x265: profile, tune, HDR, preset & bitrate (crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
 * Audio
 	* Stream copy or encoding
@@ -196,11 +197,12 @@ Limitation:
 * max depth directory 2
 * asian character not supported (display in degrading mode)
 
-### In script options (variables)
-## Video
+--------------------------------------------------------------------------------------------------
+## In script options (variables)
+### Video
 * NVENC (default=2)
 	* Description: Set number of video encoding in same time encoding, the countdown starts at 0 (0=1;1=2...)
-## Audio
+### Audio
 * ExtractCover (default=0)
 	* Description: action performed during encoding
 	* 0=extract cover from source and remove in output
