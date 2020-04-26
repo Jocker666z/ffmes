@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.40
+VERSION=v0.41
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -26,10 +26,11 @@ DVD_DEVICE="/dev/$(cat /proc/sys/dev/cdrom/info 2>/dev/null | grep "drive name:"
 NPROC=$(nproc --all| awk '{ print $1 - 1 }')							# Set number of processor
 KERNEL_TYPE=$(uname -sm)												# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')	# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd setcd mkvmerge dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3)
+COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3)
 LIB_NEEDED=(libao)
 CUE_EXT_AVAILABLE="cue"
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"					# Comment for view all ffmpeg log
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"					# Comment for view ffmpeg log
+#FFMPEG_LOG_LVL="-loglevel debug -stats"									# debug ffmpeg log
 
 # Video variables
 X265_LOG_LVL="log-level=error:"											# Comment for view all x265 codec log
@@ -197,7 +198,11 @@ Restart () {					# Restart script & for keep argument
 		bash "$FFMES_PATH"/ffmes.sh && exit
 	fi
 }
-TrapExit () {					# Ctrl+c Trap exit
+TrapStop () {					# Ctrl+z Trap for loop exit
+	Clean
+	kill -s SIGTERM $!
+}
+TrapExit () {					# Ctrl+c Trap for script exit
 	Clean
 	echo
 	echo
@@ -326,7 +331,7 @@ Loading() {						# Loading animation
 				printf "\b\b\b\b\b\b"
 			done
 			printf "    \b\b\b\b"
-			printf "${CL}✓ ${task} ${msg}\n"
+			printf "${CL}✓ ${task} ${msg}\n"FFmpeg pass of DVD Rip fail
             ;;
         stop)
             kill $_sp_pid > /dev/null 2>&1
@@ -397,12 +402,17 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 	END=$(date +%s)								# End time counter
 	
-	# Check Target if valid (size test) and clean
+	# Check target if valid (size test), if valid mkv fix target statistic, and and clean
 	filesPass=()
 	filesReject=()
 	filesSourcePass=()
 	for files in "${LSTVIDEO[@]}"; do
 			if [[ $(stat --printf="%s" "${files%.*}".$videoformat.$extcont 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+				# if mkv fix statistic
+				if [ "$extcont" = "mkv" ]; then
+					mkvpropedit --add-track-statistics-tags "${files%.*}".$videoformat.$extcont >/dev/null 2>&1
+				fi
+				# populate array
 				filesPass+=("${files%.*}".$videoformat.$extcont)
 				filesSourcePass+=("$files")
 			else																	# if file<30 KBytes rejected
@@ -562,7 +572,7 @@ VideoSourceInfo() {				# Video source stats
 	# Clean temp file
 	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
 
-	# Grep if interlaced video, hdr, and width/height of source (with mediainfo)
+	# Grep interlaced, hdr, and width/height, Overall bit rate of source (with mediainfo)
 	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "$LSTVIDEO")
 	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "$LSTVIDEO")
 	SWIDTH=$(mediainfo --Inform="Video;%Width%" "$LSTVIDEO")
@@ -648,7 +658,6 @@ DVDRip() {						# Option 0  	- DVD Rip
 
 	# Grep stat
 	lsdvd -a -s "$DVD" 2>/dev/null | awk -F', AP:' '{print $1}' | awk -F', Subpictures' '{print $1}' | awk ' {gsub("Quantization: drc, ","");print}' | sed 's/^/    /' > "$LSDVD_CACHE"
-	AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "aspect ratio of the main feature" | tail -1 | awk '{print $NF}')
 	DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "DVD with title" | tail -1 | awk '{print $NF}' | sed "s/\"//g")
 	mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | grep Title | awk '{print $2}' |  grep -o '[[:digit:]]*') # Use for extract all title
 
@@ -691,7 +700,7 @@ DVDRip() {						# Option 0  	- DVD Rip
 
 	if [ "$NBVOB" -ge "1" ]; then
 		# DVD Title question
-		read -p "  What is the name of the DVD?: " qdvd
+		read -e -p "  What is the name of the DVD?: " qdvd
 		case $qdvd in
 			*)
 				DVDtitle="$qdvd"
@@ -707,55 +716,73 @@ DVDRip() {						# Option 0  	- DVD Rip
 	for title in "${qtitle[@]}"; do
 		RipFileName=("$DVDtitle"-"$title")
 
-		# Extract vob
-		StartLoading "Extract VOB - title $title"
-		dvdbackup -p -t "$title" -i "$DVD" -n "$RipFileName" 2> /dev/null
+		# Get aspect ratio
+		TitleParsed="${title##*0}"
+		AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i ./ -I 2>/dev/null | grep "The aspect ratio of title set $TitleParsed" | tail -1 | awk '{print $NF}')
+
+		# Extract chapters
+		StartLoading "Extract chapters - $DVDtitle - title $title"
+		dvdxchap -t "$title" "$DVD" 2>/dev/null > "$RipFileName".chapters
 		StopLoading $?
 
-		# Concatenate, remove data stream, fix DAR, and change container
+		# Extract vob
+		StartLoading "Extract VOB - $DVDtitle - title $title"
+		dvdbackup -p -t "$title" -i "$DVD" -n "$RipFileName" >/dev/null 2>&1
+		StopLoading $?
+
+		# Populate array with VOB
 		mapfile -t LSTVOB < <(find ./"$RipFileName" -maxdepth 3 -type f -regextype posix-egrep -iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 		# Concatenate
-		StartLoading "Concatenate VOB - title $title"
+		StartLoading "Concatenate VOB - $DVDtitle - title $title"
 		cat -- "${LSTVOB[@]}" > "$RipFileName".VOB 2> /dev/null
 		StopLoading $?
 
-		# Remove data stream, fix DAR, and change container
-		StartLoading "Make clean mkv - title $title"
-		# If no audio or sub -> not map
-		NoAudio=$(mediainfo "$RipFileName".VOB | grep Audio)
-		NoSub=$(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB | grep dvd_subtitle)
-		if test -n "$NoAudio"; then
-			MapAudio="-map 0:a"
+		# Remove data stream, fix DAR, add chapters, and change container
+		StartLoading "Make clean mkv - $DVDtitle - title $title"
+		# Fix pcm_dvd is present
+		PCM=$(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB | grep pcm_dvd)
+		if test -n "$PCM"; then			# pcm_dvd audio track trick
+				pcm_dvd="-c:a pcm_s16le"
 		fi
-		if test -n "$NoSub"; then
-			MapSub="-map 0:s"
-		fi
-		ffmpeg $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB -map 0:v $MapAudio $MapSub -c copy -aspect $AspectRatio "$RipFileName".mkv 2>/dev/null
+		# FFmpeg - clean mkv
+		ffmpeg $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB -map 0:v -map 0:a? -map 0:s? -c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv 2>/dev/null
+		# mkvmerge - add chapters
+		mkvmerge "$RipFileName".mkv --chapters "$RipFileName".chapters -o "$RipFileName"-chapters.mkv >/dev/null 2>&1
 		StopLoading $?
 
-		# Check Target if valid (size test) and clean
+		# Clean 1
+		if [[ $(stat --printf="%s" "$RipFileName"-chapters.mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+			rm "$RipFileName".mkv 2>/dev/null
+			mv "$RipFileName"-chapters.mkv "$RipFileName".mkv 2>/dev/null
+			rm "$RipFileName".chapters 2>/dev/null
+		else																			# if file<30 KBytes rejected
+			echo "X mkvmerge pass of DVD Rip fail"
+			rm "$RipFileName".chapters 2>/dev/null
+		fi
+
+		# Check Target if valid (size test) and clean 2
 		if [[ $(stat --printf="%s" "$RipFileName".mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-			# Clean
 			rm -f "$RipFileName".VOB 2> /dev/null
 			rm -R -f "$RipFileName" 2> /dev/null
 		else																			# if file<30 KBytes rejected
 			echo "X FFmpeg pass of DVD Rip fail"
-			rm -R -f "$RipFileName" 2> /dev/null
+			rm -R -f "$RipFileName".mkv 2> /dev/null
 		fi
 	done
 
 	# map
 	unset TESTARGUMENT
-	SetGlobalVariables
+	VIDEO_EXT_AVAILABLE="mkv"
+	mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	NBV="${#LSTVIDEO[@]}"
 
-	# encoding question if more 1 vob
-	if [ "$NBV" -gt "1" ]; then
+	# encoding question
 	echo
 	echo " $NBV files are been detected:"
 	printf '  %s\n' "${LSTVIDEO[@]}"
 	echo
-	read -p "  Would you like encode it in batch (not recommended)? [y/N]:" q
+	read -p " Would you like encode it? [y/N]:" q
 	case $q in
 		"Y"|"y")
 
@@ -764,7 +791,6 @@ DVDRip() {						# Option 0  	- DVD Rip
 			Restart
 		;;
 	esac
-	fi
     }
 CustomInfoChoice() {			# Option 1  	- Summary of configuration
 	clear
@@ -788,7 +814,6 @@ CustomInfoChoice() {			# Option 1  	- Summary of configuration
 		echo "   * Codec: $chacodec"
 		echo "   * Bitrate: $akb"
 		echo "   * Channels: $rpchannel"
-		echo "   * Filters: $chnightnorm"
 	fi
 	echo "  Container: $extcont"
 	echo "--------------------------------------------------------------------------------------------------"
@@ -1749,6 +1774,10 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 				hevc) FILE_EXT=mkv ;;
 				av1) FILE_EXT=mkv ;;
 				mpeg4) FILE_EXT=mkv ;;
+				mpeg2video)
+					MPEG2EXTRACT="1"
+					FILE_EXT=mkv
+					;;
 
 				ac3) FILE_EXT=ac3 ;;
 				eac3) FILE_EXT=eac3 ;;
@@ -1761,19 +1790,27 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 				pcm_s16le) FILE_EXT=wav ;;
 				pcm_s24le) FILE_EXT=wav ;;
 				pcm_s32le) FILE_EXT=wav ;;
+				pcm_dvd)
+					DVDPCMEXTRACT="1"
+					FILE_EXT=wav
+					;;
 
 				subrip) FILE_EXT=srt ;;
 				ass) FILE_EXT=ass ;;
 				hdmv_pgs_subtitle) FILE_EXT=sup ;;
 				dvd_subtitle)
-					FILE_EXT=sub
 					MKVEXTRACT="1"
+					FILE_EXT=sub
 					;;
 				esac
 
 				StartLoading "" "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT"
 				if [ "$MKVEXTRACT" = "1" ]; then
 					mkvextract "$files" tracks "${VINDEX[i]}":"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
+				elif [ "$MPEG2EXTRACT" = "1" ]; then
+					ffmpeg -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
+				elif [ "$DVDPCMEXTRACT" = "1" ]; then
+					ffmpeg  -y -i "$files" -map 0:"${VINDEX[i]}" -acodec pcm_s16le -ar 48000 "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
 				else
 					ffmpeg  -y -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
 				fi
@@ -1833,8 +1870,8 @@ CutVideo() {					# Option 14 	- Cut video
     echo
 	echo "$MESS_SEPARATOR"
 	echo " Examples of input:"
-	echo "  [s.20]       -> remove audio after 20 second"
-	echo "  [e.01:11:20] -> remove audio before 1 hour 11 minutes 20 second"
+	echo "  [s.20]       -> remove video after 20 second"
+	echo "  [e.01:11:20] -> remove video before 1 hour 11 minutes 20 second"
 	echo
 	echo "$MESS_SEPARATOR"
     echo
@@ -1967,8 +2004,10 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 		for i in ${!VINDEX[*]}; do
 
 			echo "FFmpeg processing: "${files%.*}"-NightNorm.mkv"
-			#ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a? -c:a copy -map 0:a:0? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
-			ffmpeg -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -c:a copy -map 0:a:${VINDEX[i]}? -c:a:${VINDEX[i]} libopus -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm -b:a:${VINDEX[i]} 320K "${files%.*}"-NightNorm.mkv
+			# Encoding new track
+			ffmpeg  $FFMPEG_LOG_LVL -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -map 0:a:${VINDEX[i]}? -c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus  -b:a:${VINDEX[i]} 320K -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm "${files%.*}"-NightNorm.mkv
+			# fix statistic of new track
+			mkvpropedit --add-track-statistics-tags "${files%.*}"-NightNorm.mkv >/dev/null 2>&1
 
 
 			# Check Target if valid (size test) and clean
@@ -3123,7 +3162,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	mapfile -t LSTAUDIO < <(find . -maxdepth 2 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	NBA="${#LSTAUDIO[@]}"
 
-	# Populate array with tag
+	# Populate array with tags
 	TAG_DISC=()
 	TAG_TRACK=()
 	TAG_TITLE=()
@@ -3161,7 +3200,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	wait
 	StopLoading $?
 	
-	# Display Tag in table
+	# Display tags in table
 	clear
 	echo
 	echo "Inplace file tags:"
@@ -4242,7 +4281,8 @@ CheckCacheDirectory                     # Check if cache directory exist
 StartLoading "Search the files processed"
 SetGlobalVariables                      # Set global variable
 StopLoading $?
-trap TrapExit 2 3						# Set Ctrl+c clean trap
+trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
+trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop
 MainMenu                                # Display main menu
 
 while true; do

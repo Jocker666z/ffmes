@@ -10,7 +10,7 @@ Source media files, supported extension:
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
-`ffmpeg mkvtoolnix abcde sox mediainfo lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd`
+`ffmpeg mkvtoolnix mediainfo abcde sox ogmtools lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd`
 
 ## Install
 * `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
@@ -40,7 +40,7 @@ Extensions=any;
 ```
 
 ## Test
-ffmes is tested, under debian stable and testing almost every day.
+ffmes is tested, under Debian stable and unstable almost every day.
 If you encounter problems or have proposals, I am open to discussion.
 
 ## Embeds binaries
@@ -90,8 +90,9 @@ All binaries come from open source programs.
 	* 34, cut audio file
 
 ### Option 0 details - DVD rip (vob, ISO, or disc)
-* Rip DVD, ISO, or vob
-* Fix timestamp and ratio to mkv file (stream copy)
+* Rip DVD, include ISO and VIDEO_TS VOB
+* Chapters integration
+* Fix timestamp and display ratio to mkv file (stream copy)
 * launch option 1 (optional)
     
 ### Option 1 details - video encoding, full custom options
@@ -221,6 +222,7 @@ Limitation:
 ## Holy reading
 * Video codecs:
 	* https://github.com/leandromoreira/digital_video_introduction#how-does-a-video-codec-work
+	* https://slhck.info/video/2017/03/01/rate-control.html
 	* x264:
 		* https://trac.ffmpeg.org/wiki/Encode/H.264
 		* https://sites.google.com/site/linuxencoding/x264-ffmpeg-mapping

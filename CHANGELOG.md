@@ -1,4 +1,18 @@
 # Changelog
+v0.41:
+* Video:
+	* add - option 0, dvdrip, chapter integration with dvdxchap and mkvmerge
+	* chg - option 0, dvdrip, now aspect ratio is get by title not from main feature
+	* fix - option 0, dvdrip, mapfile of output files
+	* fix - option 0, dvdrip, pcm_dvd fail, now convert in pcm_s16le
+	* fix - option 1, after encoding regen statistic of mkv with mkvpropedit
+	* add - option 13, extract stream, support of pcm_dvd as pcm_s16le, mpeg2video
+	* fix - option 15, night normalization, after encoding regen statistic of mkv with mkvpropedit
+	* fix - option 15, night normalization, change or add title of new track for "Opus 2.0 Night Mode"
+* Various
+	* add - trap exit with Ctrl+z for exit from current loop
+	* add - dvdxchap (part of ogmtools package) in dependencies, for extract DVD chapters
+
 v0.40:
 * Video:
 	* add - option 1, now HDR to SDR option, displayed only if source is in HDR, option set SDR by default
