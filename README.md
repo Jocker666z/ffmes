@@ -233,5 +233,6 @@ Limitation:
 		* https://trac.ffmpeg.org/wiki/Encode/H.265
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding#Profiles
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding_tiers_and_levels
+		* https://x265.readthedocs.io/en/default/presets.html
 * VGM:
 	* http://loveemu.hatenablog.com/entry/Conversion_Tools_for_Video_Game_Music

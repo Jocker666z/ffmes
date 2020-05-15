@@ -1,4 +1,16 @@
 # Changelog
+v0.42:
+* Video:
+	* chg - option 1, remove option "remove all audio", use extract video for this (option).
+	* chg - option 1,2, now test timestamp of source if no video stream encoding, more safe
+* Audio tag:
+	* chg - max depth directory 2 to 1
+* VGM:
+	* update - vgmstream to r1050-2946-g1e583645-9-g9aaba3b3 May 13 2020
+	* update - binmerge to Mar 26 2020
+* Various
+	* fix - CD/DVD detection now work, limited to 4 devices by machine (/dev/sr0 to /dev/sr3)
+
 v0.41:
 * Video:
 	* add - option 0, dvdrip, chapter integration with dvdxchap and mkvmerge

@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.41
+VERSION=v0.42
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -20,7 +20,7 @@ LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdv
 ABCDE_EXTRACT="/home/$USER/Music"															# abcde extract directory
 ABCDE_CONF="$FFMES_PATH/conf/abcde-ffmes.conf"												# abcde configuration file
 VGM_TAG="/home/$USER/.cache/ffmes/vgmtag.info"												# vgm tag cache
-DVD_DEVICE="/dev/$(cat /proc/sys/dev/cdrom/info 2>/dev/null | grep "drive name:" | awk '{print $3}')"	# CD/DVD player drive name
+OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player drives names
 
 # General variables
 NPROC=$(nproc --all| awk '{ print $1 - 1 }')							# Set number of processor
@@ -30,7 +30,7 @@ COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge dvdback
 LIB_NEEDED=(libao)
 CUE_EXT_AVAILABLE="cue"
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"					# Comment for view ffmpeg log
-#FFMPEG_LOG_LVL="-loglevel debug -stats"									# debug ffmpeg log
+#FFMPEG_LOG_LVL="-loglevel debug -stats"								# debug ffmpeg log
 
 # Video variables
 X265_LOG_LVL="log-level=error:"											# Comment for view all x265 codec log
@@ -136,6 +136,17 @@ zxtune123() {					# https://zxtune.bitbucket.io/
 "$FFMES_PATH"/bin/zxtune123 "$@"
 	}
 ## VARIABLES, DISPLAY & MENU SECTION
+DetectCDDVD () {				# CD/DVD detection
+for DEVICE in "${OPTICAL_DEVICE[@]}"; do
+    DeviceTest=$(setcd -i "$DEVICE")
+    case "$DeviceTest" in
+        *'Disc found'*)
+			DVD_DEVICE="$DEVICE"
+            break
+            ;;
+    esac
+done
+}
 SetGlobalVariables() {
 	if test -n "$TESTARGUMENT"; then		# if argument
 		if [[ $TESTARGUMENT == *"Video"* ]]; then
@@ -331,7 +342,7 @@ Loading() {						# Loading animation
 				printf "\b\b\b\b\b\b"
 			done
 			printf "    \b\b\b\b"
-			printf "${CL}✓ ${task} ${msg}\n"FFmpeg pass of DVD Rip fail
+			printf "${CL}✓ ${task} ${msg}\n"
             ;;
         stop)
             kill $_sp_pid > /dev/null 2>&1
@@ -381,7 +392,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 	for files in "${LSTVIDEO[@]}"; do
 
-		if [ "${files##*.}" != "mkv" ]; then
+		if [ "$ENCODV" != "1" ]; then
 			StartLoading "Test timestamp of: $files"
 			TimestampTest=$(ffprobe -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$files" | awk -F',' '/K/ {print $1}' | tail -1)
 			if [ "$TimestampTest" = "N/A" ]; then
@@ -613,7 +624,7 @@ DVDRip() {						# Option 0  	- DVD Rip
     clear
     echo
     echo "  DVD rip"
-    echo "  notes: * for DVD, launch ffmes in directory without ISO & VOB"
+    echo "  notes: * for DVD, launch ffmes in directory without ISO & VOB, if you have more than one drive, insert only one DVD."
     echo "         * for ISO, launch ffmes in directory without VOB (one iso)"
     echo "         * for VOB, launch ffmes in directory with VOB (in VIDEO_TS/)"
     echo
@@ -1212,12 +1223,6 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 		fileacodec=$chacodec
 		soundconf="$afilter -acodec $codeca $akb $confchan"
 
-	elif [ "$qa" = "r" ]; then
-
-        chsoundstream="No audio"                          # For no audio video or remove audio
-        fileacodec="noaudio"
-        soundconf=""
-
 	else
 
         chsoundstream="Copy"                              # No audio change
@@ -1356,16 +1361,16 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	CustomInfoChoice
 	echo " Choose the preset:"
 	echo
-	echo "  --------------------------------------------------> Slow Encoding"
-	echo "  veryfast - faster - fast -  medium* - slow - slower - veryslow"
-	echo "  -----------------------------------> Better quality & compression"
+	echo "  ----------------------------------------------> Encoding Speed"
+	echo "  veryfast - faster - fast -  medium - slow* - slower - veryslow"
+	echo "  -----------------------------------------------------> Quality"
 	read -e -p "-> " reppreset
 	if test -n "$reppreset"; then
 		preset="-preset $reppreset"
 		chpreset="$reppreset"
 	else
 		preset="-preset medium"
-		chpreset="medium"
+		chpreset="slow"
 	fi
 
 	# Tune x264/x265
@@ -1601,8 +1606,8 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	echo "  [2] > for crf 5   Q| |"
 	echo "  [3] > for crf 10  U| |S"
 	echo "  [4] > for crf 15  A| |I"
-	echo "  [5] > for crf 20  L| |Z"
-	echo " *[6] > for crf 22  I| |E"
+	echo " *[5] > for crf 20  L| |Z"
+	echo "  [6] > for crf 22  I| |E"
 	echo "  [7] > for crf 25  T| |"
 	echo "  [8] > for crf 30  Y| |"
 	echo "  [9] > for crf 35   | ∨"
@@ -1622,7 +1627,7 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	elif [ "$rpvkb" = "5" ]; then
 		vkb="-crf 20"
 	elif [ "$rpvkb" = "6" ]; then
-		vkb="-crf 23"
+		vkb="-crf 22"
 	elif [ "$rpvkb" = "7" ]; then
 		vkb="-crf 25"
 	elif [ "$rpvkb" = "8" ]; then
@@ -1630,7 +1635,7 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	elif [ "$rpvkb" = "9" ]; then
 		vkb="-crf 35"
 	else
-		vkb="-crf 22"
+		vkb="-crf 20"
 	fi
 	}
 ConcatenateVideo() {			# Option 12 	- Concatenate video
@@ -2185,12 +2190,13 @@ SplitCUE() {					#
 	
 	fi
 }
-CDRip() {						# 
+CDRip() {						# Audio CD Rip with abcde
 if command -v abcde &>/dev/null; then						# If abcde installed
 	clear
 	echo
     echo " Audio CD rip"
     echo " Notes: * abcde is used for rip audio CD"
+    echo "        * if you have more than one drive, insert only one CDROM."
     echo "        * temporary & finals files extracted in \""$ABCDE_EXTRACT"\" directory"
     echo
     echo "$MESS_SEPARATOR"
@@ -3159,7 +3165,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	StartLoading "Grab current tags" ""
 
 	# Limit to current directory
-	mapfile -t LSTAUDIO < <(find . -maxdepth 2 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	NBA="${#LSTAUDIO[@]}"
 
 	# Populate array with tags
@@ -3781,13 +3787,9 @@ VGMRip() {						# Option 21 	- VGM rip
 							echo
 						fi
 					fi
+					TAG_ARTIST=$(sed -n 's/Composer:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
 					if test -z "$TAG_ARTIST"; then
-						TAG_ARTIST=$(sed -n 's/Composer:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
-						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
-							read -e -p " -> " TAG_ARTIST
-							echo
-						fi
+						TAG_ARTIST="Unknown"
 					fi
 					if test -z "$TAG_MACHINE"; then
 						TAG_MACHINE=$(sed -n 's/System:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
@@ -4280,6 +4282,7 @@ VGMRip_Clean() {				# Clean & arrange VGM rip files
 CheckCacheDirectory                     # Check if cache directory exist
 StartLoading "Search the files processed"
 SetGlobalVariables                      # Set global variable
+DetectCDDVD								# CD/DVD detection
 StopLoading $?
 trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
 trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop
