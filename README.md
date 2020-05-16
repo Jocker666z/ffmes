@@ -43,8 +43,8 @@ Extensions=any;
 ffmes is tested, under Debian stable and unstable almost every day.
 If you encounter problems or have proposals, I am open to discussion.
 
-## Embeds binaries
-All binaries come from open source programs.
+## Embeds binaries & scripts
+All come from open source programs.
 * binmerge - https://github.com/putnam/binmerge
 * espctag - https://sourceforge.net/projects/espctag/
 * gbsinfo - https://github.com/mmitch/gbsplay
@@ -189,13 +189,14 @@ Options:
 * Rename files in "Track - Title" (add track number if not present)
 * Change or add tag track, by alphabetic sorting, to use if no file has this tag
 * Change or add tag album
+* Change or add tag disc number
 * Change or add tag artist
 * Change or add tag date
 * Change tag title for filename
 * Change tag title for untitled
 * Remove N character at begin of tag title, but limited to 9 characters.
 Limitation:
-* max depth directory 2
+* max depth directory 1
 * asian character not supported (display in degrading mode)
 
 --------------------------------------------------------------------------------------------------

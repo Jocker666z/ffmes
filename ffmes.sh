@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.42
+VERSION=v0.43
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -23,34 +23,34 @@ VGM_TAG="/home/$USER/.cache/ffmes/vgmtag.info"												# vgm tag cache
 OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player drives names
 
 # General variables
-NPROC=$(nproc --all| awk '{ print $1 - 1 }')							# Set number of processor
-KERNEL_TYPE=$(uname -sm)												# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
-TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')	# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3)
+NPROC=$(nproc --all| awk '{ print $1 - 1 }')												# Set number of processor
+KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
+TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
+COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3)
 LIB_NEEDED=(libao)
 CUE_EXT_AVAILABLE="cue"
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"					# Comment for view ffmpeg log
-#FFMPEG_LOG_LVL="-loglevel debug -stats"								# debug ffmpeg log
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# Comment for view ffmpeg log
+#FFMPEG_LOG_LVL="-loglevel debug -stats"													# Debug ffmpeg log
 
 # Video variables
-X265_LOG_LVL="log-level=error:"											# Comment for view all x265 codec log
+X265_LOG_LVL="log-level=error:"																# Comment for view all x265 codec log
 VIDEO_EXT_AVAILABLE="mkv|vp9|m4v|m2ts|avi|ts|mts|mpg|flv|mp4|mov|wmv|3gp|vob|mpeg|webm|ogv|bik"
 SUBTI_EXT_AVAILABLE="srt|ssa|idx|sup"
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
-NVENC="1"																# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
+NVENC="1"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
 
 # Audio variables
 AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
-ExtractCover="0"																# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
-RemoveM3U="1"																	# Remove m3u playlist, 0=no remove, 1=remove
+ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
+RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
 # VGM variables
 VGM_EXT_AVAILABLE="ads|adp|adx|aifc|ast|at3|bfstm|bfwav|gbs|dat|dsp|dsf|eam|hps|int|minigsf|minipsf|miniusf|minipsf2|mod|mus|rak|raw|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 M3U_EXT_AVAILABLE="m3u"
-SPC_VSPCPLAY=""																	# Experimental, spc encoding with vspcplay, leave empty for desactivate, note '1' for activate.
-PULSE_MONITOR="pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor"	# Experimental, used for encoding spc with vspcplay, to get to know him typing: = 'pacmd list | grep ".monitor"', example output: 'pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor'
+SPC_VSPCPLAY=""																				# Experimental, spc encoding with vspcplay, leave empty for desactivate, note '1' for activate.
+PULSE_MONITOR="pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor"				# Experimental, used for encoding spc with vspcplay, to get to know him typing: = 'pacmd list | grep ".monitor"', example output: 'pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor'
 
 # Messages
 MESS_SEPARATOR=" --------------------------------------------------------------"
@@ -62,43 +62,7 @@ MESS_BATCH_FILE_AUTH="	-/!\- Only more than one file file at a time. Restart ffm
 MESS_EXT_FILE_AUTH="	-/!\- Only one extention type at a time."
 MESS_UNAME_AUTH="	-/!\- Only for Linux x86_64."
 
-# Arguments variables
-if [ -d "$1" ]; then			# If target is directory
-    cd "$1" || exit				# Move to directory
-elif [ -f "$1" ]; then                              # If target is file
-    TESTARGUMENT1=$(mediainfo "$1" | grep -E 'Video|Audio|ISO' | head -n1)
-    TESTARGUMENT2=$(file "$1" | grep -i -E 'Video|Audio')
-    if [[ -z "$TESTARGUMENT1" ]] && [[ -n "$TESTARGUMENT2" ]] ; then
-		TESTARGUMENT="$TESTARGUMENT2"
-	else
-		TESTARGUMENT="$TESTARGUMENT1"
-	fi
-    if test -n "$TESTARGUMENT"; then
-        ARGUMENT="$1"
-    else
-        echo
-        echo "  Missed, \"$1\" is not a video, audio or ISO file."
-        echo
-        exit
-    fi
-elif test -n "$1"; then                             # If don't understand/help
-	echo "ffmes $VERSION - GNU GPL-2.0 Copyright - Written by Romain Barbarot <https://github.com/Jocker666z/ffmes>"
-	echo
-    echo "Usage: ffmes [option]"
-    echo
-    echo "ffmes options (set in alias):"
-    echo "	ffmes				for launch main menu"
-    echo "	ffmes file			for treat one file"
-    echo "	ffmes /directory		for treat in batch a specific directory"
-    echo
-    echo "If ffmes is not set in alias replace \"ffmes\" by \"bash ~/ffmes/ffmes.sh\"."
-    echo "However, it is strongly recommended to use an alias, "
-    echo "but you can still continue to hurt yourself."
-    echo
-    exit
-fi
-
-## BINARIES SECTION
+## EMBEDS BINARIES SECTION
 binmerge() {					# https://github.com/putnam/binmerge
 "$FFMES_PATH"/bin/binmerge "$@"
 	}
@@ -136,6 +100,19 @@ zxtune123() {					# https://zxtune.bitbucket.io/
 "$FFMES_PATH"/bin/zxtune123 "$@"
 	}
 ## VARIABLES, DISPLAY & MENU SECTION
+Usage() {
+cat <<- EOF
+ffmes $VERSION - GNU GPL-2.0 Copyright - Written by Romain Barbarot <https://github.com/Jocker666z/ffmes>
+
+Usage: ffmes [option]
+ffmes               for launch main menu
+ffmes file          for treat one file
+ffmes directory     for treat in batch a specific directory
+
+If ffmes is not set in alias replace "ffmes" by "bash ~/ffmes/ffmes.sh".
+However, it is strongly recommended to use an alias, but you can still continue to hurt yourself.
+EOF
+}
 DetectCDDVD () {				# CD/DVD detection
 for DEVICE in "${OPTICAL_DEVICE[@]}"; do
     DeviceTest=$(setcd -i "$DEVICE")
@@ -147,7 +124,7 @@ for DEVICE in "${OPTICAL_DEVICE[@]}"; do
     esac
 done
 }
-SetGlobalVariables() {
+SetGlobalVariables() {			# Construct variables with files accepted
 	if test -n "$TESTARGUMENT"; then		# if argument
 		if [[ $TESTARGUMENT == *"Video"* ]]; then
 			LSTVIDEO=()
@@ -234,32 +211,32 @@ CheckCacheDirectory() {			# Check if cache directory exist
 CheckFiles() {					# Promp a message to user with number of video, audio, sub to edit, and command not found
 	# Video
 	if  [[ $TESTARGUMENT == *"Video"* ]]; then
-		echo "  * Video to edit: $LSTVIDEO" | DisplayTruncate
+		echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
 	elif  [[ $TESTARGUMENT != *"Video"* ]] && [ "$NBV" -eq "1" ]; then
-		echo "  * Video to edit: $LSTVIDEO" | DisplayTruncate
+		echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
 	elif [ "$NBV" -gt "1" ]; then                 # If no arg + 1> videos
 		echo -e "  * Video to edit: $NBV files"
 	fi
 
 	# Audio
 	if  [[ $TESTARGUMENT == *"Audio"* ]]; then
-		echo "  * Audio to edit: $LSTAUDIO" | DisplayTruncate
+		echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
 	elif [[ $TESTARGUMENT != *"Audio"* ]] && [ "$NBA" -eq "1" ]; then
-		echo "  * Audio to edit: $LSTAUDIO" | DisplayTruncate
+		echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
 	elif test -z "$ARGUMENT" && [ "$NBA" -gt "1" ]; then                 # If no arg + 1> videos
 		echo -e "  * Audio to edit: $NBA files"
 	fi
 
 	# ISO
 	if  [[ $TESTARGUMENT == *"ISO"* ]]; then
-		echo "  * ISO to edit: $LSTISO" | DisplayTruncate
+		echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
 	elif [[ $TESTARGUMENT != *"ISO"* ]] && [ "$NBISO" -eq "1" ]; then
-		echo "  * ISO to edit: $LSTISO" | DisplayTruncate
+		echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
 	fi
 
 	# Subtitle
 	if [ "$NBSUB" -eq "1" ]; then
-		echo "  * Subtitle to edit: $LSTSUB" | DisplayTruncate
+		echo "  * Subtitle to edit: ${LSTSUB[0]}" | DisplayTruncate
 	elif [ "$NBSUB" -gt "1" ]; then
 		echo "  * Subtitle to edit: $NBSUB"
 	fi
@@ -357,7 +334,6 @@ StartLoading() {				# Start loading animation
 		task=$(echo "${task:0:$TERM_WIDTH}" | awk '{print $0"..."}')
 	fi
 	msg=$2
-	Lmsg="${#msg}"
 	if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
 		msg=$(echo "${msg:0:$TERM_WIDTH}" | awk '{print $0"..."}')
 	fi
@@ -401,7 +377,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 			StopLoading $?
 		fi
 
-		echo "FFmpeg processing: "${files%.*}"."$videoformat"."$extcont""
+		echo "FFmpeg processing: ${files%.*}.$videoformat.$extcont"
 		(
 		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${files%.*}".$videoformat.$extcont
 		) &
@@ -418,17 +394,17 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	filesReject=()
 	filesSourcePass=()
 	for files in "${LSTVIDEO[@]}"; do
-			if [[ $(stat --printf="%s" "${files%.*}".$videoformat.$extcont 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+			if [[ $(stat --printf="%s" "${files%.*}"."$videoformat"."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
 				# if mkv fix statistic
 				if [ "$extcont" = "mkv" ]; then
 					mkvpropedit --add-track-statistics-tags "${files%.*}".$videoformat.$extcont >/dev/null 2>&1
 				fi
 				# populate array
-				filesPass+=("${files%.*}".$videoformat.$extcont)
+				filesPass+=("${files%.*}"."$videoformat"."$extcont")
 				filesSourcePass+=("$files")
 			else																	# if file<30 KBytes rejected
-				filesReject+=("${files%.*}".$videoformat.$extcont)
-				rm "${files%.*}".$videoformat.$extcont 2>/dev/null
+				filesReject+=("${files%.*}"."$videoformat"."$extcont")
+				rm "${files%.*}"."$videoformat"."$extcont" 2>/dev/null
 			fi
 	done
 
@@ -458,7 +434,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	fi
 	echo " -----------------------------------------------------"
 	echo " $NBVO/$NBV file(s) have been processed."
-	echo " Created file(s) size: "$TSSIZE"MB, a difference of $PERC% from the source(s) ("$SSIZVIDEO"MB)."
+	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo " -----------------------------------------------------"
 	echo
@@ -480,7 +456,7 @@ Mkvmerge() {					# Merge command
     cat "$FFMES_CACHE_STAT"
     echo
 	echo "  You will merge the following files:"
-	echo "   $LSTVIDEO"
+	echo "   ${LSTVIDEO[0]}"
 	printf '   %s\n' "${LSTAUDIO[@]}"
 	printf '   %s\n' "${LSTSUB[@]}"
 	echo
@@ -511,17 +487,17 @@ Mkvmerge() {					# Merge command
 	fi
 
 	# Merge
-	mkvmerge -o "${LSTVIDEO[0]%.*}".$videoformat.mkv "${LSTVIDEO[0]}" $MERGE_LSTAUDIO $MERGE_LSTSUB
+	mkvmerge -o "${LSTVIDEO[0]%.*}"."$videoformat".mkv "${LSTVIDEO[0]}" $MERGE_LSTAUDIO $MERGE_LSTSUB
 
 	END=$(date +%s)                         # End time counter
 	
 	# Check Target if valid (size test)
 	filesPass=()
 	filesReject=()
-	if [[ $(stat --printf="%s" "${LSTVIDEO%.*}".$videoformat.mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-		filesPass+=("${LSTVIDEO%.*}".$videoformat.mkv)
+	if [[ $(stat --printf="%s" "${LSTVIDEO%.*}"."$videoformat".mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+		filesPass+=("${LSTVIDEO%.*}"."$videoformat".mkv)
 	else																	# if file<30 KBytes rejected
-		filesReject+=("${LSTVIDEO%.*}".$videoformat.mkv)
+		filesReject+=("${LSTVIDEO%.*}"."$videoformat".mkv)
 	fi
 
 	# Make statistics of processed files
@@ -542,14 +518,14 @@ Mkvmerge() {					# Merge command
 		printf '  %s\n' "${filesReject[@]}"
 	fi
 	echo " -----------------------------------------------------"
-	echo " Created file(s) size: "$TSSIZE"MB."
+	echo " Created file(s) size: $TSSIZE MB."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo " -----------------------------------------------------"
 	echo
 }
 VideoSourceInfo() {				# Video source stats
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 1G -probesize 1G -i "$LSTVIDEO" 2> "$FFMES_CACHE"/temp.stat.info
+	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Stream > "$FFMES_CACHE_STAT"
@@ -572,7 +548,7 @@ VideoSourceInfo() {				# Video source stats
 	sed -i '1 i\  '"$SourceDuration"'' "$FFMES_CACHE_STAT"
 
 	# Grep source size & add file name and size
-	SourceSize=$(wc -c "$LSTVIDEO" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
+	SourceSize=$(wc -c "${LSTVIDEO[0]}" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
 	sed -i '1 i\    '"$LSTVIDEO, size: $SourceSize MB"'' "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
@@ -584,14 +560,14 @@ VideoSourceInfo() {				# Video source stats
 	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
 
 	# Grep interlaced, hdr, and width/height, Overall bit rate of source (with mediainfo)
-	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "$LSTVIDEO")
-	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "$LSTVIDEO")
-	SWIDTH=$(mediainfo --Inform="Video;%Width%" "$LSTVIDEO")
-	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "$LSTVIDEO")
+	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "${LSTVIDEO[0]}")
+	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "${LSTVIDEO[0]}")
+	SWIDTH=$(mediainfo --Inform="Video;%Width%" "${LSTVIDEO[0]}")
+	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
 }
-VideoAudioSourceInfo() {				# Video source stats / Audio only with stream order
+VideoAudioSourceInfo() {		# Video source stats / Audio only with stream order
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 1G -probesize 1G -i "$LSTVIDEO" 2> "$FFMES_CACHE"/temp.stat.info
+	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Audio > "$FFMES_CACHE_STAT"
@@ -608,7 +584,7 @@ VideoAudioSourceInfo() {				# Video source stats / Audio only with stream order
 	sed -i '1 i\  '"$SourceDuration"'' "$FFMES_CACHE_STAT"
 
 	# Grep source size & add file name and size
-	SourceSize=$(wc -c "$LSTVIDEO" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
+	SourceSize=$(wc -c "${LSTVIDEO[0]}" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
 	sed -i '1 i\    '"$LSTVIDEO, size: $SourceSize MB"'' "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
@@ -643,10 +619,8 @@ DVDRip() {						# Option 0  	- DVD Rip
 	# Assign input
 	if [ "$NBVOB" -ge "1" ]; then
 		DVD="./"
-		VOBSET="1"
 	elif [ "$NBISO" -eq "1" ]; then
 		DVD="${LSTISO[0]}"
-		ISOSET="1"
 	else
 		while true; do
 			DVDINFO=$(setcd -i "$DVD_DEVICE")
@@ -674,9 +648,9 @@ DVDRip() {						# Option 0  	- DVD Rip
 
 	# Question
 	if [ "$NBVOB" -ge "1" ]; then
-		echo " "$NBVOB" file(s) are been detected, choice one or more title to rip:"
+		echo " $NBVOB file(s) are been detected, choice one or more title to rip:"
 	else
-		echo " "$DVDtitle" DVD video have been detected, choice one or more title to rip:"
+		echo " $DVDtitle DVD video have been detected, choice one or more title to rip:"
 	fi
 	echo
 	cat "$LSDVD_CACHE"
@@ -689,7 +663,7 @@ DVDRip() {						# Option 0  	- DVD Rip
 	do
 	IFS=" " read -r -a qtitle
 	echo
-	case $qtitle in
+	case "${qtitle[0]}" in
 		[0-9]*)
 			break
 		;;
@@ -713,13 +687,13 @@ DVDRip() {						# Option 0  	- DVD Rip
 		# DVD Title question
 		read -e -p "  What is the name of the DVD?: " qdvd
 		case $qdvd in
-			*)
-				DVDtitle="$qdvd"
-			;;
 			"")
 				echo
 				echo "$MESS_INVALID_ANSWER"
 				echo
+			;;
+			*)
+				DVDtitle="$qdvd"
 			;;
 		esac
 	fi
@@ -858,7 +832,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 		case $yn in
 			"y"|"Y")
 				StartLoading "Crop auto detection in progress"
-				cropresult=$(ffmpeg -i "$LSTVIDEO" -ss 00:03:30 -t 00:04:30 -vf cropdetect -f null - 2>&1 | awk '/crop/ { print $NF }' | tail -1 2> /dev/null)  # grep auto crop with ffmpeg
+				cropresult=$(ffmpeg -i "${LSTVIDEO[0]}" -ss 00:03:30 -t 00:04:30 -vf cropdetect -f null - 2>&1 | awk '/crop/ { print $NF }' | tail -1 2> /dev/null)  # grep auto crop with ffmpeg
 				StopLoading $?
 				vfilter="-vf $cropresult"
 				nbvfilter=$((nbvfilter+1))
@@ -971,11 +945,9 @@ CustomVideoEncod() {			# Option 1  	- Conf video
         case $yn in
 			"n"|"N")
 					chsdr2hdr="No change"
-					break
 				;;
 			"q"|"Q")
 					Restart
-					break
 				;;
 			*)
 				nbvfilter=$((nbvfilter+1))
@@ -1015,7 +987,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 					[100-5000]*)
 						nbvfilter=$((nbvfilter+1))
 						RATIO=$(echo "$SWIDTH/$WIDTH" | bc -l | awk 'sub("\\.*0+$","")')
-						HEIGHT=$(echo $(echo "scale=1;$SHEIGHT/$RATIO" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//'))		# display decimal only if not integer
+						HEIGHT=$(echo "$(echo "scale=1;$SHEIGHT/$RATIO" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')")		# display decimal only if not integer
 						if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
 								if [ "$nbvfilter" -gt 1 ] ; then
 									vfilter+=",scale=$WIDTH:-2"
@@ -1029,7 +1001,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 									vfilter="-vf scale=$WIDTH:-1"
 								fi
 						fi
-						DHEIGHT=$(echo $(echo "scale=0;$SHEIGHT/$RATIO" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//'))		# not decimal
+						DHEIGHT=$(echo "$(echo "scale=0;$SHEIGHT/$RATIO" | bc -l | sed '/\./ s/\.\{0,1\}0\{1,\}$//')")		# not decimal
 						chwidth=("$WIDTH"x"$DHEIGHT")
 						break
 					;;
@@ -1119,7 +1091,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
         echo " *[x265]  > for libx265 codec"
         echo "  [mpeg4] > for xvid codec"
         echo "  [q]     > for exit"
-		read -e -p "-> " ynn
+		read -e -p "-> " yn
 		case $yn in
 			"x264")
                 codec="libx264 -x264-params colorprim=bt709:transfer=bt709:colormatrix=bt709:fullrange=off -pix_fmt yuv420p"
@@ -1546,8 +1518,8 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 		echo "  [13] > | 6.2 | 1     | 1     | 12  | 0   | 4:4:4  | 28800  | 8192×4320>120               |"
 		read -e -p "-> " repprofile
 		if echo "$repprofile" | grep -q 'profil'; then
-				profile="$rep"
-				chprofile="$rep"
+				profile="$repprofile"
+				chprofile="$repprofile"
 		elif [ "$repprofile" = "1" ]; then
 				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=3.1 -pix_fmt yuv420p"
 				chprofile="3.1 - 8 bit - 4:2:0"
@@ -1674,7 +1646,7 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 		# Check Target if valid (size test)
 		filesPass=()
 		filesReject=()
-		if [ $(stat --printf="%s" Concatenate-Output."${LSTVIDEO[0]##*.}") -gt 30720 ]; then		# if file>30 KBytes accepted
+		if [ "$(stat --printf="%s" Concatenate-Output."${LSTVIDEO[0]##*.}")" -gt 30720 ]; then		# if file>30 KBytes accepted
 			filesPass+=(Concatenate-Output."${LSTVIDEO[0]##*.}")
 		else																	# if file<30 KBytes rejected
 			filesReject+=(Concatenate-Output."${LSTVIDEO[0]##*.}")
@@ -1705,7 +1677,7 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 			printf '  %s\n' "${filesReject[@]}"
 		fi
 		echo " -----------------------------------------------------"
-		echo " Created file(s) size: "$TSSIZE"MB, a difference of $PERC% from the source(s) ("$SSIZVIDEO"MB)."
+		echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
 		echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 		echo " -----------------------------------------------------"
 		echo
@@ -1715,7 +1687,7 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 		read -p "You want encoding concatenating video? [y/N]:" qarm
 			case $qarm in
 				"Y"|"y")
-					LSTVIDEO=("Concatenate-Output."${LSTVIDEO[0]##*.}"")
+					LSTVIDEO=("Concatenate-Output.${LSTVIDEO[0]##*.}")
 				;;
 				*)
 					Restart
@@ -1745,12 +1717,12 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 			break
 		;;
 		[0-9]*)
-			VINDEX=($rpstreamch)
+			VINDEX=("$rpstreamch")
 			# Keep codec used
 			mapfile -t VCODECNAME1 < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
 			VCODECNAME=()
 			for i in "${VINDEX[@]}"; do
-				VCODECNAME+=(${VCODECNAME1[$i]})
+				VCODECNAME+=("${VCODECNAME1[$i]}")
 			done
 			break
 		;;
@@ -1768,7 +1740,7 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 	
 	# Start time counter
 	START=$(date +%s)							# Start time counter
-	for files in "${LSTVIDEO[0]}"; do
+	for files in "${LSTVIDEO[@]}"; do
 
 		filesPass=()
 		filesReject=()
@@ -1857,7 +1829,7 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 		printf '  %s\n' "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
-	echo " Created file(s) size: "$TSSIZE"MB."
+	echo " Created file(s) size: $TSSIZE MB."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo "$MESS_SEPARATOR"
 	echo
@@ -1923,7 +1895,7 @@ CutVideo() {					# Option 14 	- Cut video
 
 	# Cut
 	echo
-	echo "FFmpeg processing: "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}""
+	echo "FFmpeg processing: ${LSTVIDEO[0]%.*}.cut.${LSTVIDEO[0]##*.}"
 	ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTVIDEO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}"
 
 	# End time counter
@@ -1932,7 +1904,7 @@ CutVideo() {					# Option 14 	- Cut video
 	# Check Target if valid (size test)
 	filesPass=()
 	filesReject=()
-	if [ $(stat --printf="%s" "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}") -gt 30720 ]; then		# if file>30 KBytes accepted
+	if [ "$(stat --printf="%s" "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}")" -gt 30720 ]; then		# if file>30 KBytes accepted
 		filesPass+=("${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}")
 	else																	# if file<30 KBytes rejected
 		filesReject+=("${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}")
@@ -1963,7 +1935,7 @@ CutVideo() {					# Option 14 	- Cut video
 		printf '  %s\n' "${filesReject[@]}"
 	fi
 	echo " -----------------------------------------------------"
-	echo " Created file(s) size: "$TSSIZE"MB, a difference of $PERC% from the source(s) ("$SSIZVIDEO"MB)."
+	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo " -----------------------------------------------------"
 	echo
@@ -1985,7 +1957,7 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 	case $rpstreamch in
 	
 		[0-9])
-			VINDEX=($rpstreamch)
+			VINDEX=("$rpstreamch")
 			break
 		;;
 		"q"|"Q")
@@ -2002,13 +1974,13 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 	
 	# Start time counter
 	START=$(date +%s)							# Start time counter
-	for files in "${LSTVIDEO[0]}"; do
+	for files in "${LSTVIDEO[@]}"; do
 
 		filesPass=()
 		filesReject=()
 		for i in ${!VINDEX[*]}; do
 
-			echo "FFmpeg processing: "${files%.*}"-NightNorm.mkv"
+			echo "FFmpeg processing: ${files%.*}-NightNorm.mkv"
 			# Encoding new track
 			ffmpeg  $FFMPEG_LOG_LVL -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -map 0:a:${VINDEX[i]}? -c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus  -b:a:${VINDEX[i]} 320K -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm "${files%.*}"-NightNorm.mkv
 			# fix statistic of new track
@@ -2051,7 +2023,7 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 		printf '  %s\n' "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
-	echo " Created file(s) size: "$TSSIZE"MB."
+	echo " Created file(s) size: $TSSIZE MB."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo "$MESS_SEPARATOR"
 	echo
@@ -2095,7 +2067,7 @@ RemoveVideoSource() {			# Clean video source
 ## AUDIO SECTION
 AudioSourceInfo() {				# Audio source stats
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 100M -probesize 100M -i "$LSTAUDIO" 2> "$FFMES_CACHE"/temp.stat.info
+	ffprobe -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Stream > "$FFMES_CACHE_STAT"
@@ -2116,7 +2088,7 @@ AudioSourceInfo() {				# Audio source stats
 	sed -i '1 i\    '"$LSTAUDIO, size: $SourceSize MB"'' "$FFMES_CACHE_STAT"
 
 	# Grep audio db peak & add
-	LineDBPeak=$(cat "$FFMES_CACHE_STAT" | grep -nE -- "*Stream*.*Audio*" | cut -c1)
+	LineDBPeak=$(cat "$FFMES_CACHE_STAT" | grep -nE -- ".*Stream.*.*Audio.*" | cut -c1)
 	TestDBPeak=$(ffmpeg -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
 	sed -i "${LineDBPeak}s/.*/& , DB peak:$TestDBPeak/" "$FFMES_CACHE_STAT"
 
@@ -2140,24 +2112,24 @@ SplitCUE() {					#
 		# Start time counter
 		START=$(date +%s)
 		
-		CHARSET_DETECT=$(uchardet "$LSTCUE" 2> /dev/null)
+		CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2> /dev/null)
 		if [ "$CHARSET_DETECT" != "UTF-8" ]; then
-			iconv -f $CHARSET_DETECT -t UTF-8 "$LSTCUE" > utf-8.cue
+			iconv -f $CHARSET_DETECT -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
 			mkdir BACK 2> /dev/null
-			mv "$LSTCUE" BACK/"$LSTCUE".back
-			mv -f utf-8.cue "$LSTCUE"
+			mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
+			mv -f utf-8.cue "${LSTCUE[0]}"
 		fi
 
-		shntool split "$LSTAUDIO" -t "%n - %t" -f "$LSTCUE" -o flac
+		shntool split "${LSTAUDIO[0]}" -t "%n - %t" -f "${LSTCUE[0]}" -o flac
 
 		# Clean
 		rm 00*.flac 2> /dev/null
-		cuetag "$LSTCUE" *.flac 2> /dev/null
+		cuetag "${LSTCUE[0]}" *.flac 2> /dev/null
 		if [ ! -d BACK/ ]; then
 			mkdir BACK 2> /dev/null
 		fi
-		mv "$LSTAUDIO" BACK/ 2> /dev/null
-		mv "$LSTCUE" BACK/ 2> /dev/null
+		mv "${LSTAUDIO[0]}" BACK/ 2> /dev/null
+		mv "${LSTCUE[0]}" BACK/ 2> /dev/null
 
 		# End time counter
 		END=$(date +%s)
@@ -2183,7 +2155,7 @@ SplitCUE() {					#
 			printf '  %s\n' "${LSTAUDIO[@]}"
 		fi
 		echo "$MESS_SEPARATOR"
-		echo " Created file(s) size: "$TSSIZE"MB."
+		echo " Created file(s) size: $TSSIZE MB."
 		echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 		echo "$MESS_SEPARATOR"
 	echo
@@ -2197,7 +2169,7 @@ if command -v abcde &>/dev/null; then						# If abcde installed
     echo " Audio CD rip"
     echo " Notes: * abcde is used for rip audio CD"
     echo "        * if you have more than one drive, insert only one CDROM."
-    echo "        * temporary & finals files extracted in \""$ABCDE_EXTRACT"\" directory"
+    echo "        * temporary & finals files extracted in \"$ABCDE_EXTRACT\" directory"
     echo
     echo "$MESS_SEPARATOR"
     echo " Choose desired option:"
@@ -2311,21 +2283,21 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 		# Opus auto adapted bitrate
 		if [ "$AdaptedBitrate" = "1" ]; then
 			TestBitrate=$(mediainfo --Output="General;%OverallBitRate%" "$files")
-			if [ "$TestBitrate" -ge 1 -a "$TestBitrate" -le 96000 ]; then
+			if [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
 				akb="-b:a 64K"
-			elif [ "$TestBitrate" -ge 96001 -a "$TestBitrate" -le 128000 ]; then
+			elif [ "$TestBitrate" -ge 96001 ] && [ "$TestBitrate" -le 128000 ]; then
 				akb="-b:a 96K"
-			elif [ "$TestBitrate" -ge 129000 -a "$TestBitrate" -le 160000 ]; then
+			elif [ "$TestBitrate" -ge 129000 ] && [ "$TestBitrate" -le 160000 ]; then
 				akb="-b:a 128K"
-			elif [ "$TestBitrate" -ge 161000 -a "$TestBitrate" -le 192000 ]; then
+			elif [ "$TestBitrate" -ge 161000 ] && [ "$TestBitrate" -le 192000 ]; then
 				akb="-b:a 160K"
-			elif [ "$TestBitrate" -ge 193000 -a "$TestBitrate" -le 256000 ]; then
+			elif [ "$TestBitrate" -ge 193000 ] && [ "$TestBitrate" -le 256000 ]; then
 				akb="-b:a 192K"
-			elif [ "$TestBitrate" -ge 257000 -a "$TestBitrate" -le 280000 ]; then
+			elif [ "$TestBitrate" -ge 257000 ] && [ "$TestBitrate" -le 280000 ]; then
 				akb="-b:a 220K"
-			elif [ "$TestBitrate" -ge 281000 -a "$TestBitrate" -le 320000 ]; then
+			elif [ "$TestBitrate" -ge 281000 ] && [ "$TestBitrate" -le 320000 ]; then
 				akb="-b:a 256K"
-			elif [ "$TestBitrate" -ge 321000 -a "$TestBitrate" -le 400000 ]; then
+			elif [ "$TestBitrate" -ge 321000 ] && [ "$TestBitrate" -le 400000 ]; then
 				akb="-b:a 280K"
 			elif [ "$TestBitrate" -ge 400001 ]; then
 				akb="-b:a 320K"
@@ -2351,7 +2323,7 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 		# Encoding
 		( 
 		StartLoading "" "$files"
-		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf $tag "${files%.*}".$extcont &>/dev/null
+		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
 		StopLoading $?
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
@@ -2369,22 +2341,22 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 	filesReject=()				# Files fail
 	filesSourcePass=()			# Source files pass
 	for files in "${LSTAUDIO[@]}"; do
-		if [[ "${filesOverwrite[@]}" =~ "$files" ]]; then												# If file overwrite
-			if [[ $(stat --printf="%s" "${files%.*}".new.$extcont 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-				mv "$files" "${files%.*}".back.$extcont 2>/dev/null
-				mv "${files%.*}".new.$extcont "$files" 2>/dev/null
+		if [[ "${filesOverwrite[0]}" =~ $files ]]; then													# If file overwrite
+			if [[ $(stat --printf="%s" "${files%.*}".new."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+				mv "$files" "${files%.*}".back."$extcont" 2>/dev/null
+				mv "${files%.*}".new."$extcont" "$files" 2>/dev/null
 				filesPass+=("$files")
-				filesSourcePass+=("${files%.*}".back.$extcont)
+				filesSourcePass+=("${files%.*}".back."$extcont")
 			else																						# if file<30 KBytes rejected
-				filesReject+=("${files%.*}".new.$extcont)
-				rm "${files%.*}".new.$extcont 2>/dev/null
+				filesReject+=("${files%.*}".new."$extcont")
+				rm "${files%.*}".new."$extcont" 2>/dev/null
 			fi
 		else																							# If no file overwrite
-			if [[ $(stat --printf="%s" "${files%.*}".$extcont 2>/dev/null) -gt 30720 ]]; then			# if file>30 KBytes accepted
-				filesPass+=("${files%.*}".$extcont)
+			if [[ $(stat --printf="%s" "${files%.*}"."$extcont" 2>/dev/null) -gt 30720 ]]; then			# if file>30 KBytes accepted
+				filesPass+=("${files%.*}"."$extcont")
 				filesSourcePass+=("$files")
 			else																						# if file<30 KBytes rejected
-				filesReject+=("${files%.*}".$extcont)
+				filesReject+=("${files%.*}"."$extcont")
 				rm "${files%.*}".$extcont 2>/dev/null
 			fi
 		fi
@@ -2415,7 +2387,7 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " $NBAO/$NBA file(s) have been processed."
-	echo " Created file(s) size: "$TSSIZE"MB, a difference of $PERC% from the source(s) ("$SSIZAUDIO"MB)."
+	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo "$MESS_SEPARATOR"
 	echo
@@ -2964,7 +2936,7 @@ AudioSpectrum() {				#
 		printf '  %s\n' "${filesReject[@]}"
 	fi
 	echo " -----------------------------------------------------"
-	echo " Created file(s) size: "$TSSIZE"MB."
+	echo " Created file(s) size: $TSSIZE MB."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo " -----------------------------------------------------"
 	echo
@@ -3045,7 +3017,7 @@ ConcatenateAudio() {			#
 			printf '  %s\n' "${filesReject[@]}"
 		fi
 		echo " -----------------------------------------------------"
-		echo " Created file(s) size: "$TSSIZE"MB, a difference of $PERC% from the source(s) ("$SSIZAUDIO"MB)."
+		echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
 		echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 		echo " -----------------------------------------------------"
 		echo
@@ -3124,9 +3096,9 @@ CutAudio() {					#
 	# Check Target if valid (size test)
 	filesPass=()
 	filesReject=()
-	if [ $(stat --printf="%s" "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}") -gt 30720 ]; then		# if file>30 KBytes accepted
+	if [ "$(stat --printf="%s" "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}")" -gt 30720 ]; then		# if file>30 KBytes accepted
 		filesPass+=("${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}")
-	else																	# if file<30 KBytes rejected
+	else																							# if file<30 KBytes rejected
 		filesReject+=("${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}")
 	fi
 
@@ -3155,7 +3127,7 @@ CutAudio() {					#
 		printf '  %s\n' "${filesReject[@]}"
 	fi
 	echo " -----------------------------------------------------"
-	echo " Created file(s) size: "$TSSIZE"MB, a difference of $PERC% from the source(s) ("$SSIZAUDIO"MB)."
+	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo " -----------------------------------------------------"
 	echo
@@ -3286,7 +3258,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 
 				# Rename
 				ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]} - $ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				StopLoading $?
 			done
 			AudioTagEditor
@@ -3504,7 +3476,7 @@ FFmpeg_vgm_cmd() {				# FFmpeg vgm encoding command
 	ffmpeg -y -i "${files%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="$TAG_TRACK" -metadata title="$TAG_SONG" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "${files%.*}".flac  &>/dev/null
 	StopLoading $?
 	}
-VGMRip_amiga() {				# Option 211 	- uade amiga convertion (hidden option)
+VGMRip_amiga() {				# Option 211 	- VGM rip amiga (hidden option)
 	echo
 	# Extract Tag 1
 	if test -z "$TAG_GAME"; then
@@ -3938,7 +3910,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd_norm_stereo
 					# Encoding flac
 					FFmpeg_vgm_cmd
-				;;
+				;;&
 
 				*psf2|*PSF2|*minipsf2|*MINIPSF2)					# Sony Playstation 2 - zxtune123 decode
 					# Extract Tag
@@ -3986,7 +3958,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd_norm_stereo
 					# Encoding flac
 					FFmpeg_vgm_cmd
-				;;
+				;;&
 
 				*miniusf|*MINIUSF)					# Nintendo N64 - zxtune123 decode
 					# Extract Tag
@@ -4279,13 +4251,37 @@ VGMRip_Clean() {				# Clean & arrange VGM rip files
 	esac
 }
 
+# Arguments variables & usage
+if [ -d "$1" ]; then								# If target is directory
+    cd "$1" || exit									# Move to directory
+elif [ -f "$1" ]; then                              # If target is file
+    TESTARGUMENT1=$(mediainfo "$1" | grep -E 'Video|Audio|ISO' | head -n1)
+    TESTARGUMENT2=$(file "$1" | grep -i -E 'Video|Audio')
+    if [[ -z "$TESTARGUMENT1" ]] && [[ -n "$TESTARGUMENT2" ]] ; then
+		TESTARGUMENT="$TESTARGUMENT2"
+	else
+		TESTARGUMENT="$TESTARGUMENT1"
+	fi
+    if test -n "$TESTARGUMENT"; then
+        ARGUMENT="$1"
+    else
+        echo
+        echo "  Missed, \"$1\" is not a video, audio or ISO file."
+        echo
+        exit
+    fi
+elif test -n "$1"; then								# If don't understand/help
+	Usage
+    exit
+fi
+
 CheckCacheDirectory                     # Check if cache directory exist
 StartLoading "Search the files processed"
 SetGlobalVariables                      # Set global variable
 DetectCDDVD								# CD/DVD detection
 StopLoading $?
 trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
-trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop
+trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop (for debug)
 MainMenu                                # Display main menu
 
 while true; do

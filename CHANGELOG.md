@@ -1,4 +1,10 @@
 # Changelog
+v0.43:
+* Various
+	* add - usage function
+	* fix - add mkvpropedit in command needed
+	* fix - massive clean code
+
 v0.42:
 * Video:
 	* chg - option 1, remove option "remove all audio", use extract video for this (option).
