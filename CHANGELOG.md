@@ -1,4 +1,10 @@
 # Changelog
+v0.44:
+* Video:
+	* add - now display total chapter number in "Source file stats"
+	* add - option 16, split mkv by chapter, use mkvmerge
+	* add - option 17, change color of DVD subtitle (idx/sub) 
+
 v0.43:
 * Various
 	* add - usage function

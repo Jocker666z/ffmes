@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.43
+VERSION=v0.44
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -151,6 +151,7 @@ SetGlobalVariables() {			# Construct variables with files accepted
 	fi
 	# List source(s) subtitle file(s)
 	mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTSUBEXT < <(echo "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	# List source(s) CUE file(s)
 	mapfile -t LSTCUE < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$CUE_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	# List source(s) VOB file(s)
@@ -281,6 +282,8 @@ echo "  12 - concatenate video files                        |"
 echo "  13 - extract stream(s) of video file                |"
 echo "  14 - cut video file                                 |"
 echo "  15 - add audio stream with night normalization      |"
+echo "  16 - split mkv by chapter                           |"
+echo "  17 - change color of DVD subtitle (idx/sub)         |"
 echo "  -----------------------------------------------------"
 echo "  20 - CD rip                                         |"
 echo "  21 - VGM rip to flac                                |-Audio"
@@ -457,8 +460,12 @@ Mkvmerge() {					# Merge command
     echo
 	echo "  You will merge the following files:"
 	echo "   ${LSTVIDEO[0]}"
-	printf '   %s\n' "${LSTAUDIO[@]}"
-	printf '   %s\n' "${LSTSUB[@]}"
+	if [ "$NBA" -gt 0 ] ; then
+		printf '   %s\n' "${LSTAUDIO[@]}"
+	fi
+	if [ "$NBSUB" -gt 0 ] ; then
+		printf '   %s\n' "${LSTSUB[@]}"
+	fi
 	echo
 	read -e -p "Continue? [Y/n]:" qarm
 	case $qarm in
@@ -547,9 +554,10 @@ VideoSourceInfo() {				# Video source stats
 	SourceDuration=$(< $FFMES_CACHE/temp.stat.info grep Duration)
 	sed -i '1 i\  '"$SourceDuration"'' "$FFMES_CACHE_STAT"
 
-	# Grep source size & add file name and size
+	# Grep source size, chapter number && add file name, size, chapter number
+	ChapterNumber=$(< $FFMES_CACHE/temp.stat.info grep Chapter | tail -1 | awk '{print $4, "chapters"}')
 	SourceSize=$(wc -c "${LSTVIDEO[0]}" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
-	sed -i '1 i\    '"$LSTVIDEO, size: $SourceSize MB"'' "$FFMES_CACHE_STAT"
+	sed -i '1 i\    '"$LSTVIDEO, size: $SourceSize MB, $ChapterNumber"'' "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
 	sed -i '1 i\ Source file stats:' "$FFMES_CACHE_STAT"
@@ -1611,6 +1619,8 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	fi
 	}
 ConcatenateVideo() {			# Option 12 	- Concatenate video
+	clear
+	echo
 	echo " Concatenate video files?"
 	echo " Note: * Before you start, make sure that the files all have the same height/width, codecs and bitrates."
 	echo
@@ -2027,6 +2037,90 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo "$MESS_SEPARATOR"
 	echo
+	}
+SplitByChapter() {				# Option 16 	- Split by chapter
+	clear
+	echo
+	cat "$FFMES_CACHE_STAT"
+	read -p " Split by chapter, continue? [y/N]:" qarm
+	case $qarm in
+		"Y"|"y")
+			mkvmerge -o "${LSTVIDEO[0]%.*}"-Chapter.mkv --split chapters:all "${LSTVIDEO[0]}"
+		;;
+		*)
+			Restart
+		;;
+	esac
+}
+DVDSubColor() {					# Option 17 	- Change color of DVD sub
+	clear
+	echo
+	echo " Files to change colors:"
+	printf '  %s\n' "${LSTSUB[@]}"
+	echo
+    echo " Select color palette:"
+	echo
+	echo "  [0] > white font / black border"
+	echo "  [1] > black font / white border"
+	echo "  [2] > yellow font / black border"
+	echo "  [3] > yellow font / white border"
+	echo "  [q] > for exit"
+	while :
+	do
+	read -e -p "-> " rpspalette
+	case $rpspalette in
+	
+		"0")
+			for files in "${LSTSUB[@]}"; do
+				palette="white font & black border"
+				StartLoading "" "$files color palette change to $palette"
+				sed -i '/palette:/c\palette: ffffff, ffffff, 000000, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff, ffffff' "$files"
+				StopLoading $?
+			done
+			echo
+			break
+		;;
+		"1")
+			for files in "${LSTSUB[@]}"; do
+				palette="black font & white border"
+				StartLoading "" "$files color palette change to $palette"
+				sed -i '/palette:/c\palette: 000000, 000000, ffffff, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000, 000000' "$files"
+				StopLoading $?
+			done
+			echo
+			break
+		;;
+		"2")
+			for files in "${LSTSUB[@]}"; do # fffd00
+				palette="yellow font & black border"
+				StartLoading "" "$files color palette change to $palette"
+				sed -i '/palette:/c\palette: fffd00, fffd00, 000000, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00' "$files"
+				StopLoading $?
+			done
+			echo
+			break
+		;;
+		"3")
+			for files in "${LSTSUB[@]}"; do # fffd00
+				palette="yellow font & white border"
+				StartLoading "" "$files color palette change to $palette"
+				sed -i '/palette:/c\palette: fffd00, fffd00, ffffff, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00, fffd00' "$files"
+				StopLoading $?
+			done
+			echo
+			break
+		;;
+		"q"|"Q")
+			Restart
+			break
+		;;
+			*)
+				echo
+				echo "$MESS_INVALID_ANSWER"
+				echo
+			;;
+	esac
+	done 
 	}
 MultipleVideoExtention() {		# Sources video multiple extention question
 	if [ "$NBVEXT" -gt "1" ]; then
@@ -3205,7 +3299,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	echo "  [album x]  > | change or add tag album    | ex. of input [album Conan the Barbarian]                                          |"
 	echo "  [artist x] > | change or add tag artist   | ex. of input [artist Basil Poledouris]                                            |"
 	echo "  [date x]   > | change or add tag date     | ex. of input [date 1982]                                                          |"
-	echo "  [ftitle]   > | change title by filenam]   |                                                                                   |"
+	echo "  [ftitle]   > | change title by [filename] |                                                                                   |"
 	echo "  [utitle]   > | change title by [untitled] |                                                                                   |"
 	echo "  [stitle x] > | remove N in begin of title | ex. of input [stitle 3] -> remove 3 first characters in all titles (limited to 9) |"
 	echo "  [r]        > | for restart tag edition"
@@ -4376,7 +4470,7 @@ case $reps in
 	;;
 
  11 ) # video -> mkv|copy|add audio|add sub
-	if [[ "$NBV" -eq "1" ]]; then
+	if [[ "$NBV" -eq "1" ]] && [[ "$NBSUB" -gt 0 || "$NBA" -gt 0 ]]; then
 	# CONF_START ////////////////////////////////////////////////////////////////////////////
     # NAME ----------------------------------------------------------------------------------
     videoformat="addcopy"
@@ -4388,7 +4482,7 @@ case $reps in
 	Clean                                          # clean temp files
 	else
         echo
-        echo "$MESS_ONE_VIDEO_FILE_AUTH"
+        echo "	-/!\- One video, with several audio and/or subtitle files."
         echo
 	fi
 	;;
@@ -4457,6 +4551,31 @@ case $reps in
 	else
         echo
         echo "$MESS_ONE_VIDEO_FILE_AUTH"
+        echo
+	fi
+	;;
+
+ 16 ) # Split by chapter mkv
+	if [ "$NBV" -eq "1" ] && [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
+    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+	VideoSourceInfo
+	StopLoading $?
+    SplitByChapter
+	Clean                                          # clean temp files
+	else
+        echo
+        echo "$MESS_ONE_VIDEO_FILE_AUTH"
+        echo
+	fi
+	;;
+
+ 17 ) # Change color palette of DVD subtitle
+	if [[ $(echo "${LSTSUBEXT[@]}") = "idx" ]]; then
+    DVDSubColor
+	Clean                                          # clean temp files
+	else
+        echo
+        echo "	-/!\- Only DVD subtitle extention type (idx/sub)."
         echo
 	fi
 	;;

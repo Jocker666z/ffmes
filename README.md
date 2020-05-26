@@ -73,6 +73,8 @@ All come from open source programs.
 	* 13, extract stream(s) of video file
 	* 14, cut video file
 	* 15, add audio stream with night normalization
+	* 16, split mkv by chapter
+	* 17, change color of DVD subtitle (idx/sub)
 * Audio :
 	* 20, CD rip
 	* 21, VGM Rip to flac (Linux x86_64 only)
