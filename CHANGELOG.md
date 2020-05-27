@@ -1,4 +1,9 @@
 # Changelog
+v0.45:
+* VGM:
+	* add - support of Nintendo NES nsf files; if m3u -> auto tag and fading
+	* fix - several menu
+
 v0.44:
 * Video:
 	* add - now display total chapter number in "Source file stats"

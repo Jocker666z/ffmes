@@ -141,6 +141,7 @@ Files supported :
 * Nintendo GBA: minigsf
 * Nintendo GameCube: dsp, hps, adp, thp
 * Nintendo N64: miniusf
+* Nintendo NES: nsf
 * Nintendo SNES: spc
 * Nintendo Switch: bfstm, bfwav
 * Sega Saturn: minissf, ssf
