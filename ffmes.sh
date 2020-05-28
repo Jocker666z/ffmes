@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.45
+VERSION=v0.46
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -19,7 +19,7 @@ FFMES_CACHE_TAG="/home/$USER/.cache/ffmes/tag-$(date +%Y%m%s%N).info"						# tag
 LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdvd cache
 ABCDE_EXTRACT="/home/$USER/Music"															# abcde extract directory
 ABCDE_CONF="$FFMES_PATH/conf/abcde-ffmes.conf"												# abcde configuration file
-VGM_TAG="/home/$USER/.cache/ffmes/vgmtag.info"												# vgm tag cache
+VGM_TAG="/home/$USER/.cache/ffmes/vgmtag-$(date +%Y%m%s%N).info.info"						# vgm tag cache
 OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player drives names
 
 # General variables
@@ -4213,17 +4213,49 @@ VGMRip() {						# Option 21 	- VGM rip
 						TAG_MACHINE="NES"
 
 						# m3u parser
-						cat "${LSTM3U[0]}" | sed '/^#/d' | uniq | sed -r '/^\s*$/d' > "$VGM_TAG"			# Tag record 2
-						TAG_TRACK=()
-						TAG_SONG=()
-						TAG_DURATION=()
-						TAG_FADING=()
-						while IFS=',' read FileFormat1 TAG_TRACK1 TAG_SONG1 TAG_DURATION1 Loop1 TAG_FADING1; do
-							TAG_TRACK+=("$TAG_TRACK1")
-							TAG_SONG+=("$TAG_SONG1")
-							TAG_DURATION+=("$TAG_DURATION1")
-							TAG_FADING+=("$TAG_FADING1")
-						done < "$VGM_TAG"
+						cat "${LSTM3U[0]}" | sed '/^#/d' | uniq | sed -r '/^\s*$/d' | sort -t, -k2,2 -n  > "$VGM_TAG"			# Tag record 2
+						NSF-m3u-parser() {
+							TAG_TRACKM3U=()
+							TAG_TRACK1=()
+							TAG_SONG=()
+							TAG_SONG1=()
+							TAG_DURATION=()
+							TAG_DURATION1=()
+							TAG_FADING=()
+							TAG_FADING1=()
+							while IFS=',' read FileFormat1 TAG_TRACK1 TAG_SONG1 TAG_DURATION1 Loop1 TAG_FADING1; do
+								TAG_TRACKM3U+=("$TAG_TRACK1")
+								TAG_SONG+=("$TAG_SONG1")
+								TAG_DURATION+=("$TAG_DURATION1")
+								TAG_FADING+=("$TAG_FADING1")
+							done < "$VGM_TAG"
+						}
+
+						# M3U parser
+						NSF-m3u-parser
+						# NSF/m3u track count
+						NSFTrackNumber=$(ffprobe "$files" 2>&1 | grep "track" | awk '{print $NF}')
+						M3UTrackNumber=$(wc -l "$VGM_TAG" | awk '{print $1}')
+
+						# Make clean m3u loop
+						while true; do 
+							for (( i=0; i<=$(( $NSFTrackNumber -1 )); i++ )); do
+								if [ "${TAG_TRACKM3U[i]}" != $(($i+1)) ]; then
+									NB=$(($i+1))
+									if [[ "$NB" -lt "$M3UTrackNumber" ]]; then
+										sed -i "${NB} i \\X.nsf::NSF,${NB},[untitled],0:03:00,,0:00:00" "$VGM_TAG"
+									else
+										echo "X.nsf::NSF,$NB,[untitled],0:03:00,,0:00:00" >> "$VGM_TAG"
+									fi
+									#exit
+									NSF-m3u-parser															# relaunch M3U parser
+									M3UTrackNumber=$(wc -l "$VGM_TAG" | awk '{print $1}')
+								fi
+							done
+							if [[ "$NSFTrackNumber" -eq "$M3UTrackNumber" ]]; then
+								break
+							fi
+						done
 
 						# Extract VGM
 						zxtune123 --wav filename=[Subpath].wav "$files"
@@ -4240,36 +4272,33 @@ VGMRip() {						# Option 21 	- VGM rip
 						mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 						NBA="${#LSTAUDIO[@]}"
 
-						# Stop if m3u not clean
-						m3uNumber=$(wc -l "$VGM_TAG" | awk '{print $1}')
-						if [ "$m3uNumber" != "$NBA" ] ; then
-							echo "	-/!\- m3u file not clean, number of track in m3u ($m3uNumber) != number of wav track ($NBA)"
-							echo
-							break
-						fi
-
 						# mu3/wav/flac loop
+						unset TAG_TRACK
 						TAG_SDURATION=()
 						for (( i=0; i<=$(( $NBA -1 )); i++ )); do
+							# Tag Track increment
+							TAG_TRACK=$(($i+1))
 							# Track leading 0
-							number=$(echo "${TAG_TRACK[i]}" | sed 's/[^0-9]*//g')
+							number=$(echo "$TAG_TRACK" | sed 's/[^0-9]*//g')
 							padded=$(printf "%02d" $number)
-							TAG_TRACK[i]=$(echo "${TAG_TRACK[i]}" | sed "s/${number}/${padded}/")
-							
-							# Duration treat
-							TAG_SDURATION[i]=$(echo ${TAG_DURATION[i]} | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')		# Total duration in s
-							TAG_FADING[i]=$(echo ${TAG_FADING[i]} | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')			# Fading duration in s
-							if (( $(echo "${TAG_FADING[i]} > ${TAG_SDURATION[i]}" | bc -l) )); then								# prevent incoherence duration between fade out and total duration
-								TAG_FADING[i]="0"
-							elif [ "${TAG_FADING[i]}" = "0" ] && (( $(echo "${TAG_SDURATION[i]} > 30" | bc -l) )); then			# If no fading for audio > 30s, add 3s of fade
-								TAG_FADING[i]="3"
-							fi
-							TAG_FDURATION=$(echo "${TAG_SDURATION[i]} - ${TAG_FADING[i]}" | bc)									# Total duration - Fade out duration
+							TAG_TRACK=$(echo "$TAG_TRACK" | sed "s/${number}/${padded}/")
 
-							# Duration/fading clean
-							ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" -t ${TAG_SDURATION[i]} -af "afade=t=out:st=$TAG_FDURATION:d=${TAG_FADING[i]}" -acodec pcm_s16le -ar 44100 -f wav temp-"${LSTAUDIO[i]%.*}".wav
-							rm "${LSTAUDIO[i]%.*}".wav
-							mv temp-"${LSTAUDIO[i]%.*}".wav "${LSTAUDIO[i]%.*}".wav
+							# Duration treat
+							if [ -n "$TAG_DURATION" ]; then
+								TAG_SDURATION[i]=$(echo ${TAG_DURATION[i]} | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')		# Total duration in s
+								TAG_FADING[i]=$(echo ${TAG_FADING[i]} | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')			# Fading duration in s
+								if (( $(echo "${TAG_FADING[i]} > ${TAG_SDURATION[i]}" | bc -l) )); then								# prevent incoherence duration between fade out and total duration
+									TAG_FADING[i]="0"
+								elif [ "${TAG_FADING[i]}" = "0" ] && (( $(echo "${TAG_SDURATION[i]} > 30" | bc -l) )); then			# If no fading for audio > 30s, add 3s of fade
+									TAG_FADING[i]="3"
+								fi
+								TAG_FDURATION=$(echo "${TAG_SDURATION[i]} - ${TAG_FADING[i]}" | bc)									# Total duration - Fade out duration
+
+								# Duration/fading clean
+								ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" -t ${TAG_SDURATION[i]} -af "afade=t=out:st=$TAG_FDURATION:d=${TAG_FADING[i]}" -acodec pcm_s16le -ar 44100 -f wav temp-"${LSTAUDIO[i]%.*}".wav
+								rm "${LSTAUDIO[i]%.*}".wav
+								mv temp-"${LSTAUDIO[i]%.*}".wav "${LSTAUDIO[i]%.*}".wav
+							fi
 
 							# Sox remove silence
 							TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${LSTAUDIO[i]%.*}".wav)
@@ -4299,8 +4328,8 @@ VGMRip() {						# Option 21 	- VGM rip
 							mv temp-out.wav "${LSTAUDIO[i]%.*}".wav &>/dev/null
 
 							# FFmpeg final flac encoding
-							StartLoading "" "Encoding: ${LSTAUDIO[i]%.*}.flac"
-							ffmpeg -y -i "${LSTAUDIO[i]%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="${TAG_TRACK[i]}" -metadata title="${TAG_SONG[i]}" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "${TAG_TRACK[i]} - ${TAG_SONG[i]}".flac  &>/dev/null
+							StartLoading "" "Encoding: $TAG_TRACK - ${TAG_SONG[i]}.flac"
+							ffmpeg -y -i "${LSTAUDIO[i]%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="$TAG_TRACK" -metadata title="${TAG_SONG[i]}" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "$TAG_TRACK - ${TAG_SONG[i]}".flac  &>/dev/null
 							StopLoading $?
 						done
 

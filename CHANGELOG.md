@@ -1,4 +1,9 @@
 # Changelog
+v0.46:
+* VGM:
+	* chg - improve loop of Nintendo NES nsf/mu3 files; now work with missing tracks in the m3u
+	* chg - add timestamps to VGMTAG.info
+
 v0.45:
 * VGM:
 	* add - support of Nintendo NES nsf files; if m3u -> auto tag and fading
