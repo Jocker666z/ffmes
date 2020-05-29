@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.46
+VERSION=v0.46a
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -3560,7 +3560,7 @@ FFmpeg_vgm_cmd_norm_stereo() {	# FFmpeg normalization & test channel command
 	fi
 
 	# Encoding Wav
-	ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav
+	ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav &>/dev/null
 	rm "${files%.*}".wav &>/dev/null
 	mv temp-out.wav "${files%.*}".wav &>/dev/null
 	}
@@ -3569,6 +3569,10 @@ FFmpeg_vgm_cmd() {				# FFmpeg vgm encoding command
 	StartLoading "" "Encoding: ${files%.*}.flac"
 	ffmpeg -y -i "${files%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="$TAG_TRACK" -metadata title="$TAG_SONG" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "${files%.*}".flac  &>/dev/null
 	StopLoading $?
+	# Rename if possible
+	if [ -n "$TAG_TRACK" ] && [ -n "$TAG_SONG" ]; then
+		mv "${files%.*}".flac "$TAG_TRACK - $TAG_SONG".flac &>/dev/null
+	fi
 	}
 VGMRip_amiga() {				# Option 211 	- VGM rip amiga (hidden option)
 	echo
@@ -3680,6 +3684,10 @@ VGMRip() {						# Option 21 	- VGM rip
 		# Track tag (counter)
 		TAG_TRACK=$(($COUNTER+1))
 		COUNTER=$TAG_TRACK
+		# Track leading 0
+		number=$(echo "$TAG_TRACK" | sed 's/[^0-9]*//g')
+		padded=$(printf "%02d" $number)
+		TAG_TRACK=$(echo "$TAG_TRACK" | sed "s/${number}/${padded}/")
 
 			# Extract VGM
 			case "${LSTVGM[@]##*.}" in
@@ -4211,6 +4219,7 @@ VGMRip() {						# Option 21 	- VGM rip
 							echo
 						fi
 						TAG_MACHINE="NES"
+						TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"											# Album
 
 						# m3u parser
 						cat "${LSTM3U[0]}" | sed '/^#/d' | uniq | sed -r '/^\s*$/d' | sort -t, -k2,2 -n  > "$VGM_TAG"			# Tag record 2
@@ -4295,7 +4304,7 @@ VGMRip() {						# Option 21 	- VGM rip
 								TAG_FDURATION=$(echo "${TAG_SDURATION[i]} - ${TAG_FADING[i]}" | bc)									# Total duration - Fade out duration
 
 								# Duration/fading clean
-								ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" -t ${TAG_SDURATION[i]} -af "afade=t=out:st=$TAG_FDURATION:d=${TAG_FADING[i]}" -acodec pcm_s16le -ar 44100 -f wav temp-"${LSTAUDIO[i]%.*}".wav
+								ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" -t ${TAG_SDURATION[i]} -af "afade=t=out:st=$TAG_FDURATION:d=${TAG_FADING[i]}" -acodec pcm_s16le -ar 44100 -f wav temp-"${LSTAUDIO[i]%.*}".wav &>/dev/null
 								rm "${LSTAUDIO[i]%.*}".wav
 								mv temp-"${LSTAUDIO[i]%.*}".wav "${LSTAUDIO[i]%.*}".wav
 							fi
@@ -4323,7 +4332,7 @@ VGMRip() {						# Option 21 	- VGM rip
 							else
 								confchan=""
 							fi
-							ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav
+							ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav &>/dev/null
 							rm "${LSTAUDIO[i]%.*}".wav &>/dev/null
 							mv temp-out.wav "${LSTAUDIO[i]%.*}".wav &>/dev/null
 
@@ -4476,11 +4485,11 @@ VGMRip() {						# Option 21 	- VGM rip
 						sox -t "$PULSE_MONITOR" -r 48000 -b 16 -t wav "${files%.*}".wav &
 						vspcplay --ignore_tag_time --default_time "$TAG_TDURATION" --novideo --status_line "$files"
 						killall -9 sox
-						ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -f wav temp-"${files%.*}".wav
+						ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -f wav temp-"${files%.*}".wav &>/dev/null
 						rm "${files%.*}".wav
 						mv temp-"${files%.*}".wav "${files%.*}".wav
 					else
-						ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -ar 32000 -f wav "${files%.*}".wav
+						ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -ar 32000 -f wav "${files%.*}".wav &>/dev/null
 					fi
 					# Remove silence
 					Sox_vgm_cmd_silence
@@ -4577,7 +4586,7 @@ fi
 CheckCacheDirectory                     # Check if cache directory exist
 StartLoading "Search the files processed"
 SetGlobalVariables                      # Set global variable
-DetectCDDVD								# CD/DVD detection
+#DetectCDDVD					# CD/DVD detection
 StopLoading $?
 trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
 trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop (for debug)

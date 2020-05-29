@@ -1,4 +1,9 @@
 # Changelog
+v0.46a:
+* VGM:
+	* fix - add tag album for Nintendo NES nsf/mu3 files
+	* fix - various ugly display
+
 v0.46:
 * VGM:
 	* chg - improve loop of Nintendo NES nsf/mu3 files; now work with missing tracks in the m3u
