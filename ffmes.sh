@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.46a
+VERSION=v0.47
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -46,7 +46,7 @@ ExtractCover="0"																			# Extract cover, 0=extract cover from source 
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
 # VGM variables
-VGM_EXT_AVAILABLE="ads|adp|adx|aifc|ast|at3|bfstm|bfwav|gbs|dat|dsp|dsf|eam|hps|int|minigsf|minipsf|miniusf|minipsf2|mod|mus|nsf|rak|raw|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
+VGM_EXT_AVAILABLE="ads|adp|adx|aif|aifc|ast|at3|bcstm|bcwav|bfstm|bfwav|gbs|dat|dsp|dsf|eam|fsb|hps|int|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mus|nsf|rak|raw|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 M3U_EXT_AVAILABLE="m3u"
 SPC_VSPCPLAY=""																				# Experimental, spc encoding with vspcplay, leave empty for desactivate, note '1' for activate.
@@ -88,7 +88,7 @@ vgm2wav() {						# https://github.com/vgmrips/vgmplay
 "$FFMES_PATH"/bin/vgm2wav "$@"
 	}
 vgmstream-cli() {				# https://github.com/losnoco/vgmstream
-"$FFMES_PATH"/bin/vgmstream-cli "$@"
+"$FFMES_PATH"/bin/vgmstream_cli "$@"
 	}
 vgm_tag() {						# https://github.com/vgmrips/vgmplay
 "$FFMES_PATH"/bin/vgm_tag "$@"
@@ -392,13 +392,13 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 	END=$(date +%s)								# End time counter
 	
-	# Check target if valid (size test), if valid mkv fix target statistic, and and clean
+	# Check target if valid (size test), if valid mkv fix target stats, and and clean
 	filesPass=()
 	filesReject=()
 	filesSourcePass=()
 	for files in "${LSTVIDEO[@]}"; do
 			if [[ $(stat --printf="%s" "${files%.*}"."$videoformat"."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-				# if mkv fix statistic
+				# if mkv fix stats
 				if [ "$extcont" = "mkv" ]; then
 					mkvpropedit --add-track-statistics-tags "${files%.*}".$videoformat.$extcont >/dev/null 2>&1
 				fi
@@ -3301,7 +3301,8 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	echo "  [date x]   > | change or add tag date     | ex. of input [date 1982]                                                          |"
 	echo "  [ftitle]   > | change title by [filename] |                                                                                   |"
 	echo "  [utitle]   > | change title by [untitled] |                                                                                   |"
-	echo "  [stitle x] > | remove N in begin of title | ex. of input [stitle 3] -> remove 3 first characters in all titles (limited to 9) |"
+	echo "  [stitle x] > | remove N at begin of title | ex. of input [stitle 3] -> remove 3 first characters at start (limited to 9)      |"
+	echo "  [etitle x] > | remove N at end of title   | ex. of input [etitle 1] -> remove 1 first characters at end (limited to 9)        |"
 	echo "  [r]        > | for restart tag edition"
 	echo "  [q]        > | for exit"
 	echo
@@ -3514,6 +3515,23 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 			done
 			AudioTagEditor
 		;;
+		etitle?[0-9])
+			Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+			Cut=$( expr $Cut1 + 1 )
+			for (( i=0; i<=$(( $NBA -1 )); i++ )); do
+				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
+				ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
+				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+				else
+					opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+					rm "${LSTAUDIO[$i]}" &>/dev/null
+					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				StopLoading $?
+			done
+			AudioTagEditor
+		;;
 		"r"|"R")
 			AudioTagEditor
 			break
@@ -3531,6 +3549,14 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	done 
 }
 ## VGM SECTION
+RenameOneDigit() {				# Rename trick, add 0 if one digit - for keep good order
+	for wav in *.wav ; do
+		number=$(echo $wav | sed 's/[^0-9]*//g')
+		padded=$(printf "%02d" "${number#0}")
+		new_name=$(echo $wav | sed "s/${number}/${padded}/")
+		mv "$wav" "$new_name" &>/dev/null
+	done
+	}
 Sox_vgm_cmd_silence() {			# Sox remove silence from audio command
 	# Remove silence from audio files while leaving gaps, if audio during more than 10s
 	TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${files%.*}".wav)
@@ -3661,6 +3687,8 @@ VGMRip() {						# Option 21 	- VGM rip
 		bchunk -w "${LSTVGMISO[0]}" "${LSTCUE[0]}" Track-
 		# Clean
 		rm -- Track-*.iso			# Remove data track
+		# Rename trick, add 0 if one digit - for keep good order
+		RenameOneDigit
 		# Encoding Flac
 		AUDIO_EXT_AVAILABLE="wav"
 		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
@@ -3668,6 +3696,10 @@ VGMRip() {						# Option 21 	- VGM rip
 			# Track tag (counter)
 			TAG_TRACK=$(($COUNTER+1))
 			COUNTER=$TAG_TRACK
+			# Track leading 0
+			number=$(echo "$TAG_TRACK" | sed 's/[^0-9]*//g')
+			padded=$(printf "%02d" $number)
+			TAG_TRACK=$(echo "$TAG_TRACK" | sed "s/${number}/${padded}/")
 			# Remove silence
 			Sox_vgm_cmd_silence
 			# Normalization & false stereo detection
@@ -3912,7 +3944,7 @@ VGMRip() {						# Option 21 	- VGM rip
 
 				*dsf|*DSF)											# Sega Dreamcast - zxtune123 decode
 					# Extract Tag
-					tail -10 "$files" > "$VGM_TAG"													# Tag record
+					strings "$files" > "$VGM_TAG"													# Tag record
 					if test -z "$TAG_GAME"; then
 						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_GAME"; then
@@ -3951,7 +3983,7 @@ VGMRip() {						# Option 21 	- VGM rip
 
 				*minissf|*MINISSF|*ssf|*SSF)					# Sega Saturn - zxtune123 decode
 					# Extract Tag
-					tail -15 "$files" > "$VGM_TAG"													# Tag record
+					strings "$files" > "$VGM_TAG"													# Tag record
 					if test -z "$TAG_GAME"; then
 						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_GAME"; then
@@ -3989,7 +4021,7 @@ VGMRip() {						# Option 21 	- VGM rip
 
 				*psf|*PSF|*minipsf|*MINIPSF)					# Sony Playstation - zxtune123 decode
 					# Extract Tag
-					tail -15 "$files" > "$VGM_TAG"													# Tag record
+					strings "$files" > "$VGM_TAG"													# Tag record
 					if test -z "$TAG_GAME"; then
 						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game= | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_GAME"; then
@@ -4030,7 +4062,7 @@ VGMRip() {						# Option 21 	- VGM rip
 
 				*psf2|*PSF2|*minipsf2|*MINIPSF2)					# Sony Playstation 2 - zxtune123 decode
 					# Extract Tag
-					tail -15 "$files" > "$VGM_TAG"
+					strings "$files" > "$VGM_TAG"
 					if test -z "$TAG_GAME"; then
 						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_GAME"; then
@@ -4078,7 +4110,7 @@ VGMRip() {						# Option 21 	- VGM rip
 
 				*miniusf|*MINIUSF)					# Nintendo N64 - zxtune123 decode
 					# Extract Tag
-					tail -15 "$files" > "$VGM_TAG"													# Tag record
+					strings "$files" > "$VGM_TAG"													# Tag record
 					if test -z "$TAG_GAME"; then
 						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_GAME"; then
@@ -4100,7 +4132,14 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_SONG"; then
 						TAG_SONG="${files%.*}"
 					fi
-					TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
+					if test -z "$TAG_ARTIST"; then
+						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
+						if test -z "$TAG_ARTIST"; then
+							echo "Please indicate the artist"
+							read -e -p " -> " TAG_ARTIST
+							echo
+						fi
+					fi
 					TAG_MACHINE="N64"																# Album part 2
 					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"											# Album
 					# Extract VGM
@@ -4118,7 +4157,7 @@ VGMRip() {						# Option 21 	- VGM rip
 
 				*minigsf|*MINIGSF)					# Nintendo GBA - zxtune123 decode
 					# Extract Tag
-					tail -15 "$files" > "$VGM_TAG"													# Tag record
+					strings "$files" > "$VGM_TAG"													# Tag record
 					if test -z "$TAG_GAME"; then
 						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_GAME"; then
@@ -4139,7 +4178,14 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_SONG"; then
 						TAG_SONG="${files%.*}"
 					fi
-					TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
+					if test -z "$TAG_ARTIST"; then
+						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
+						if test -z "$TAG_ARTIST"; then
+							echo "Please indicate the artist"
+							read -e -p " -> " TAG_ARTIST
+							echo
+						fi
+					fi
 					TAG_MACHINE="GBA"																# Album part 2
 					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"											# Album
 					# Extract VGM
@@ -4147,6 +4193,52 @@ VGMRip() {						# Option 21 	- VGM rip
 					zxtune123 --wav filename=[Filename].wav "$files"
 					mv "${files%.*}".minigsf.wav "${files%.*}".wav &>/dev/null						# Rename trick
 					mv "${files%.*}".MINIGSF.wav "${files%.*}".wav &>/dev/null						# Rename trick
+					# Remove silence
+					Sox_vgm_cmd_silence
+					# Normalization & false stereo detection
+					FFmpeg_vgm_cmd_norm_stereo
+					# Encoding flac
+					FFmpeg_vgm_cmd
+				;;
+
+				*mini2sf|*MINI2SF)					# Nintendo DS - zxtune123 decode
+					# Extract Tag
+					strings "$files" > "$VGM_TAG"													# Tag record
+					if test -z "$TAG_GAME"; then
+						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
+						if test -z "$TAG_GAME"; then
+							echo "Please indicate the game title"
+							read -e -p " -> " TAG_GAME
+							echo
+						fi
+					fi
+					if test -z "$TAG_DATE"; then
+						TAG_DATE=$(cat "$VGM_TAG" | grep -i -a year | sed 's/^.*=//')
+						if test -z "$TAG_DATE"; then
+							echo "Please indicate the date of release"
+							read -e -p " -> " TAG_DATE
+							echo
+						fi
+					fi
+					TAG_SONG=$(cat "$VGM_TAG" | grep -i -a title | sed 's/^.*=//')
+					if test -z "$TAG_SONG"; then
+						TAG_SONG="${files%.*}"
+					fi
+					if test -z "$TAG_ARTIST"; then
+						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
+						if test -z "$TAG_ARTIST"; then
+							echo "Please indicate the artist"
+							read -e -p " -> " TAG_ARTIST
+							echo
+						fi
+					fi
+					TAG_MACHINE="GBA"																# Album part 2
+					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"											# Album
+					# Extract VGM
+					echo
+					zxtune123 --wav filename=[Filename].wav "$files"
+					mv "${files%.*}".mini2sf.wav "${files%.*}".wav &>/dev/null						# Rename trick
+					mv "${files%.*}".MINI2SF.wav "${files%.*}".wav &>/dev/null						# Rename trick
 					# Remove silence
 					Sox_vgm_cmd_silence
 					# Normalization & false stereo detection
@@ -4191,7 +4283,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*nsf|*NSF)						# Nintendo NES
+				*nsf|*NSF)						# Nintendo NES 
 					if [ "$NBM3U" -gt "0" ]; then		# If m3u
 
 						# Extract Tag
@@ -4270,12 +4362,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						zxtune123 --wav filename=[Subpath].wav "$files"
 
 						# Rename trick, add 0 if one digit - for keep good order
-						for wav in *.wav ; do
-							number=`echo $wav | sed 's/[^0-9]*//g'`
-							padded=`printf "%02d" $number`
-							new_name=`echo $wav | sed "s/${number}/${padded}/"`
-							mv $wav $new_name &>/dev/null
-						done
+						RenameOneDigit
 
 						# generate files source array
 						mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
@@ -4366,10 +4453,14 @@ VGMRip() {						# Option 21 	- VGM rip
 							read -e -p " -> " TAG_DATE
 							echo
 						fi
+						TAG_SONG="[untitled]"
 						TAG_MACHINE="NES"
 						TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
 						# Extract VGM
 						zxtune123 --wav filename=[Subpath].wav "$files"
+
+						# Rename trick, add 0 if one digit - for keep good order
+						RenameOneDigit
 
 						# generate files source array
 						mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
@@ -4385,6 +4476,10 @@ VGMRip() {						# Option 21 	- VGM rip
 							# Track tag
 							TAG_TRACK=$(($COUNTER+1))
 							COUNTER=$TAG_TRACK
+							# Track leading 0
+							number=$(echo "$TAG_TRACK" | sed 's/[^0-9]*//g')
+							padded=$(printf "%02d" $number)
+							TAG_TRACK=$(echo "$TAG_TRACK" | sed "s/${number}/${padded}/")
 						done
 					fi
 				;;
@@ -4499,7 +4594,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*ads|*ADS|*adp|*ADP|*aifc|*AIFC|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*Xwav)					# Various Machines
+				*ads|*ADS|*adp|*ADP|*aif|*AIF|*aifc|*AIFC|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"

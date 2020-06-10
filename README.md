@@ -5,7 +5,7 @@ Terminal tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
 * Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv
-* VGM in *.bfstm *.bfwav *.gbs *.minipsf *.miniusf *.minissf *.rak *.ssf *.spc *.psf *.vgm *.vgz *.xa *.psf2 *.minipsf2 *.ads *.mod *.mus *.tak *.adx *.ss2 *.adp *.dsp *.hps *.snd *.sndh *.vag *.int *.thp *.vpk *.voc *.dsf *.spsd *.dat *.eam *.at3 *.raw *.bin *.vgs *.aifc *.str *.minigsf *.sng *.wem
+* VGM in (see documentation)
 * Subtitle in *.srt *.ssa *.sub *.sup
 
 --------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ All come from open source programs.
 * opustags - https://github.com/fmang/opustags
 * sc68 - https://sourceforge.net/projects/sc68/
 * vgm2wav - https://github.com/vgmrips/vgmplay
-* vgmstream-cli - https://github.com/losnoco/vgmstream
+* vgmstream_cli - https://github.com/losnoco/vgmstream
 * vgmtag - https://github.com/vgmrips/vgmtools
 * vspcplay - https://github.com/raphnet/vspcplay
 * zxtune - https://zxtune.bitbucket.io/
@@ -135,23 +135,32 @@ This function limited to Linux x86_64, it embeds binaries compiled for this plat
 Encoding automated apply 0db peak normalization and false stereo files detection.
 
 Files supported :
+* 3DO : aif
 * Amiga/Atari: mod, snd, sndh
-* Microsoft Xbox: xwav
+* Microsoft Xbox: mus, xwav
+* Microsoft Xbox 360: wem
+* Nintendo 3DS: mus, bcstm, wem, bcwav, fsb
+* Nintendo DS: adx, mini2sf
 * Nintendo GB & GBC: gbs
 * Nintendo GBA: minigsf
-* Nintendo GameCube: dsp, hps, adp, thp
+* Nintendo GameCube: dsp, hps, adp, thp, mus, adx
 * Nintendo N64: miniusf
 * Nintendo NES: nsf
 * Nintendo SNES: spc
 * Nintendo Switch: bfstm, bfwav
+* Nintendo Wii: mus
+* Sega Mark III/Master System: vgm, vgz
+* Sega Mega Drive/Genesis: vgm, vgz
 * Sega Saturn: minissf, ssf
 * Sega Dreamcast: dsf, spsd
 * Sony Playstation: psf, minipsf, xa, vag
-* Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk, sng, vgs
+* Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk, sng, vgs, ads
+* Sony Playstation 3: msf
 * Sony Playstation 4: wem
+* Sony PSP: at3
 * Panasonic 3DO: aifc, str
-* PC: mod, voc
-* Various machines: vgm, vgz, adx, ads, bfstm, bfwav, rak, tak, mus, dat, eam, at3, raw, bin/cue, iso/cue, wem
+* PC: mod, voc, fsb
+* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, bin/cue, iso/cue, wem
 
 ### Option 23 details - PCM encoding
 * Encoding options:
@@ -198,6 +207,7 @@ Options:
 * Change tag title for filename
 * Change tag title for untitled
 * Remove N character at begin of tag title, but limited to 9 characters.
+* Remove N character at end of tag title, but limited to 9 characters.
 Limitation:
 * max depth directory 1
 * asian character not supported (display in degrading mode)

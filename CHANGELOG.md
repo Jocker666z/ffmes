@@ -1,12 +1,26 @@
 # Changelog
+v0.47:
+* VGM:
+	* add - support of Nintendo Nintendo 3DS files: bcstm, bcwav, fsb
+	* add - support of Nintendo Nintendo DS files mini2sf
+	* add - support of Playstation 3 files msf
+	* add - support of 3DO files aif
+	* chg - replace get tag with "tail" by "strings"
+	* fix - iso/cue now loop use good order files
+	* fix - loop of nsf files without m3u, now work
+	* update - vgmstream to r1050-3022-g877d791d-21-g295ffac0 Jun 10 2020
+	* update - zxtune123 to r4924 Jun 10 2020
+* Audio tag:
+	* add - option remove N character at end of tag title, but limited to 9 characters.
+
 v0.46a:
 * VGM:
-	* fix - add tag album for Nintendo NES nsf/mu3 files
+	* fix - add tag album for Nintendo NES nsf/m3u files
 	* fix - various ugly display
 
 v0.46:
 * VGM:
-	* chg - improve loop of Nintendo NES nsf/mu3 files; now work with missing tracks in the m3u
+	* chg - improve loop of Nintendo NES nsf/m3u files; now work with missing tracks in the m3u
 	* chg - add timestamps to VGMTAG.info
 
 v0.45:
