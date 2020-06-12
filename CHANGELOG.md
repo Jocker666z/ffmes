@@ -1,4 +1,13 @@
 # Changelog
+v0.48:
+* Video:
+	* add - option 18, convert DVD subtitle (idx/sub) to srt
+	* chg - option 0, dvdrip, now if a clean mkv is not realized, the global loop stops after concat vob
+	* fix - option 0, dvdrip, get aspect ratio now target DVD variable
+	* fix - option 0, dvdrip, if aspect ratio empty, now don't fail mkv
+Various:
+	* fix - CD/DVD detection
+
 v0.47:
 * VGM:
 	* add - support of Nintendo Nintendo 3DS files: bcstm, bcwav, fsb

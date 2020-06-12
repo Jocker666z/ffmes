@@ -10,7 +10,7 @@ Source media files, supported extension:
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
-`ffmpeg mkvtoolnix mediainfo abcde sox ogmtools lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd`
+`ffmpeg mkvtoolnix mediainfo abcde sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all`
 
 ## Install
 * `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
@@ -75,6 +75,7 @@ All come from open source programs.
 	* 15, add audio stream with night normalization
 	* 16, split mkv by chapter
 	* 17, change color of DVD subtitle (idx/sub)
+	* 18, convert DVD subtitle (idx/sub) to srt
 * Audio :
 	* 20, CD rip
 	* 21, VGM Rip to flac (Linux x86_64 only)
@@ -129,6 +130,10 @@ Copy stream in mkv file, with streams selection if source have more than 2 strea
 ### Option 15 details - add audio stream with night normalization
 From inplace video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
+
+### Option 18 details - convert DVD subtitle (idx/sub) to srt
+You must have installed tesseract-ocr with your language support, but also ogmrip package (It includes subp2tiff and subptools binaries).
+This option can be quite long if the file contains many lines of text.
 
 ### Option 21 details - VGM Rip to flac
 This function limited to Linux x86_64, it embeds binaries compiled for this platform, so it remains (and will) unstable as a whole.

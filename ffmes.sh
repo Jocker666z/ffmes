@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.47
+VERSION=v0.48
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -26,7 +26,7 @@ OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player dr
 NPROC=$(nproc --all| awk '{ print $1 - 1 }')												# Set number of processor
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3)
+COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3 tesseract subp2tiff subptools)
 LIB_NEEDED=(libao)
 CUE_EXT_AVAILABLE="cue"
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# Comment for view default ffmpeg log
@@ -65,40 +65,40 @@ MESS_UNAME_AUTH="	-/!\- Only for Linux x86_64."
 ## EMBEDS BINARIES SECTION
 binmerge() {					# https://github.com/putnam/binmerge
 "$FFMES_PATH"/bin/binmerge "$@"
-	}
+}
 espctag() {						# https://sourceforge.net/projects/espctag/
 env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/espctag "$@"
-	}
+}
 gbsplay() {						# https://github.com/mmitch/gbsplay
 "$FFMES_PATH"/bin/gbsplay "$@"
-	}
+}
 gbsinfo() {						# https://github.com/mmitch/gbsplay
 "$FFMES_PATH"/bin/gbsinfo "$@"
-	}
+}
 info68() {						# https://sourceforge.net/projects/sc68/
 env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/info68 "$@"
-	}
+}
 opustags() {					# https://github.com/fmang/opustags
 "$FFMES_PATH"/bin/opustags "$@"
-	}
+}
 sc68() {						# https://sourceforge.net/projects/sc68/
 env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/sc68 "$@"
-	}
+}
 vgm2wav() {						# https://github.com/vgmrips/vgmplay
 "$FFMES_PATH"/bin/vgm2wav "$@"
-	}
+}
 vgmstream-cli() {				# https://github.com/losnoco/vgmstream
 "$FFMES_PATH"/bin/vgmstream_cli "$@"
 	}
 vgm_tag() {						# https://github.com/vgmrips/vgmplay
 "$FFMES_PATH"/bin/vgm_tag "$@"
-	}
+}
 vspcplay() {					# https://github.com/raphnet/vspcplay
 "$FFMES_PATH"/bin/vspcplay "$@"
-	}
+}
 zxtune123() {					# https://zxtune.bitbucket.io/
 "$FFMES_PATH"/bin/zxtune123 "$@"
-	}
+}
 ## VARIABLES, DISPLAY & MENU SECTION
 Usage() {
 cat <<- EOF
@@ -125,148 +125,147 @@ for DEVICE in "${OPTICAL_DEVICE[@]}"; do
 done
 }
 SetGlobalVariables() {			# Construct variables with files accepted
-	if test -n "$TESTARGUMENT"; then		# if argument
-		if [[ $TESTARGUMENT == *"Video"* ]]; then
-			LSTVIDEO=()
-			LSTVIDEO+=("$ARGUMENT")
-			LSTVIDEOEXT=$(echo "${LSTVIDEO[@]##*.}")
-		elif [[ $TESTARGUMENT == *"Audio"* ]]; then
-			LSTAUDIO=()
-			LSTAUDIO+=("$ARGUMENT")
-			LSTAUDIOEXT=$(echo "${LSTAUDIO[@]##*.}")
-		elif [[ $TESTARGUMENT == *"ISO"* ]]; then
-			LSTISO=()
-			LSTISO+=("$ARGUMENT")
-		fi
-	else									# if no argument -> batch
-		# List source(s) video file(s) & number of differents extentions
-		mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-		mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-		# List source(s) audio file(s) & number of differents extentions
-		#mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -iregex '.+.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-		mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-		# List source(s) ISO file(s)
-		mapfile -t LSTISO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+if test -n "$TESTARGUMENT"; then		# if argument
+	if [[ $TESTARGUMENT == *"Video"* ]]; then
+		LSTVIDEO=()
+		LSTVIDEO+=("$ARGUMENT")
+		LSTVIDEOEXT=$(echo "${LSTVIDEO[@]##*.}")
+	elif [[ $TESTARGUMENT == *"Audio"* ]]; then
+		LSTAUDIO=()
+		LSTAUDIO+=("$ARGUMENT")
+		LSTAUDIOEXT=$(echo "${LSTAUDIO[@]##*.}")
+	elif [[ $TESTARGUMENT == *"ISO"* ]]; then
+		LSTISO=()
+		LSTISO+=("$ARGUMENT")
 	fi
-	# List source(s) subtitle file(s)
-	mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-	mapfile -t LSTSUBEXT < <(echo "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-	# List source(s) CUE file(s)
-	mapfile -t LSTCUE < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$CUE_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-	# List source(s) VOB file(s)
-	mapfile -t LSTVOB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-	# List source(s) VGM file(s) & number of differents extentions
-	mapfile -t LSTVGM < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VGM_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-	mapfile -t LSTVGMEXT < <(echo "${LSTVGM[@]##*.}")
-	# List source(s) VGM ISO file(s)
-	mapfile -t LSTVGMISO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VGM_ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-	# List source(s) M3U file(s)
-	mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$M3U_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+else									# if no argument -> batch
+	# List source(s) video file(s) & number of differents extentions
+	mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
+	# List source(s) audio file(s) & number of differents extentions
+	#mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -iregex '.+.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
+	# List source(s) ISO file(s)
+	mapfile -t LSTISO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+fi
+# List source(s) subtitle file(s)
+mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTSUBEXT < <(echo "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
+# List source(s) CUE file(s)
+mapfile -t LSTCUE < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$CUE_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+# List source(s) VOB file(s)
+mapfile -t LSTVOB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+# List source(s) VGM file(s) & number of differents extentions
+mapfile -t LSTVGM < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VGM_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTVGMEXT < <(echo "${LSTVGM[@]##*.}")
+# List source(s) VGM ISO file(s)
+mapfile -t LSTVGMISO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VGM_ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+# List source(s) M3U file(s)
+mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$M3U_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
-	# Count source(s) file(s)
-	NBV="${#LSTVIDEO[@]}"
-	NBVEXT=$(echo "${LSTVIDEOEXT[@]##*.}" | uniq -u | wc -w)
-	NBA="${#LSTAUDIO[@]}"
-	NBAEXT=$(echo "${LSTAUDIOEXT[@]##*.}" | uniq -u | wc -w)
-	NBSUB="${#LSTSUB[@]}"
-	NBCUE="${#LSTCUE[@]}"
-	NBISO="${#LSTISO[@]}"
-	NBVOB="${#LSTVOB[@]}"
-	## VGM
-	NBVGM="${#LSTVGM[@]}"
-	NBVGMISO="${#LSTVGMISO[@]}"
-	NBGBS=$(echo "${LSTVGMEXT[@]##*.}" | uniq -u | grep gbs | wc -w)
-	NBM3U="${#LSTM3U[@]}"
+# Count source(s) file(s)
+NBV="${#LSTVIDEO[@]}"
+NBVEXT=$(echo "${LSTVIDEOEXT[@]##*.}" | uniq -u | wc -w)
+NBA="${#LSTAUDIO[@]}"
+NBAEXT=$(echo "${LSTAUDIOEXT[@]##*.}" | uniq -u | wc -w)
+NBSUB="${#LSTSUB[@]}"
+NBCUE="${#LSTCUE[@]}"
+NBISO="${#LSTISO[@]}"
+NBVOB="${#LSTVOB[@]}"
+## VGM
+NBVGM="${#LSTVGM[@]}"
+NBVGMISO="${#LSTVGMISO[@]}"
+NBGBS=$(echo "${LSTVGMEXT[@]##*.}" | uniq -u | grep gbs | wc -w)
+NBM3U="${#LSTM3U[@]}"
 }
 Restart () {					# Restart script & for keep argument
-	Clean
-	if [ -f "$ARGUMENT" ]; then                              # If target is file
-		bash "$FFMES_PATH"/ffmes.sh "$ARGUMENT" && exit
-	else
-		bash "$FFMES_PATH"/ffmes.sh && exit
-	fi
+Clean
+if [ -f "$ARGUMENT" ]; then                              # If target is file
+	bash "$FFMES_PATH"/ffmes.sh "$ARGUMENT" && exit
+else
+	bash "$FFMES_PATH"/ffmes.sh && exit
+fi
 }
 TrapStop () {					# Ctrl+z Trap for loop exit
-	Clean
-	kill -s SIGTERM $!
+Clean
+kill -s SIGTERM $!
 }
 TrapExit () {					# Ctrl+c Trap for script exit
-	Clean
-	echo
-	echo
-	exit
+Clean
+echo
+echo
+exit
 }
 Clean() {						# Clean Temp
-	find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;			# consider if file exist in cache directory after 3 days, delete it
-	rm "$FFMES_CACHE_STAT" &>/dev/null
-	rm "$FFMES_CACHE_MAP" &>/dev/null
-	rm "$LSDVD_CACHE" &>/dev/null
-	rm "$VGM_TAG" &>/dev/null
+find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;			# consider if file exist in cache directory after 3 days, delete it
+rm "$FFMES_CACHE_STAT" &>/dev/null
+rm "$FFMES_CACHE_MAP" &>/dev/null
+rm "$LSDVD_CACHE" &>/dev/null
+rm "$VGM_TAG" &>/dev/null
 }
 CheckCacheDirectory() {			# Check if cache directory exist
-	if [ ! -d $FFMES_CACHE ]; then
-		mkdir /home/$USER/.cache/ffmes
-	fi
+if [ ! -d $FFMES_CACHE ]; then
+	mkdir /home/$USER/.cache/ffmes
+fi
 }
 CheckFiles() {					# Promp a message to user with number of video, audio, sub to edit, and command not found
-	# Video
-	if  [[ $TESTARGUMENT == *"Video"* ]]; then
-		echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
-	elif  [[ $TESTARGUMENT != *"Video"* ]] && [ "$NBV" -eq "1" ]; then
-		echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
-	elif [ "$NBV" -gt "1" ]; then                 # If no arg + 1> videos
-		echo -e "  * Video to edit: $NBV files"
+# Video
+if  [[ $TESTARGUMENT == *"Video"* ]]; then
+	echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
+elif  [[ $TESTARGUMENT != *"Video"* ]] && [ "$NBV" -eq "1" ]; then
+	echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
+elif [ "$NBV" -gt "1" ]; then                 # If no arg + 1> videos
+	echo -e "  * Video to edit: $NBV files"
+fi
+
+# Audio
+if  [[ $TESTARGUMENT == *"Audio"* ]]; then
+	echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
+elif [[ $TESTARGUMENT != *"Audio"* ]] && [ "$NBA" -eq "1" ]; then
+	echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
+elif test -z "$ARGUMENT" && [ "$NBA" -gt "1" ]; then                 # If no arg + 1> videos
+	echo -e "  * Audio to edit: $NBA files"
+fi
+
+# ISO
+if  [[ $TESTARGUMENT == *"ISO"* ]]; then
+	echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
+elif [[ $TESTARGUMENT != *"ISO"* ]] && [ "$NBISO" -eq "1" ]; then
+	echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
+fi
+
+# Subtitle
+if [ "$NBSUB" -eq "1" ]; then
+	echo "  * Subtitle to edit: ${LSTSUB[0]}" | DisplayTruncate
+elif [ "$NBSUB" -gt "1" ]; then
+	echo "  * Subtitle to edit: $NBSUB"
+fi
+
+# Lib needed info
+n=0;
+for lib in "${LIB_NEEDED[@]}"; do
+	if /usr/sbin/ldconfig -p | grep "$lib" &>/dev/null
+	then
+		let c++
+	else
+		echo -e "  * [!] \e[1m\033[31m$lib\033[0m is not installed"
+		let n++
 	fi
+done
 
-	# Audio
-	if  [[ $TESTARGUMENT == *"Audio"* ]]; then
-		echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
-	elif [[ $TESTARGUMENT != *"Audio"* ]] && [ "$NBA" -eq "1" ]; then
-		echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
-	elif test -z "$ARGUMENT" && [ "$NBA" -gt "1" ]; then                 # If no arg + 1> videos
-		echo -e "  * Audio to edit: $NBA files"
+# Command needed info
+n=0;
+for command in "${COMMAND_NEEDED[@]}"; do
+	if hash "$command" &>/dev/null
+	then
+		let c++
+	else
+		echo -e "  * [!] \e[1m\033[31m$command\033[0m is not installed"
+		let n++
 	fi
-
-	# ISO
-	if  [[ $TESTARGUMENT == *"ISO"* ]]; then
-		echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
-	elif [[ $TESTARGUMENT != *"ISO"* ]] && [ "$NBISO" -eq "1" ]; then
-		echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
-	fi
-
-	# Subtitle
-	if [ "$NBSUB" -eq "1" ]; then
-		echo "  * Subtitle to edit: ${LSTSUB[0]}" | DisplayTruncate
-	elif [ "$NBSUB" -gt "1" ]; then
-		echo "  * Subtitle to edit: $NBSUB"
-	fi
-
-	# Lib needed info
-	n=0;
-	for lib in "${LIB_NEEDED[@]}"; do
-		if /usr/sbin/ldconfig -p | grep "$lib" &>/dev/null
-		then
-			let c++
-		else
-			echo -e "  * [!] \e[1m\033[31m$lib\033[0m is not installed"
-			let n++
-		fi
-	done
-
-	# Command needed info
-	n=0;
-	for command in "${COMMAND_NEEDED[@]}"; do
-		if hash "$command" &>/dev/null
-		then
-			let c++
-		else
-			echo -e "  * [!] \e[1m\033[31m$command\033[0m is not installed"
-			let n++
-		fi
-	done
-	
-	}
+done
+}
 MainMenu() {					# Main menu
 clear
 echo
@@ -284,6 +283,7 @@ echo "  14 - cut video file                                 |"
 echo "  15 - add audio stream with night normalization      |"
 echo "  16 - split mkv by chapter                           |"
 echo "  17 - change color of DVD subtitle (idx/sub)         |"
+echo "  18 - convert DVD subtitle (idx/sub) to srt          |"
 echo "  -----------------------------------------------------"
 echo "  20 - CD rip                                         |"
 echo "  21 - VGM rip to flac                                |-Audio"
@@ -304,56 +304,53 @@ CheckFiles
 echo "  -----------------------------------------------------"
 }
 DisplayTruncate() {				# Line width truncate
-	cut -c 1-"$TERM_WIDTH" | awk '{print $0"..."}'
+cut -c 1-"$TERM_WIDTH" | awk '{print $0"..."}'
 }
 Loading() {						# Loading animation
-	local CL="\e[2K"
-	local delay=0.10
-	local spinstr="▉▉░"
-
-    case $1 in
-        start)
-			while :
-			do
-				local temp=${spinstr#?}
-				printf "${CL}$spinstr ${task}\r"
-				local spinstr=$temp${spinstr%"$temp"}
-				sleep $delay
-				printf "\b\b\b\b\b\b"
-			done
-			printf "    \b\b\b\b"
-			printf "${CL}✓ ${task} ${msg}\n"
-            ;;
-        stop)
-            kill $_sp_pid > /dev/null 2>&1
-			printf "${CL}✓ ${task} ${msg}\n"
-            ;;
-    esac
+local CL="\e[2K"
+local delay=0.10
+local spinstr="▉▉░"
+case $1 in
+	start)
+		while :
+		do
+			local temp=${spinstr#?}
+			printf "${CL}$spinstr ${task}\r"
+			local spinstr=$temp${spinstr%"$temp"}
+			sleep $delay
+			printf "\b\b\b\b\b\b"
+		done
+		printf "    \b\b\b\b"
+		printf "${CL}✓ ${task} ${msg}\n"
+		;;
+	stop)
+		kill $_sp_pid > /dev/null 2>&1
+		printf "${CL}✓ ${task} ${msg}\n"
+		;;
+esac
 }
 StartLoading() {				# Start loading animation
-	task=$1
-	Ltask="${#task}"
-	if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
-		task=$(echo "${task:0:$TERM_WIDTH}" | awk '{print $0"..."}')
-	fi
-	msg=$2
-	if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
-		msg=$(echo "${msg:0:$TERM_WIDTH}" | awk '{print $0"..."}')
-	fi
-	
-    # $1 : msg to display
-    tput civis		# hide cursor
-    Loading "start" "${task}" &
-    
-    # set global spinner pid
-    _sp_pid=$!
-    disown
+task=$1
+Ltask="${#task}"
+if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
+	task=$(echo "${task:0:$TERM_WIDTH}" | awk '{print $0"..."}')
+fi
+msg=$2
+if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
+	msg=$(echo "${msg:0:$TERM_WIDTH}" | awk '{print $0"..."}')
+fi
+# $1 : msg to display
+tput civis		# hide cursor
+Loading "start" "${task}" &
+# set global spinner pid
+_sp_pid=$!
+disown
 }
 StopLoading() {					# Stop loading animation
-    # $1 : command exit status
-	tput cnorm		# normal cursor
-    Loading "stop" "${task}" "${msg}" $_sp_pid
-    unset _sp_pid
+# $1 : command exit status
+tput cnorm		# normal cursor
+Loading "stop" "${task}" "${msg}" $_sp_pid
+unset _sp_pid
 }
 ffmesUpdate() {					# Option 99  	- Ugly update ffmes to last version (hidden option)
 mkdir "$FFMES_PATH"/update-temp
@@ -374,9 +371,11 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 		if [ "$ENCODV" != "1" ]; then
 			StartLoading "Test timestamp of: $files"
 			TimestampTest=$(ffprobe -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$files" | awk -F',' '/K/ {print $1}' | tail -1)
-			if [ "$TimestampTest" = "N/A" ]; then
+			shopt -s nocasematch
+			if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
 				TimestampRegen="-fflags +genpts"
 			fi
+			shopt -u nocasematch
 			StopLoading $?
 		fi
 
@@ -711,7 +710,10 @@ DVDRip() {						# Option 0  	- DVD Rip
 
 		# Get aspect ratio
 		TitleParsed="${title##*0}"
-		AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i ./ -I 2>/dev/null | grep "The aspect ratio of title set $TitleParsed" | tail -1 | awk '{print $NF}')
+		AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "The aspect ratio of title set $TitleParsed" | tail -1 | awk '{print $NF}')
+		if test -z "$ARatio"; then			# if aspect ratio empty, get main feature aspect
+			AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "The aspect ratio of the main feature is" | tail -1 | awk '{print $NF}')
+		fi
 
 		# Extract chapters
 		StartLoading "Extract chapters - $DVDtitle - title $title"
@@ -736,7 +738,7 @@ DVDRip() {						# Option 0  	- DVD Rip
 		# Fix pcm_dvd is present
 		PCM=$(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB | grep pcm_dvd)
 		if test -n "$PCM"; then			# pcm_dvd audio track trick
-				pcm_dvd="-c:a pcm_s16le"
+			pcm_dvd="-c:a pcm_s16le"
 		fi
 		# FFmpeg - clean mkv
 		ffmpeg $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB -map 0:v -map 0:a? -map 0:s? -c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv 2>/dev/null
@@ -771,19 +773,24 @@ DVDRip() {						# Option 0  	- DVD Rip
 	NBV="${#LSTVIDEO[@]}"
 
 	# encoding question
-	echo
-	echo " $NBV files are been detected:"
-	printf '  %s\n' "${LSTVIDEO[@]}"
-	echo
-	read -p " Would you like encode it? [y/N]:" q
-	case $q in
-		"Y"|"y")
+	if [ "$NBV" -gt "0" ]; then
+		echo
+		echo " $NBV files are been detected:"
+		printf '  %s\n' "${LSTVIDEO[@]}"
+		echo
+		read -p " Would you like encode it? [y/N]:" q
+		case $q in
+			"Y"|"y")
 
-		;;
-		*)
-			Restart
-		;;
-	esac
+			;;
+			*)
+				Restart
+			;;
+		esac
+	else
+		echo
+		exit
+	fi
     }
 CustomInfoChoice() {			# Option 1  	- Summary of configuration
 	clear
@@ -2122,6 +2129,113 @@ DVDSubColor() {					# Option 17 	- Change color of DVD sub
 	esac
 	done 
 	}
+DVDSub2Srt() {					# Option 18 	- DVD sub to srt
+clear
+echo
+echo " Select subtitle language for:"
+printf '  %s\n' "${LSTSUB[@]}"
+echo
+echo "  [0] > eng     - english"
+echo "  [1] > fra     - french"
+echo "  [2] > deu     - deutsch"
+echo "  [3] > spa     - spanish"
+echo "  [4] > por     - portuguese"
+echo "  [5] > ita     - italian"
+echo "  [6] > jpn     - japan"
+echo "  [7] > chi-sim - chinese simplified"
+echo "  [8] > arabic  - ara"
+echo "  [q] > for exit"
+while :
+do
+read -e -p "-> " rpspalette
+case $rpspalette in
+
+	"0")
+		SubLang="eng"
+		break
+	;;
+	"1")
+		SubLang="fra"
+		break
+	;;
+	"2")
+		SubLang="deu"
+		break
+	;;
+	"3")
+		SubLang="spa"
+		break
+	;;
+	"4")
+		SubLang="por"
+		break
+	;;
+	"5")
+		SubLang="ita"
+		break
+	;;
+	"6")
+		SubLang="jpn"
+		break
+	;;
+	"7")
+		SubLang="chi-sim"
+		break
+	;;
+	"8")
+		SubLang="ara"
+		break
+	;;
+	"q"|"Q")
+		Restart
+		break
+	;;
+		*)
+			echo
+			echo "$MESS_INVALID_ANSWER"
+			echo
+		;;
+esac
+done 
+
+# Convert loop
+for files in "${LSTSUB[@]}"; do
+
+	# Extract tiff
+	StartLoading "${files%.*}: Extract tiff files"
+	subp2tiff --sid=0 -n "${files%.*}" &>/dev/null
+	StopLoading $?
+
+	# Convert tiff in text
+	TOTAL=$(ls *.tif | wc -l)
+	for tfiles in *.tif; do
+		(
+		tesseract  "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
+		) &
+		if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+			wait -n
+		fi
+		# Counter
+		TIFF_NB=$(($COUNTER+1))
+		COUNTER=$TIFF_NB
+		# Print eta
+		echo -ne "  $COUNTER/$TOTAL tiff converted in text files"\\r
+	done
+	wait
+
+	StartLoading "${files%.*}: Convert text files in srt"
+	# Convert text in srt
+	subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt &>/dev/null
+	# Remove ^L/\f/FF/form-feed/page-break character
+	sed -i 's/\o14//g' "${files%.*}".srt &>/dev/null
+	StopLoading $?
+done
+
+# Clean
+rm *.tif &>/dev/null
+rm *.txt &>/dev/null
+rm *.xml &>/dev/null
+	}
 MultipleVideoExtention() {		# Sources video multiple extention question
 	if [ "$NBVEXT" -gt "1" ]; then
 		echo
@@ -2194,7 +2308,7 @@ AudioSourceInfo() {				# Audio source stats
 	# Clean temp file
 	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
 }
-SplitCUE() {					# 
+SplitCUE() {					# Option 22 	- CUE Splitter to flac
 	if [ "$NBCUE" -eq "0" ]; then                                         # If 0 cue
 		echo "  No CUE file in the working directory"
 		echo
@@ -2256,7 +2370,7 @@ SplitCUE() {					#
 	
 	fi
 }
-CDRip() {						# Audio CD Rip with abcde
+CDRip() {						# Option 20 	- Audio CD Rip with abcde
 if command -v abcde &>/dev/null; then						# If abcde installed
 	clear
 	echo
@@ -4681,7 +4795,7 @@ fi
 CheckCacheDirectory                     # Check if cache directory exist
 StartLoading "Search the files processed"
 SetGlobalVariables                      # Set global variable
-#DetectCDDVD					# CD/DVD detection
+DetectCDDVD								# CD/DVD detection
 StopLoading $?
 trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
 trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop (for debug)
@@ -4881,6 +4995,17 @@ case $reps in
  17 ) # Change color palette of DVD subtitle
 	if [[ $(echo "${LSTSUBEXT[@]}") = "idx" ]]; then
     DVDSubColor
+	Clean                                          # clean temp files
+	else
+        echo
+        echo "	-/!\- Only DVD subtitle extention type (idx/sub)."
+        echo
+	fi
+	;;
+
+ 18 ) # Convert DVD subtitle to srt
+	if [[ $(echo "${LSTSUBEXT[@]}") = "idx" ]]; then
+    DVDSub2Srt
 	Clean                                          # clean temp files
 	else
         echo
@@ -5128,7 +5253,7 @@ case $reps in
 	fi
 	;;
 
- 34 ) # Cut video
+ 34 ) # Cut audio
 	if [[ "$NBA" -eq "1" ]]; then
 	AudioSourceInfo
     CutAudio
