@@ -144,6 +144,7 @@ Files supported :
 * Amiga/Atari: mod, snd, sndh
 * Microsoft Xbox: mus, xwav
 * Microsoft Xbox 360: wem
+* NEC PC-Engine/TurboGrafx-16: hes
 * Nintendo 3DS: mus, bcstm, wem, bcwav, fsb
 * Nintendo DS: adx, mini2sf
 * Nintendo GB & GBC: gbs

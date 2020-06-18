@@ -1,19 +1,24 @@
 # Changelog
+v0.49:
+* VGM:
+	* add - support of PC-Engine/TurboGrafx-16 file in hes
+	* fix - Nintendo NES nsf/m3u files; possible infinite loop in m3u parser
+	* update - zxtune123 to r4930M Jun 18 2020 with fix of hes total tracks (sources: https://github.com/Jocker666z/zxtune)
+
 v0.48:
 * Video:
 	* add - option 18, convert DVD subtitle (idx/sub) to srt
 	* chg - option 0, dvdrip, now if a clean mkv is not realized, the global loop stops after concat vob
-	* fix - option 0, dvdrip, get aspect ratio now target DVD variable
 	* fix - option 0, dvdrip, if aspect ratio empty, now don't fail mkv
-Various:
+* Various:
 	* fix - CD/DVD detection
 
 v0.47:
 * VGM:
-	* add - support of Nintendo Nintendo 3DS files: bcstm, bcwav, fsb
-	* add - support of Nintendo Nintendo DS files mini2sf
-	* add - support of Playstation 3 files msf
-	* add - support of 3DO files aif
+	* add - support of Nintendo 3DS files: bcstm, bcwav, fsb
+	* add - support of Nintendo DS file in mini2sf
+	* add - support of Playstation 3 file in msf
+	* add - support of 3DO file in aif
 	* chg - replace get tag with "tail" by "strings"
 	* fix - iso/cue now loop use good order files
 	* fix - loop of nsf files without m3u, now work
