@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.49
+VERSION=v0.49a
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -186,11 +186,6 @@ if [ -f "$ARGUMENT" ]; then                              # If target is file
 else
 	bash "$FFMES_PATH"/ffmes.sh && exit
 fi
-}
-TrapError () {					# Trap for error
-Clean
-echo "ffmes fail with an error at script line $(caller)" >&2
-echo
 }
 TrapStop () {					# Ctrl+z Trap for loop exit
 Clean
@@ -4991,7 +4986,6 @@ DetectCDDVD								# CD/DVD detection
 StopLoading $?
 trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
 trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop (for debug)
-trap TrapError ERR						# Set clean trap eror
 MainMenu                                # Display main menu
 
 while true; do

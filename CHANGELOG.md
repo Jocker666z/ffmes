@@ -1,8 +1,12 @@
 # Changelog
+v0.49a:
+* Various:
+	* fix - remove trap error
+
 v0.49:
 * VGM:
 	* add - support of PC-Engine/TurboGrafx-16 file in hes
-	* fix - Nintendo NES nsf/m3u files; possible infinite loop in m3u parser
+	* fix - Nintendo NES nsf/m3u files; fix possible infinite loop in m3u parser
 	* update - zxtune123 to r4930M Jun 18 2020 with fix of hes total tracks (sources: https://github.com/Jocker666z/zxtune)
 
 v0.48:
