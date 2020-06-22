@@ -5,8 +5,8 @@ Terminal tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
 * Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv
-* VGM in (see documentation)
 * Subtitle in *.srt *.ssa *.sub *.sup
+* VGM files (see documentation)
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
@@ -52,7 +52,7 @@ All come from open source programs.
 * info68 - https://sourceforge.net/projects/sc68/
 * opustags - https://github.com/fmang/opustags
 * sc68 - https://sourceforge.net/projects/sc68/
-* vgm2wav - https://github.com/vgmrips/vgmplay
+* vgm2wav - https://github.com/ValleyBell/libvgm
 * vgmstream_cli - https://github.com/losnoco/vgmstream
 * vgmtag - https://github.com/vgmrips/vgmtools
 * vspcplay - https://github.com/raphnet/vspcplay
@@ -142,8 +142,10 @@ Encoding automated apply 0db peak normalization and false stereo files detection
 Files supported :
 * 3DO : aif
 * Amiga/Atari: mod, snd, sndh
+* Fujitsu FM-7, FM Towns: s98
 * Microsoft Xbox: mus, xwav
 * Microsoft Xbox 360: wem
+* NEC PC-6001, PC-6601, PC-8801, PC-9801: s98
 * NEC PC-Engine/TurboGrafx-16: hes
 * Nintendo 3DS: mus, bcstm, wem, bcwav, fsb
 * Nintendo DS: adx, mini2sf
@@ -159,6 +161,7 @@ Files supported :
 * Sega Mega Drive/Genesis: vgm, vgz
 * Sega Saturn: minissf, ssf
 * Sega Dreamcast: dsf, spsd
+* Sharp X1 : s98
 * Sony Playstation: psf, minipsf, xa, vag
 * Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk, sng, vgs, ads
 * Sony Playstation 3: msf
@@ -166,7 +169,7 @@ Files supported :
 * Sony PSP: at3
 * Panasonic 3DO: aifc, str
 * PC: mod, voc, fsb
-* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, bin/cue, iso/cue, wem
+* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, bin, bin/cue, iso/cue, wem
 
 ### Option 23 details - PCM encoding
 * Encoding options:

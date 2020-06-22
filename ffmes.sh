@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.49a
+VERSION=v0.50
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -46,7 +46,7 @@ ExtractCover="0"																			# Extract cover, 0=extract cover from source 
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
 # VGM variables
-VGM_EXT_AVAILABLE="ads|adp|adx|aif|aifc|ast|at3|bcstm|bcwav|bfstm|bfwav|gbs|dat|dsp|dsf|eam|fsb|hes|hps|int|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mus|nsf|rak|raw|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
+VGM_EXT_AVAILABLE="ads|adp|adx|aif|aifc|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|gbs|dat|dsp|dsf|eam|fsb|hes|hps|int|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mus|nsf|rak|raw|s98|S98|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 M3U_EXT_AVAILABLE="m3u"
 SPC_VSPCPLAY=""																				# Experimental, spc encoding with vspcplay, leave empty for desactivate, note '1' for activate.
@@ -3391,11 +3391,11 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	echo
 	echo "Inplace file tags:"
 	printf '%.0s-' {1..141}; echo
-	paste <(printf "%-40.40s\n" "Files") <(printf "%s\n" "|") <(printf "%-4.4s\n" "Disc") <(printf "%s\n" "|") <(printf "%-5.5s\n" "Track") <(printf "%s\n" "|") <(printf "%-20.20s\n" "Title") <(printf "%s\n" "|") <(printf "%-17.17s\n" "Artist") <(printf "%s\n" "|") <(printf "%-20.20s\n" "Album") <(printf "%s\n" "|") <(printf "%-5.5s\n" "date") | column -s $'\t' -tn
+	paste <(printf "%-40.40s\n" "Files") <(printf "%s\n" "|") <(printf "%-4.4s\n" "Disc") <(printf "%s\n" "|") <(printf "%-5.5s\n" "Track") <(printf "%s\n" "|") <(printf "%-20.20s\n" "Title") <(printf "%s\n" "|") <(printf "%-17.17s\n" "Artist") <(printf "%s\n" "|") <(printf "%-20.20s\n" "Album") <(printf "%s\n" "|") <(printf "%-5.5s\n" "date") | column -s $'\t' -t
 	printf '%.0s-' {1..141}; echo
-	paste <(printf "%-40.40s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-4.4s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_TITLE[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-17.17s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_DATE[@]}") | column -s $'\t' -tn 2>/dev/null
+	paste <(printf "%-40.40s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-4.4s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_TITLE[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-17.17s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_DATE[@]}") | column -s $'\t' -t 2>/dev/null
 	# Degrading mode display for asian character
-	DisplayTest=$(paste <(printf "%-40.40s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-4.4s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_TITLE[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-17.17s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_DATE[@]}") | column -s $'\t' -tn 2>/dev/null)
+	DisplayTest=$(paste <(printf "%-40.40s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-4.4s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_TITLE[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-17.17s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_DATE[@]}") | column -s $'\t' -t 2>/dev/null)
 	if [[ -z "$DisplayTest" ]]; then
 		paste <(printf "%-40.40s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-4.4s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_TITLE[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-17.17s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-20.20s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") <(printf "%-5.5s\n" "${TAG_DATE[@]}")
 	fi
@@ -3716,6 +3716,13 @@ FFmpeg_vgm_cmd() {				# FFmpeg vgm encoding command
 	}
 VGMRip_amiga() {				# Option 211 	- VGM rip amiga (hidden option)
 	echo
+	# Rename One Digit
+	for f in * ; do
+		number=$(echo $f | sed 's/[^0-9]*//g')
+		padded=$(printf "%02d" "${number#0}")
+		new_name=$(echo $f | sed "s/${number}/${padded}/" 2> /dev/null)
+		mv "$f" "$new_name" &>/dev/null
+	done
 	# Extract Tag 1
 	if test -z "$TAG_GAME"; then
 		echo "Please indicate the game title"
@@ -3744,6 +3751,10 @@ VGMRip_amiga() {				# Option 211 	- VGM rip amiga (hidden option)
 		TAG_TRACK=$(($COUNTER+1))
 		COUNTER=$TAG_TRACK
 		TAG_SONG="${files%.*}"
+		# Track leading 0
+		number=$(echo "$TAG_TRACK" | sed 's/[^0-9]*//g')
+		padded=$(printf "%02d" $number)
+		TAG_TRACK=$(echo "$TAG_TRACK" | sed "s/${number}/${padded}/")
 		# Remove silence
 		Sox_vgm_cmd_silence
 		# Normalization & false stereo detection
@@ -3761,7 +3772,7 @@ VGMRip() {						# Option 21 	- VGM rip
 	if [ "$NBCUE" -gt "1" ]; then                                       # If more than 1 cue
 		echo "  More than one CUE file in working directory"
 		echo
-	elif [ "$NBCUE" -eq "1" ] & [ "$NBVGMISO" -gt "1" ]; then              # If more than 1 bin = merge
+	elif [ "$NBCUE" -eq "1" ] && [ "$NBVGMISO" -gt "1" ]; then              # If more than 1 bin = merge
 		echo "  More than one bin files in working directory, merge it"
 		binmerge "${LSTCUE[0]}" "${LSTCUE[0]%.*}"-Merged
 		mkdir iso-backup
@@ -3773,7 +3784,7 @@ VGMRip() {						# Option 21 	- VGM rip
 		echo
 	fi
 
-	if [ "$NBCUE" -eq "1" ] & [ "$NBVGMISO" -eq "1" ]; then                # If 1 cue and bin file
+	if [ "$NBCUE" -eq "1" ] && [ "$NBVGMISO" -eq "1" ]; then                # If 1 cue and bin file
 		# Extract Tag
 		if test -z "$TAG_GAME"; then
 			echo "Please indicate the game title"
@@ -4047,7 +4058,53 @@ VGMRip() {						# Option 21 	- VGM rip
 					fi
 					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
 					# Extract VGM
-					vgm2wav "$files" "${files%.*}".wav
+					vgm2wav "$files" "${files%.*}".wav &>/dev/null
+					# Remove silence
+					Sox_vgm_cmd_silence
+					# Normalization & false stereo detection
+					FFmpeg_vgm_cmd_norm_stereo
+					# Encoding flac
+					FFmpeg_vgm_cmd
+				;;
+
+				*s98|*S98)									# NEC PC-6001, PC-6601, PC-8801, PC-9801; Sharp X1; Fujitsu FM-7, FM Towns - vgm2wav decode
+					# Extract Tag
+					strings "$files" > "$VGM_TAG"													# Tag record
+					if test -z "$TAG_GAME"; then
+						TAG_GAME=$(cat "$VGM_TAG" | grep -i -a game | sed 's/^.*=//' | head -1)
+						if test -z "$TAG_GAME"; then
+							echo "Please indicate the game title"
+							read -e -p " -> " TAG_GAME
+							echo
+						fi
+					fi
+					TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//' | head -1)
+					if test -z "$TAG_ARTIST"; then
+						TAG_ARTIST="Unknown"
+					fi
+					if test -z "$TAG_MACHINE"; then
+						TAG_MACHINE=$(cat "$VGM_TAG" | grep -i -a system | sed 's/^.*=//' | head -1)
+						if test -z "$TAG_MACHINE"; then
+							echo "Please indicate the platform of release"
+							read -e -p " -> " TAG_MACHINE
+							echo
+						fi
+					fi
+					if test -z "$TAG_DATE"; then
+						TAG_DATE=$(cat "$VGM_TAG" | grep -i -a year | sed 's/^.*=//' | head -1)
+						if test -z "$TAG_DATE"; then
+							echo "Please indicate the date of release"
+							read -e -p " -> " TAG_DATE
+							echo
+						fi
+					fi
+					TAG_SONG=$(cat "$VGM_TAG" | grep -i -a title | sed 's/^.*=//' | head -1)
+					if test -z "$TAG_SONG"; then
+						TAG_SONG="[untitled]"
+					fi
+					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
+					# Extract VGM
+					vgm2wav --loops 1 "$files" "${files%.*}".wav &>/dev/null
 					# Remove silence
 					Sox_vgm_cmd_silence
 					# Normalization & false stereo detection
@@ -4782,6 +4839,7 @@ VGMRip() {						# Option 21 	- VGM rip
 							padded=$(printf "%02d" $number)
 							TAG_TRACK=$(echo "$TAG_TRACK" | sed "s/${number}/${padded}/")
 						done
+						wait
 					fi
 				;;
 
@@ -4927,6 +4985,42 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd_norm_stereo
 					# Encoding flac
 					FFmpeg_vgm_cmd
+				;;
+
+				*bin|*BIN)						# Various Machines CD-DA bin
+					if [ "$NBCUE" -eq "0" ]; then                                       # If no cue
+					# Extract Tag
+					if test -z "$TAG_GAME"; then
+						echo "Please indicate the game title"
+						read -e -p " -> " TAG_GAME
+						echo
+					fi
+					if test -z "$TAG_ARTIST"; then
+						echo "Please indicate the artist"
+						read -e -p " -> " TAG_ARTIST
+						echo
+					fi
+					if test -z "$TAG_DATE"; then
+						echo "Please indicate the date of release"
+						read -e -p " -> " TAG_DATE
+						echo
+					fi
+					if test -z "$TAG_MACHINE"; then
+						echo "Please indicate the platform of release"
+						read -e -p " -> " TAG_MACHINE
+						echo
+					fi
+					TAG_SONG="[untitled]"
+					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"
+					# Extract VGM
+					sox -t raw -r 44100 -b 16 -c 2 -L -e signed-integer "$files" "${files%.*}".wav
+					# Remove silence
+					Sox_vgm_cmd_silence
+					# Normalization & false stereo detection
+					FFmpeg_vgm_cmd_norm_stereo
+					# Encoding flac
+					FFmpeg_vgm_cmd
+					fi
 				;;
 
 			esac

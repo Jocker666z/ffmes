@@ -1,4 +1,12 @@
 # Changelog
+v0.50:
+* Audio tag:
+	* add - support of CD-DA bin RAW (without cue)
+	* add - support of NEC PC-6001, PC-6601, PC-8801, PC-9801; Sharp X1; Fujitsu FM-7, FM Towns; file in s98
+	* chg - replace vgm2wav by a version compiled with this source: https://github.com/ValleyBell/libvgm, more format available
+	* fix - condition for bin/cue more accurate
+	* fix - display regression with last "column" release (under debian unstable)
+
 v0.49a:
 * Various:
 	* fix - remove trap error
