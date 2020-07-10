@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.50
+VERSION=v0.51
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -397,7 +397,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	filesSourcePass=()
 	for files in "${LSTVIDEO[@]}"; do
 			if [[ $(stat --printf="%s" "${files%.*}"."$videoformat"."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-				# if mkv fix stats
+				# if mkv regenerate stats
 				if [ "$extcont" = "mkv" ]; then
 					mkvpropedit --add-track-statistics-tags "${files%.*}".$videoformat.$extcont >/dev/null 2>&1
 				fi
@@ -1168,22 +1168,28 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 		echo " Notes: * Your will be applied to all streams"
 		echo "        * Consider quality of source before choice codec"
 		echo "        * Size and quality as bitrate dependent"
-		echo "        * Size indication: ac3 >= flac > opus"
-		echo "        * Quality indication: flac > opus > ac3"
-		echo "        * Compatibility indication: ac3 > opus = flac"
+		echo "        * Size indication: ac3 >= flac > vorbis > opus"
+		echo "        * Quality indication: flac > opus > vorbis > ac3"
+		echo "        * Compatibility indication: ac3 > vorbis >= opus = flac"
 		echo
-		echo "                     |   max    |"
-		echo "           | codec   | channels |"
-		echo "           |---------|----------|"
-		echo " *[opus] > | libopus |   7.1>   |"
-		echo "  [ac3]  > | ac3     |   5.1    |"
-		echo "  [flac] > | libflac |   7.1>   |"
-		echo "  [q]    > | exit"
+		echo "                         |   max    |"
+		echo "             | codec     | channels |"
+		echo "             |-----------|----------|"
+		echo " *[opus] >   | libopus   |   7.1>   |"
+		echo "  [vorbis] > | libvorbis |   7.1>   |"
+		echo "  [ac3]    > | ac3       |   5.1    |"
+		echo "  [flac]   > | libflac   |   7.1>   |"
+		echo "  [q]      > | exit"
 		read -e -p "-> " chacodec
 		case $chacodec in
 			"opus")
 				codeca="libopus"
 				ConfOPUS
+				ConfChannels
+			;;
+			"vorbis")
+				codeca="libvorbis"
+				ConfOGG
 				ConfChannels
 			;;
 			"ac3")
@@ -2604,17 +2610,19 @@ ConfChannels() {				#
 if [ "$reps" -le 1 ]; then          # if profile 0 or 1 display
     CustomInfoChoice
 fi
-    echo
-    echo " Choose desired audio channels configuration:"
-    echo " note: * applied to the all audio stream"
+if [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then
+	echo
+	echo " Choose desired audio channels configuration:"
+	echo " note: * applied to the all audio stream"
 	echo "$MESS_SEPARATOR"
-    echo
-    echo "  [1]  > for channel_layout mono"
-    echo "  [2]  > for channel_layout stereo"
-    echo "  [3]  > for channel_layout 5.1"
-    echo "  [↵]* > for no change"
-    echo "  [q]  > for exit"
-    read -e -p "-> " rpchan
+	echo
+	echo "  [1]  > for channel_layout 1.0 (Mono)"
+	echo "  [2]  > for channel_layout 2.0 (Stereo)"
+	echo "  [3]  > for channel_layout 3.0 (FL+FR+FC)"
+	echo "  [4]  > for channel_layout 5.1 (FL+FR+FC+LFE+BL+BR)"
+	echo "  [↵]* > for no change"
+	echo "  [q]  > for exit"
+	read -e -p "-> " rpchan
 	if [ "$rpchan" = "q" ]; then
 		Restart
 	elif [ "$rpchan" = "1" ]; then
@@ -2624,52 +2632,104 @@ fi
 		confchan="-channel_layout stereo"
 		rpchannel="2.0 (Stereo)"
 	elif [ "$rpchan" = "3" ]; then
+		confchan="-channel_layout 3.0"
+		rpchannel="3.0 (FL+FR+FC)"
+	elif [ "$rpchan" = "4" ]; then
 		confchan="-channel_layout 5.1"
-		rpchannel="5.1"
-	elif [ -z "$rpchan" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then
+		rpchannel="5.1 (FL+FR+FC+LFE+BL+BR)"
+	else
 		afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 		rpchannel="No change"
+	fi
+else
+	echo
+	echo " Choose desired audio channels configuration:"
+	echo " note: * applied to the all audio stream"
+	echo "$MESS_SEPARATOR"
+	echo
+	echo "  [1]  > for channel_layout 1.0 (Mono)"
+	echo "  [2]  > for channel_layout 2.0 (Stereo)"
+	echo "  [3]  > for channel_layout 2.1 (FL+FR+LFE)"
+	echo "  [4]  > for channel_layout 3.0 (FL+FR+FC)"
+	echo "  [5]  > for channel_layout 3.1 (FL+FR+FC+LFE)"
+	echo "  [6]  > for channel_layout 4.0 (FL+FR+FC+BC)"
+	echo "  [7]  > for channel_layout 4.1 (FL+FR+FC+LFE+BC)"
+	echo "  [8]  > for channel_layout 5.0 (FL+FR+FC+BL+BR)"
+	echo "  [9]  > for channel_layout 5.1 (FL+FR+FC+LFE+BL+BR)"
+	echo "  [↵]* > for no change"
+	echo "  [q]  > for exit"
+	read -e -p "-> " rpchan
+	if [ "$rpchan" = "q" ]; then
+		Restart
+	elif [ "$rpchan" = "1" ]; then
+		confchan="-channel_layout mono"
+		rpchannel="1.0 (Mono)"
+	elif [ "$rpchan" = "2" ]; then
+		confchan="-channel_layout stereo"
+		rpchannel="2.0 (Stereo)"
+	elif [ "$rpchan" = "3" ]; then
+		confchan="-channel_layout 2.1"
+		rpchannel="2.1 (FL+FR+LFE)"
+	elif [ "$rpchan" = "4" ]; then
+		confchan="-channel_layout 3.0"
+		rpchannel="3.0 (FL+FR+FC)"
+	elif [ "$rpchan" = "5" ]; then
+		confchan="-channel_layout 3.1"
+		rpchannel="3.1 (FL+FR+FC+LFE)"
+	elif [ "$rpchan" = "6" ]; then
+		confchan="-channel_layout 4.0"
+		rpchannel="4.0 (FL+FR+FC+BC)"
+	elif [ "$rpchan" = "7" ]; then
+		confchan="-channel_layout 4.1"
+		rpchannel="4.1 (FL+FR+FC+LFE+BC)"
+	elif [ "$rpchan" = "8" ]; then
+		confchan="-channel_layout 5.0"
+		rpchannel="5.0 (FL+FR+FC+BL+BR)"
+	elif [ "$rpchan" = "9" ]; then
+		confchan="-channel_layout 5.1"
+		rpchannel="5.1 (FL+FR+FC+LFE+BL+BR)"
 	else
 		rpchannel="No change"
 	fi
-	}
+fi
+}
 ConfPeakNorm() {				# 
-	echo
-	read -p " Apply a 0db peak normalization? [y/N]:" qarm
-	case $qarm in
-		"Y"|"y")
-			PeakNorm="1"
-		;;
-		*)
-			return
-		;;
-	esac
-	}
+echo
+read -p " Apply a 0db peak normalization? [y/N]:" qarm
+case $qarm in
+	"Y"|"y")
+		PeakNorm="1"
+	;;
+	*)
+		return
+	;;
+esac
+}
 ConfTestFalseStereo() {			# 
-	read -p " Detect and convert false stereo files in mono? [y/N]:" qarm
+read -p " Detect and convert false stereo files in mono? [y/N]:" qarm
+case $qarm in
+	"Y"|"y")
+		TestFalseStereo="1"
+	;;
+	*)
+		return
+	;;
+esac
+}
+ConfSilenceDetect() {			# 
+TESTWAV=$(echo "${LSTAUDIOEXT[@]}" | grep wav )
+TESTFLAC=$(echo "${LSTAUDIOEXT[@]}" | grep flac)
+if [[ -n "$TESTWAV" || -n "$TESTFLAC" ]]; then
+	read -p " Detect and remove silence at start and end of files (flac & wav source only)? [y/N]:" qarm
 	case $qarm in
 		"Y"|"y")
-			TestFalseStereo="1"
+			SilenceDetect="1"
 		;;
 		*)
 			return
 		;;
 	esac
-	}
-ConfSilenceDetect() {			# 
-	TESTWAV=$(echo "${LSTAUDIOEXT[@]}" | grep wav )
-	TESTFLAC=$(echo "${LSTAUDIOEXT[@]}" | grep flac)
-	if [[ -n "$TESTWAV" || -n "$TESTFLAC" ]]; then
-		read -p " Detect and remove silence at start and end of files (flac & wav source only)? [y/N]:" qarm
-		case $qarm in
-			"Y"|"y")
-				SilenceDetect="1"
-			;;
-			*)
-				return
-			;;
-		esac
-	fi
+fi
 	}
 ConfPCM() {						# 
 if [ "$reps" -eq 1 ]; then		# If in video encoding
@@ -4032,9 +4092,13 @@ VGMRip() {						# Option 21 	- VGM rip
 							echo
 						fi
 					fi
-					TAG_ARTIST=$(sed -n 's/Composer:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
 					if test -z "$TAG_ARTIST"; then
-						TAG_ARTIST="Unknown"
+					TAG_ARTIST=$(sed -n 's/Composer:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
+						if test -z "$TAG_ARTIST"; then
+							echo "Please indicate the artist"
+							read -e -p " -> " TAG_ARTIST
+							echo
+						fi
 					fi
 					if test -z "$TAG_MACHINE"; then
 						TAG_MACHINE=$(sed -n 's/System:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
@@ -4078,9 +4142,13 @@ VGMRip() {						# Option 21 	- VGM rip
 							echo
 						fi
 					fi
-					TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//' | head -1)
 					if test -z "$TAG_ARTIST"; then
-						TAG_ARTIST="Unknown"
+						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//' | head -1)
+						if test -z "$TAG_ARTIST"; then
+							echo "Please indicate the artist"
+							read -e -p " -> " TAG_ARTIST
+							echo
+						fi
 					fi
 					if test -z "$TAG_MACHINE"; then
 						TAG_MACHINE=$(cat "$VGM_TAG" | grep -i -a system | sed 's/^.*=//' | head -1)

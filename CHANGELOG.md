@@ -1,4 +1,13 @@
 # Changelog
+v0.51:
+* Video:
+	* add - option 1, libvorbis for audio, reimplementation for encoding with loss codec and apply channel layout parameter such as 2.1 or 4.1 (not supported with libopus)
+* Audio:
+	* add - add channel layout 3.0 (FL+FR+FC) for opus
+	* add - add channel layout 2.1 (FL+FR+LFE), 3.0 (FL+FR+FC), 3.1 (FL+FR+FC+LFE), 4.0 (FL+FR+FC+BC), 4.1 (FL+FR+FC+LFE+BC), 5.0 (FL+FR+FC+BL+BR) for flac, ac3, vorbis
+* Various:
+	* add - documentation for option 16, 17
+
 v0.50:
 * Audio tag:
 	* add - support of CD-DA bin RAW (without cue)

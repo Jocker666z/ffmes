@@ -118,8 +118,10 @@ All come from open source programs.
 		* codecs:
 			* ac3 (ac3): bitrate (vbr & cbr)
 			* opus (libopus): bitrate (vbr)
+			* vorbis (libvorbis): bitrate (vbr & cbr)
 			* flac (libflac): compression
-		* Channels layout 1.0 to 5.1
+		* Channels layout for ac3, flac, vorbis: 1.0, 2.0, 2.1, 3.0, 3.1, 4.0, 4.1, 5.1
+		* Channels layout for opus: 1.0, 2.0, 3.0, 5.1
 * Container selection
 	* mkv & mp4 support
 * Map streams selection
@@ -128,16 +130,28 @@ All come from open source programs.
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
 ### Option 15 details - add audio stream with night normalization
-From inplace video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
+From inplace matroska video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
 
+### Option 16 details - split mkv by chapter
+Cut one matroska video per chapter, mkvtoolnix package must be installed.
+
+### Option 17 details - change color of DVD subtitle (idx/sub)
+You must run the option in a directory containing one or more pairs of idx/sub files with the same filename.
+
+Colors palette available:
+* white font / black border
+* black font / white border
+* yellow font / black border
+* yellow font / white border
+
 ### Option 18 details - convert DVD subtitle (idx/sub) to srt
-You must have installed tesseract-ocr with your language support, but also ogmrip package (It includes subp2tiff and subptools binaries).
+You must have installed tesseract-ocr with your language support, but also ogmrip package (includes subp2tiff and subptools binaries).
 This option can be quite long if the file contains many lines of text.
 
 ### Option 21 details - VGM Rip to flac
 This function limited to Linux x86_64, it embeds binaries compiled for this platform, so it remains (and will) unstable as a whole.
-Encoding automated apply 0db peak normalization and false stereo files detection.
+Encoding automated apply 0db peak normalization, remove silence, and false stereo files detection.
 
 Files supported :
 * 3DO : aif
@@ -169,7 +183,8 @@ Files supported :
 * Sony PSP: at3
 * Panasonic 3DO: aifc, str
 * PC: mod, voc, fsb
-* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, bin, bin/cue, iso/cue, wem
+* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, wem
+* Various machines CD-DA: bin, bin/cue, iso/cue
 
 ### Option 23 details - PCM encoding
 * Encoding options:
