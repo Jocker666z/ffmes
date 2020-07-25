@@ -1,4 +1,13 @@
 # Changelog
+v0.52:
+* Audio tag:
+	* add - condition in rename, no remove/rename if source/temp not present
+	* chg - no more use opustags for change track number
+* VGM:
+	* update - gbsplay to v0.0.94
+	* update - vgmstream to r1050-3086-gc9dc860c-5-gc36ff74e Jul 17 2020
+	* update - zxtune123 to r4950 Jul 17 2020 (with fix of hes total tracks) (sources: https://github.com/Jocker666z/zxtune)
+
 v0.51:
 * Video:
 	* add - option 1, libvorbis for audio, reimplementation for encoding with loss codec and apply channel layout parameter such as 2.1 or 4.1 (not supported with libopus)
@@ -9,11 +18,12 @@ v0.51:
 	* add - documentation for option 16, 17
 
 v0.50:
-* Audio tag:
+* VGM:
 	* add - support of CD-DA bin RAW (without cue)
 	* add - support of NEC PC-6001, PC-6601, PC-8801, PC-9801; Sharp X1; Fujitsu FM-7, FM Towns; file in s98
 	* chg - replace vgm2wav by a version compiled with this source: https://github.com/ValleyBell/libvgm, more format available
 	* fix - condition for bin/cue more accurate
+* Audio tag:
 	* fix - display regression with last "column" release (under debian unstable)
 
 v0.49a:

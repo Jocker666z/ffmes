@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.51
+VERSION=v0.52
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -3495,23 +3495,16 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 					TAG_TRACK_COUNT=$(($COUNT+1))
 					COUNT=$TAG_TRACK_COUNT
 					TAG_TRACK[$i]="$TAG_TRACK_COUNT"
-					if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-						ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACK="$TAG_TRACK_COUNT" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
-					else
-						opustags "${LSTAUDIO[$i]}" --add TRACK="$TAG_TRACK_COUNT" --delete TRACK -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-						rm "${LSTAUDIO[$i]}" &>/dev/null
-						mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
-					fi
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				fi
 				if [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
 					TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
-					if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-						ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACK="${TAG_TRACK[$i]}" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
-					else
-						opustags "${LSTAUDIO[$i]}" --add TRACK="$TAG_TRACK_COUNT" --delete TRACK -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-						rm "${LSTAUDIO[$i]}" &>/dev/null
-						mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
-					fi
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
+					rm "${LSTAUDIO[$i]}" &>/dev/null
+					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
 				# If no tag title
 				if test -z "${TAG_TITLE[$i]}"; then						# if no title
@@ -3524,10 +3517,11 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 						TAG_TITLE[$i]="[untitled]"						# Otherwise, use "[untitled]"
 					fi
 				fi
-
 				# Rename
 				ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
+					mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				fi
 				StopLoading $?
 			done
 			AudioTagEditor
@@ -3537,10 +3531,9 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 			for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 				(
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DISC="$ParsedDisc" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
-				else
-					opustags "${LSTAUDIO[$i]}" --add DISC="$ParsedDisc" --delete DISC -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DISCNUMBER="$ParsedDisc" -metadata DISC="$ParsedDisc" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3563,10 +3556,9 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
 					TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
 				fi
-				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACK="$TAG_TRACK_COUNT" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
-				else
-					opustags "${LSTAUDIO[$i]}" --add TRACK="$TAG_TRACK_COUNT" --delete TRACK -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3580,9 +3572,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				(
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ALBUM="$ParsedAlbum" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ALBUM="$ParsedAlbum" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add ALBUM="$ParsedAlbum" --delete ALBUM -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3601,9 +3596,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				( 
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add ARTIST="$ParsedArtist" --delete ARTIST -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3622,9 +3620,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				(
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DATE="$ParsedDate" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DATE="$ParsedDate" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add DATE="$ParsedDate" --delete DATE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3642,9 +3643,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				ParsedTitle=$(echo "${LSTAUDIO[$i]%.*}")
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3657,9 +3661,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				(
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="[untitled]" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="[untitled]" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add TITLE="[untitled]" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3679,9 +3686,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
@@ -3696,9 +3706,12 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 				StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 				ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
 				if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null && mv tem."${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" "${LSTAUDIO[$i]}" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 				else
 					opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+				fi
+				# If temp-file exist remove source and rename
+				if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 					rm "${LSTAUDIO[$i]}" &>/dev/null
 					mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 				fi
