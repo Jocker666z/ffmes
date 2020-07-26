@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.52
+VERSION=v0.53
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -2529,14 +2529,18 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 		else
 			stream="-map 0:a"
 		fi
+		StartLoading "" "$files"
+		# Stock files pass in loop
+		filesInLoop+=("$files")					# Populate array
 		# If source extention same as target
 		if [[ "${files##*.}" = "$extcont" ]]; then
 			extcont="new.$extcont"
 			filesOverwrite+=("$files")			# Populate array
+		else
+			filesOverwrite+=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')		# Populate array with random strimg
 		fi
 		# Encoding
-		( 
-		StartLoading "" "$files"
+		(
 		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
 		StopLoading $?
 		) &
@@ -2554,24 +2558,25 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 	filesPass=()				# Files pass
 	filesReject=()				# Files fail
 	filesSourcePass=()			# Source files pass
-	for files in "${LSTAUDIO[@]}"; do
-		if [[ "${filesOverwrite[0]}" =~ $files ]]; then													# If file overwrite
-			if [[ $(stat --printf="%s" "${files%.*}".new."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-				mv "$files" "${files%.*}".back."$extcont" 2>/dev/null
-				mv "${files%.*}".new."$extcont" "$files" 2>/dev/null
-				filesPass+=("$files")
-				filesSourcePass+=("${files%.*}".back."$extcont")
-			else																						# if file<30 KBytes rejected
-				filesReject+=("${files%.*}".new."$extcont")
-				rm "${files%.*}".new."$extcont" 2>/dev/null
+	#for files in "${LSTAUDIO[@]}"; do
+	for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
+		if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
+			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".new.$extcont 2>/dev/null) -gt 30720 ]]; then		# If file>30 KBytes accepted
+				mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back.$extcont 2>/dev/null
+				mv "${filesInLoop[i]%.*}".new.$extcont "${filesInLoop[i]}" 2>/dev/null
+				filesPass+=("${filesInLoop[i]}")
+				filesSourcePass+=("${filesInLoop[i]%.*}".back.$extcont)
+			else																								# If file<30 KBytes rejected
+				filesReject+=("${filesInLoop[i]%.*}".new.$extcont)
+				rm "${filesInLoop[i]%.*}".new."$extcont" 2>/dev/null
 			fi
-		else																							# If no file overwrite
-			if [[ $(stat --printf="%s" "${files%.*}"."$extcont" 2>/dev/null) -gt 30720 ]]; then			# if file>30 KBytes accepted
-				filesPass+=("${files%.*}"."$extcont")
-				filesSourcePass+=("$files")
-			else																						# if file<30 KBytes rejected
-				filesReject+=("${files%.*}"."$extcont")
-				rm "${files%.*}".$extcont 2>/dev/null
+		else																									# If no file overwrite
+			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".$extcont 2>/dev/null) -gt 30720 ]]; then			# If file>30 KBytes accepted
+				filesPass+=("${filesInLoop[i]%.*}".$extcont)
+				filesSourcePass+=("${filesInLoop[i]}")
+			else																								# If file<30 KBytes rejected
+				filesReject+=("${filesInLoop[i]%.*}".$extcont)
+				rm "${filesInLoop[i]%.*}".$extcont 2>/dev/null
 			fi
 		fi
 	done

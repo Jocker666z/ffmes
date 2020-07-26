@@ -1,8 +1,13 @@
 # Changelog
+v0.53:
+* Audio:
+	* chg - loop for test files result
+	* fix - encoding with same codec of source, now doesn't do anything with name files
+
 v0.52:
 * Audio tag:
 	* add - condition in rename, no remove/rename if source/temp not present
-	* chg - no more use opustags for change track number
+	* chg - no more use opustags for change track and disc number 
 * VGM:
 	* update - gbsplay to v0.0.94
 	* update - vgmstream to r1050-3086-gc9dc860c-5-gc36ff74e Jul 17 2020

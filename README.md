@@ -99,7 +99,7 @@ All come from open source programs.
 * launch option 1 (optional)
     
 ### Option 1 details - video encoding, full custom options
-* Video
+* Video:
 	* Stream copy or encoding
 	* Encoding options:
 		* crop video
@@ -112,7 +112,7 @@ All come from open source programs.
 			* x264: profile, tune, preset & bitrate (crf & cbr)
 			* x265: profile, tune, HDR, preset & bitrate (crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
-* Audio
+* Audio:
 	* Stream copy or encoding
 	* Encoding options (apply to all streams):
 		* codecs:
@@ -209,12 +209,12 @@ Files supported :
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 
-### Option 28 details - opus encoding
+### Option 27 details - opus encoding
 * Encoding options:
-	* bitrate
-		* vbr, 64kb to 510kb, via options choice.
-		* Also, one mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
-	* Channels layout 1.0 to 5.1
+	* Bitrate
+		* vbr, 64kb to 510kb (selectable options).
+		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
+	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* False stereo files detection
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
@@ -230,11 +230,11 @@ Options:
 * Change or add tag date
 * Change tag title for filename
 * Change tag title for untitled
-* Remove N character at begin of tag title, but limited to 9 characters.
-* Remove N character at end of tag title, but limited to 9 characters.
-Limitation:
-* max depth directory 1
-* asian character not supported (display in degrading mode)
+* Remove N character at begin of tag title (9 characters at once).
+* Remove N character at end of tag title (9 characters at once).
+Restriction:
+* Max depth directory 1
+* Asian character not supported (display in degrading mode)
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
