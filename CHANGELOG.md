@@ -1,4 +1,12 @@
 # Changelog
+v0.54:
+* Audio:
+	* add - option after encoding for remove target if source not removed. Usefull for large batch tests or other error in the selection of options
+	* fix - extract cover from files in parent directory in batch, now cover.jpg have directory variable
+* VGM:
+	* add - support of Nintendo Switch files in ktss
+	* remove - vspcplay for spc encoding
+
 v0.53:
 * Audio:
 	* chg - loop for test files result

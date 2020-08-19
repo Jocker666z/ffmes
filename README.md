@@ -169,7 +169,7 @@ Files supported :
 * Nintendo N64: miniusf
 * Nintendo NES: nsf
 * Nintendo SNES: spc
-* Nintendo Switch: bfstm, bfwav
+* Nintendo Switch: bfstm, bfwav, ktss
 * Nintendo Wii: mus
 * Sega Mark III/Master System: vgm, vgz
 * Sega Mega Drive/Genesis: vgm, vgz
@@ -198,6 +198,7 @@ Files supported :
 	* False stereo files detection
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
+	* After encoding, option for remove all source files, if not for remove created files
 
 ### Option 24 details - FLAC encoding
 * Encoding options:
@@ -208,6 +209,7 @@ Files supported :
 	* False stereo files detection
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
+	* After encoding, option for remove all source files, if not for remove created files
 
 ### Option 27 details - opus encoding
 * Encoding options:
@@ -218,6 +220,7 @@ Files supported :
 	* False stereo files detection
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
+	* After encoding, option for remove all source files, if not for remove created files
 
 ### Option 30 details - tag editor
 Options:

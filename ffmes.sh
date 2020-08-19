@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.53
+VERSION=v0.54
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -46,11 +46,9 @@ ExtractCover="0"																			# Extract cover, 0=extract cover from source 
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
 # VGM variables
-VGM_EXT_AVAILABLE="ads|adp|adx|aif|aifc|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|gbs|dat|dsp|dsf|eam|fsb|hes|hps|int|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mus|nsf|rak|raw|s98|S98|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
+VGM_EXT_AVAILABLE="ads|adp|adx|aif|aifc|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|gbs|dat|dsp|dsf|eam|fsb|hes|hps|int|ktss|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mus|nsf|rak|raw|s98|S98|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 M3U_EXT_AVAILABLE="m3u"
-SPC_VSPCPLAY=""																				# Experimental, spc encoding with vspcplay, leave empty for desactivate, note '1' for activate.
-PULSE_MONITOR="pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor"				# Experimental, used for encoding spc with vspcplay, to get to know him typing: = 'pacmd list | grep ".monitor"', example output: 'pulseaudio alsa_output.pci-0000_00_14.2.analog-stereo.monitor'
 
 # Messages
 MESS_SEPARATOR=" --------------------------------------------------------------"
@@ -92,9 +90,6 @@ vgmstream-cli() {				# https://github.com/losnoco/vgmstream
 	}
 vgm_tag() {						# https://github.com/vgmrips/vgmplay
 "$FFMES_PATH"/bin/vgm_tag "$@"
-}
-vspcplay() {					# https://github.com/raphnet/vspcplay
-"$FFMES_PATH"/bin/vspcplay "$@"
 }
 zxtune123() {					# https://zxtune.bitbucket.io/
 "$FFMES_PATH"/bin/zxtune123 "$@"
@@ -2521,8 +2516,10 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 			soundconf="$acodec $akb"
 		fi
 		# Stream set & cover extract
-		if [ "$ExtractCover" = "0" ] && [ ! -f cover.jpg ]; then
-			ffmpeg -n -i "$files" cover.jpg 2> /dev/null
+		if [ "$ExtractCover" = "0" ] && [ ! -f cover.* ]; then
+			ffmpeg -n -i "$files" "${files%.*}".jpg 2> /dev/null
+			mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
+			mv "${files%.*}".jpg cover.jpg 2>/dev/null
 			stream="-map 0:a"
 		elif [ "$ExtractCover" = "1" ] && [ "$AudioCodecType" != "Opus" ]; then
 			stream="-map 0"
@@ -3101,6 +3098,22 @@ RemoveAudioSource() {			# Clean audio source
 						rm -f "$f"
 					done
 				fi
+			;;
+			*)
+				SourceNotRemoved="1"
+			;;
+		esac
+	fi
+}
+RemoveAudioTarget() {			# Clean audio target
+	if [ "$SourceNotRemoved" = "1" ] ; then
+		read -p " Remove target audio? [y/N]:" qarm
+		case $qarm in
+			"Y"|"y")
+				# Remove audio source files
+				for f in "${filesPass[@]}"; do
+					rm -f "$f"
+				done
 			;;
 			*)
 				Restart
@@ -4745,7 +4758,6 @@ VGMRip() {						# Option 21 	- VGM rip
 				;;
 
 				*hes|*HES)						# NEC PC-Engine / TurboGrafx-16
-
 					# Tags record 1
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -5021,16 +5033,6 @@ VGMRip() {						# Option 21 	- VGM rip
 					TAG_TDURATION=$(($TAG_DURATION+$TAG_SFADING))
 
 					# Extract VGM
-					if test -n "$SPC_VSPCPLAY"; then
-						sox -t "$PULSE_MONITOR" -r 48000 -b 16 -t wav "${files%.*}".wav &
-						vspcplay --ignore_tag_time --default_time "$TAG_TDURATION" --novideo --status_line "$files"
-						killall -9 sox
-						ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -f wav temp-"${files%.*}".wav &>/dev/null
-						rm "${files%.*}".wav
-						mv temp-"${files%.*}".wav "${files%.*}".wav
-					else
-						ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -ar 32000 -f wav "${files%.*}".wav &>/dev/null
-					fi
 					# Remove silence
 					Sox_vgm_cmd_silence
 					# Normalization & false stereo detection
@@ -5039,7 +5041,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*ads|*ADS|*adp|*ADP|*aif|*AIF|*aifc|*AIFC|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF)					# Various Machines
+				*ads|*ADS|*adp|*ADP|*aif|*AIF|*aifc|*AIFC|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -5454,6 +5456,7 @@ case $reps in
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     FFmpeg_audio_cmd                               # encoding
     RemoveAudioSource
+    RemoveAudioTarget
     Clean                                          # clean temp files
     else
         echo
@@ -5480,6 +5483,7 @@ case $reps in
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     FFmpeg_audio_cmd                               # encoding
     RemoveAudioSource
+    RemoveAudioTarget
     Clean                                          # clean temp files
     else
         echo
@@ -5506,6 +5510,7 @@ case $reps in
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     FFmpeg_audio_cmd                               # encoding
     RemoveAudioSource
+    RemoveAudioTarget
     Clean                                          # clean temp files
     else
         echo
@@ -5532,6 +5537,7 @@ case $reps in
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     FFmpeg_audio_cmd                               # encoding
     RemoveAudioSource
+    RemoveAudioTarget
     Clean                                          # clean temp files
     else
         echo
@@ -5559,6 +5565,7 @@ case $reps in
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     FFmpeg_audio_cmd                               # encoding
     RemoveAudioSource
+    RemoveAudioTarget
     Clean                                          # clean temp files
     else
         echo
