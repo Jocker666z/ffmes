@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.54
+VERSION=v0.55
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -352,15 +352,16 @@ mkdir "$FFMES_PATH"/update-temp
 cd "$FFMES_PATH"/update-temp
 wget https://github.com/Jocker666z/ffmes/archive/master.zip
 unzip master.zip && mv ffmes-master ffmes
-rm master.zip
-cp -R -- ffmes/* "$FFMES_PATH"/
-cd "$FFMES_PATH"
-rm -R update-temp
+rm "$FFMES_PATH"/update-temp/master.zip
+rm -R "$FFMES_PATH"/bin
+cp -R -- "$FFMES_PATH"/update-temp/ffmes/* "$FFMES_PATH"/
+rm -R "$FFMES_PATH"/update-temp
 }
 ## VIDEO SECTION
 FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	START=$(date +%s)							# Start time counter
 
+	stty igncr									# Disable the enter key
 	for files in "${LSTVIDEO[@]}"; do
 
 		if [ "$ENCODV" != "1" ]; then
@@ -383,6 +384,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 		fi
 	done
 	wait
+	stty -igncr									# Enable the enter key
 
 	END=$(date +%s)								# End time counter
 	
@@ -2446,6 +2448,7 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 	filesOverwrite=()
 
 	# Encoding
+	stty igncr									# Disable the enter key
 	for files in "${LSTAUDIO[@]}"; do
 		# Reset $extcont
 		extcont="$ExtContSource"
@@ -2546,6 +2549,7 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 		fi
 	done
 	wait
+	stty -igncr									# Enable the enter key
 
 	# End time counter
 	END=$(date +%s)
@@ -5033,6 +5037,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					TAG_TDURATION=$(($TAG_DURATION+$TAG_SFADING))
 
 					# Extract VGM
+					ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -t $TAG_TDURATION -af "afade=t=out:st=$TAG_DURATION:d=$TAG_SFADING" -acodec pcm_s16le -ar 32000 -f wav "${files%.*}".wav &>/dev/null
 					# Remove silence
 					Sox_vgm_cmd_silence
 					# Normalization & false stereo detection

@@ -1,4 +1,13 @@
 # Changelog
+v0.55:
+* Video:
+	* add - disable the enter key during encoding, so as not to select the next choices in advance.
+* Audio:
+	* add - disable the enter key during encoding, so as not to select the next choices in advance.
+* VGM:
+	* fix - regression of spc encoding
+	* update - vgmstream to r1050-3086-gc9dc860c-145-g709b8977 Aug 20 2020
+
 v0.54:
 * Audio:
 	* add - option after encoding for remove target if source not removed. Usefull for large batch tests or other error in the selection of options
