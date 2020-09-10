@@ -2232,12 +2232,13 @@ for files in "${LSTSUB[@]}"; do
 	# Remove ^L/\f/FF/form-feed/page-break character
 	sed -i 's/\o14//g' "${files%.*}".srt &>/dev/null
 	StopLoading $?
-done
 
-# Clean
-rm *.tif &>/dev/null
-rm *.txt &>/dev/null
-rm *.xml &>/dev/null
+	# Clean
+	COUNTER=0
+	rm *.tif &>/dev/null
+	rm *.txt &>/dev/null
+	rm *.xml &>/dev/null
+done
 	}
 MultipleVideoExtention() {		# Sources video multiple extention question
 	if [ "$NBVEXT" -gt "1" ]; then
