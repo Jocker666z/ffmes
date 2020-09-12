@@ -157,7 +157,7 @@ Files supported :
 * 3DO : aif
 * Amiga/Atari: mod, snd, sndh
 * Fujitsu FM-7, FM Towns: s98
-* Microsoft Xbox: mus, xwav
+* Microsoft Xbox: aix, mus, sfd, xwav
 * Microsoft Xbox 360: wem
 * NEC PC-6001, PC-6601, PC-8801, PC-9801: s98
 * NEC PC-Engine/TurboGrafx-16: hes
@@ -165,7 +165,7 @@ Files supported :
 * Nintendo DS: adx, mini2sf
 * Nintendo GB & GBC: gbs
 * Nintendo GBA: minigsf
-* Nintendo GameCube: dsp, hps, adp, thp, mus, adx
+* Nintendo GameCube: adx, cfn, dsp, hps, adp, thp, mus
 * Nintendo N64: miniusf
 * Nintendo NES: nsf
 * Nintendo SNES: spc
@@ -177,8 +177,8 @@ Files supported :
 * Sega Dreamcast: dsf, spsd
 * Sharp X1 : s98
 * Sony Playstation: psf, minipsf, xa, vag
-* Sony Playstation 2: psf2, minipsf2, ss2, vag, int, vpk, sng, vgs, ads
-* Sony Playstation 3: msf
+* Sony Playstation 2: ads, adpcm, genh, psf2, int, minipsf2, ss2, vag, vpk, sng, vgs
+* Sony Playstation 3: aa3, adx, at3, genh, msf, mtaf, sgd, ss2, vag, xvag, wem
 * Sony Playstation 4: wem
 * Sony PSP: at3
 * Panasonic 3DO: aifc, str

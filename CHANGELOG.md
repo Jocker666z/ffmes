@@ -1,4 +1,17 @@
 # Changelog
+v0.56:
+* Audio :
+	* add - 1st file DB peak information at peak normalization question
+	* fix - typo in display of audio source info
+	* fix - remove audio target, if source extension same as source, now remove .back in filename
+* Subtitle:
+	* fix - convert DVD subtitle (idx/sub) to srt - Clean DVDSub2Srt after each file  (commit by Subarashii-no-Fansub)
+* VGM:
+	* add - support of Nintendo GameCube files in cfn
+	* add - support of Sony PS2 files in adpcm, genh
+	* add - support of Sony PS3 files in aa3, genh, mtaf, sgd, xvag
+	* add - support of Microsoft Xbox files in sfd, aix
+
 v0.55:
 * Video:
 	* add - disable the enter key during encoding, so as not to select the next choices in advance.

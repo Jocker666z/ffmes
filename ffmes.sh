@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.55
+VERSION=v0.56
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -46,7 +46,7 @@ ExtractCover="0"																			# Extract cover, 0=extract cover from source 
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
 # VGM variables
-VGM_EXT_AVAILABLE="ads|adp|adx|aif|aifc|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|gbs|dat|dsp|dsf|eam|fsb|hes|hps|int|ktss|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mus|nsf|rak|raw|s98|S98|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xwav"
+VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|int|ktss|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 M3U_EXT_AVAILABLE="m3u"
 
@@ -2302,7 +2302,7 @@ AudioSourceInfo() {				# Audio source stats
 	# Grep audio db peak & add
 	LineDBPeak=$(cat "$FFMES_CACHE_STAT" | grep -nE -- ".*Stream.*.*Audio.*" | cut -c1)
 	TestDBPeak=$(ffmpeg -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
-	sed -i "${LineDBPeak}s/.*/& , DB peak:$TestDBPeak/" "$FFMES_CACHE_STAT"
+	sed -i "${LineDBPeak}s/.*/&, DB peak:$TestDBPeak/" "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
 	sed -i '1 i\ Source file stats:' "$FFMES_CACHE_STAT"                             # Add title
@@ -2560,7 +2560,6 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 	filesPass=()				# Files pass
 	filesReject=()				# Files fail
 	filesSourcePass=()			# Source files pass
-	#for files in "${LSTAUDIO[@]}"; do
 	for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
 		if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
 			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".new.$extcont 2>/dev/null) -gt 30720 ]]; then		# If file>30 KBytes accepted
@@ -2702,7 +2701,7 @@ fi
 }
 ConfPeakNorm() {				# 
 echo
-read -p " Apply a 0db peak normalization? [y/N]:" qarm
+read -p " Apply a 0db peak normalization? (1st file DB peak:$TestDBPeak) [y/N]:" qarm
 case $qarm in
 	"Y"|"y")
 		PeakNorm="1"
@@ -3118,6 +3117,12 @@ RemoveAudioTarget() {			# Clean audio target
 				# Remove audio source files
 				for f in "${filesPass[@]}"; do
 					rm -f "$f"
+				done
+				# Rename if extention same as source
+				for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
+					if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
+						mv "${filesInLoop[i]%.*}".back.$extcont "${filesInLoop[i]}" 2>/dev/null
+					fi
 				done
 			;;
 			*)
@@ -5047,7 +5052,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*ads|*ADS|*adp|*ADP|*aif|*AIF|*aifc|*AIFC|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*dsp|*DSP|*eam|*EAM|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS)					# Various Machines
+				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*hps|*HPS|*int|*INT|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
