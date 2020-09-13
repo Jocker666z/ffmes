@@ -10,7 +10,7 @@ Source media files, supported extension:
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
-`ffmpeg mkvtoolnix mediainfo abcde sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all`
+`ffmpeg mkvtoolnix mediainfo abcde sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all wget`
 
 ## Install
 * `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
@@ -147,7 +147,12 @@ Colors palette available:
 
 ### Option 18 details - convert DVD subtitle (idx/sub) to srt
 You must have installed tesseract-ocr with your language support, but also ogmrip package (includes subp2tiff and subptools binaries).
-This option can be quite long if the file contains many lines of text.
+
+Language supported: english, french, deutsch, spanish, portuguese, italian, japanese, chinese simplified, arabic, korean, russian.
+
+Tesseract engine available:
+* By recognizing character patterns, fast but not reliable
+* By neural net (LSTM), slow but reliable (default)
 
 ### Option 21 details - VGM Rip to flac
 This function limited to Linux x86_64, it embeds binaries compiled for this platform, so it remains (and will) unstable as a whole.

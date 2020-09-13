@@ -1,11 +1,19 @@
 # Changelog
+v0.57:
+* Subtitle:
+	* add - DVD subtitle (idx/sub) to srt - add option for select Tesseract engine, by recognizing character patterns or by neural net (LSTM)
+	* add - DVD subtitle (idx/sub) to srt - add support of korean and russian
+* Various:
+	* add - wget in COMMAND_NEEDED, used for download tessdata (Tesseract recognizing character patterns engine)
+	* chg - documentation for option 18
+
 v0.56:
 * Audio :
 	* add - 1st file DB peak information at peak normalization question
 	* fix - typo in display of audio source info
 	* fix - remove audio target, if source extension same as source, now remove .back in filename
 * Subtitle:
-	* fix - convert DVD subtitle (idx/sub) to srt - Clean DVDSub2Srt after each file  (commit by Subarashii-no-Fansub)
+	* fix - DVD subtitle (idx/sub) to srt - Clean DVDSub2Srt after each file  (commit by Subarashii-no-Fansub)
 * VGM:
 	* add - support of Nintendo GameCube files in cfn
 	* add - support of Sony PS2 files in adpcm, genh

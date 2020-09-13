@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.56
+VERSION=v0.57
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -26,11 +26,10 @@ OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player dr
 NPROC=$(nproc --all| awk '{ print $1 - 1 }')												# Set number of processor
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3 tesseract subp2tiff subptools)
+COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3 tesseract subp2tiff subptools wget)
 LIB_NEEDED=(libao)
-CUE_EXT_AVAILABLE="cue"
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# Comment for view default ffmpeg log
-#FFMPEG_LOG_LVL="-loglevel debug -stats"													# Debug ffmpeg log
+#FFMPEG_LOG_LVL="-loglevel debug -stats"													# Uncomment for view debug ffmpeg log
 
 # Video variables
 X265_LOG_LVL="log-level=error:"																# Comment for view all x265 codec log
@@ -42,6 +41,7 @@ NVENC="1"																					# Set number of video encoding in same time, the c
 
 # Audio variables
 AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
+CUE_EXT_AVAILABLE="cue"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
@@ -472,7 +472,7 @@ Mkvmerge() {					# Merge command
 		;;
 	esac
 
-	START=$(date +%s)                       # Start time counter
+	START=$(date +%s)						# Start time counter
 
 	# If sub add, convert in UTF-8, srt and ssa
 	if [ "$NBSUB" -gt 0 ] ; then
@@ -492,7 +492,7 @@ Mkvmerge() {					# Merge command
 	# Merge
 	mkvmerge -o "${LSTVIDEO[0]%.*}"."$videoformat".mkv "${LSTVIDEO[0]}" $MERGE_LSTAUDIO $MERGE_LSTSUB
 
-	END=$(date +%s)                         # End time counter
+	END=$(date +%s)							# End time counter
 	
 	# Check Target if valid (size test)
 	filesPass=()
@@ -1797,7 +1797,7 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 				hdmv_pgs_subtitle) FILE_EXT=sup ;;
 				dvd_subtitle)
 					MKVEXTRACT="1"
-					FILE_EXT=sub
+					FILE_EXT=idx
 					;;
 				esac
 
@@ -2138,16 +2138,18 @@ echo
 echo " Select subtitle language for:"
 printf '  %s\n' "${LSTSUB[@]}"
 echo
-echo "  [0] > eng     - english"
-echo "  [1] > fra     - french"
-echo "  [2] > deu     - deutsch"
-echo "  [3] > spa     - spanish"
-echo "  [4] > por     - portuguese"
-echo "  [5] > ita     - italian"
-echo "  [6] > jpn     - japan"
-echo "  [7] > chi-sim - chinese simplified"
-echo "  [8] > arabic  - ara"
-echo "  [q] > for exit"
+echo "   [0] > eng     - english"
+echo "   [1] > fra     - french"
+echo "   [2] > deu     - deutsch"
+echo "   [3] > spa     - spanish"
+echo "   [4] > por     - portuguese"
+echo "   [5] > ita     - italian"
+echo "   [6] > jpn     - japanese"
+echo "   [7] > chi-sim - chinese simplified"
+echo "   [8] > ara     - arabic"
+echo "   [9] > kor     - korean"
+echo "  [10] > rus     - russian"
+echo "   [q] > for exit"
 while :
 do
 read -e -p "-> " rpspalette
@@ -2189,9 +2191,16 @@ case $rpspalette in
 		SubLang="ara"
 		break
 	;;
+	"9")
+		SubLang="kor"
+		break
+	;;
+	"10")
+		SubLang="rus"
+		break
+	;;
 	"q"|"Q")
 		Restart
-		break
 	;;
 		*)
 			echo
@@ -2200,6 +2209,43 @@ case $rpspalette in
 		;;
 esac
 done 
+
+echo
+echo " Select Tesseract engine:"
+echo
+echo "  [0] > fast     - By recognizing character patterns"
+echo " *[1] > reliable - By neural net (LSTM)"
+echo "  [q] > for exit"
+while :
+do
+read -e -p "-> " rpspalette
+case $rpspalette in
+
+	"0")
+		Tesseract_Arg="--oem 0 --tessdata-dir $FFMES_PATH/tesseract"
+		if [ ! -f "$FFMES_PATH/tesseract/$SubLang.traineddata" ]; then
+			if [ ! -d "$FFMES_PATH/tesseract" ]; then
+				mkdir "$FFMES_PATH/tesseract"
+			fi
+			StartLoading "Downloading Tesseract trained models"
+			wget https://github.com/tesseract-ocr/tessdata/raw/master/"$SubLang".traineddata -P $FFMES_PATH/tesseract &>/dev/null
+			StopLoading $?
+		fi
+		break
+	;;
+	"1")
+		Tesseract_Arg="--oem 1"
+		break
+	;;
+	"q"|"Q")
+		Restart
+	;;
+		*)
+		Tesseract_Arg="--oem 1"
+		break
+		;;
+esac
+done
 
 # Convert loop
 for files in "${LSTSUB[@]}"; do
@@ -2213,7 +2259,7 @@ for files in "${LSTSUB[@]}"; do
 	TOTAL=$(ls *.tif | wc -l)
 	for tfiles in *.tif; do
 		(
-		tesseract  "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
+		tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 			wait -n
