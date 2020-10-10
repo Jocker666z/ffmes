@@ -1,6 +1,6 @@
 # ffmes - ffmpeg media encode script 
 
-Terminal tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. In batch or single file.
+Bash tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. In batch or single file.
 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
@@ -17,27 +17,39 @@ Source media files, supported extension:
 * `unzip master.zip && mv ffmes-master ffmes && rm master.zip`
 * `cd ffmes && chmod a+x ffmes.sh`
 * `echo "alias ffmes=\"bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
-
-## Use
-1. if no alias: 
-    * `bash ~/ffmes/ffmes.sh` with audio/video in same directory of script
-    * `bash ~/ffmes/ffmes.sh DIRECTORY-TO.EDIT` for directory
-    * `bash ~/ffmes/ffmes.sh FILE-TO.EDIT` for single video or audio
-2. elif with alias (recommended):
-    * `ffmes` with audio/video in directory
-    * `ffmes DIRECTORY-TO.EDIT` for directory
-    * `ffmes FILE-TO.EDIT` for single video or audio
-3. elif with nemo action:
+* Nemo action:
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
 [Nemo Action]
 Active=true
 Name=ffmes %N
 Comment=ffmes %N
-Exec=gnome-terminal -- bash -c "~/ffmes/ffmes.sh '%F'; bash"
+Exec=gnome-terminal -- bash -c "~/ffmes/ffmes.sh -i '%F'; bash"
 Selection=any
 Extensions=any;
 ```
+
+## Use
+Options:
+* without option treat current directory
+* -i|--input <file> : treat one file
+* -i|--input <directory> : treat in batch a specific directory
+* -h|--help : display help
+* -j|--videojobs <number> Number of video encoding in same time (Default: 2)
+* -s|--select <number> : preselect option 
+* -v|--verbose : display ffmpeg log level as info
+* -vv|--fullverbose : display ffmpeg log level as debug
+Exemples:
+1. if no alias: 
+    * `bash ~/ffmes/ffmes.sh` with audio/video in same directory of script
+    * `bash ~/ffmes/ffmes.sh -i DIRECTORY-TO.EDIT` for directory
+    * `bash ~/ffmes/ffmes.sh -i FILE-TO.EDIT` for single video or audio
+2. elif with alias (recommended):
+    * `ffmes` with audio/video in directory
+    * `ffmes -i DIRECTORY-TO.EDIT` for directory
+    * `ffmes -i FILE-TO.EDIT` for single video or audio
+    * `ffmes -vv -i FILE-TO.EDIT` for single video or audio, with ffmpeg in log level as debug
+    * `ffmes -s 1 -i FILE-TO.EDIT` for single video, select option 1 by-passing the main menu
 
 ## Test
 ffmes is tested, under Debian stable and unstable almost every day.
@@ -55,7 +67,6 @@ All come from open source programs.
 * vgm2wav - https://github.com/ValleyBell/libvgm
 * vgmstream_cli - https://github.com/losnoco/vgmstream
 * vgmtag - https://github.com/vgmrips/vgmtools
-* vspcplay - https://github.com/raphnet/vspcplay
 * zxtune - https://zxtune.bitbucket.io/
 
 --------------------------------------------------------------------------------------------------
@@ -247,13 +258,13 @@ Restriction:
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
 ### Video
-* NVENC (default=2)
-	* Description: Set number of video encoding in same time encoding, the countdown starts at 0 (0=1;1=2...)
+* NVENC (default=1)
+	* Description: Number of video encoding in same time, the countdown starts at 0 (0=1;1=2...)
 ### Audio
 * ExtractCover (default=0)
 	* Description: action performed during encoding
 	* 0=extract cover from source and remove in output
-	* 1=keep cover from source in output (not compatible with opus muxer)
+	* 1=keep cover from source in output (not compatible with opus)
 	* empty=remove cover in output
 * RemoveM3U (default=1)
 	* Description: action performed after encoding at "Remove source audio?" question

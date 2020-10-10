@@ -1,4 +1,17 @@
 # Changelog
+v0.58:
+* Audio tag:
+	* add - m3u8 in M3U_EXT_AVAILABLE
+	* update - opustags to v1.4.0
+* VGM:
+	* update - vgm2wav to git version of 07 october 2020
+	* update - vgmstream to r1050-3280-gba405509-23-ge545bfda Oct  7 2020
+* Various:
+	* add - bash arguments, -h|--help, -i|--input, -v|--verbose, -vv|--fullverbose, -s|--select, -j|--videojobs
+	* add - some errors messages
+	* chg - some errors messages
+	* fix - now reactivate enter key after trap exit
+
 v0.57:
 * Subtitle:
 	* add - DVD subtitle (idx/sub) to srt - add option for select Tesseract engine, by recognizing character patterns or by neural net (LSTM)

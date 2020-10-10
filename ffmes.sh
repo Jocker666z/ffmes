@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.57
+VERSION=v0.58
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -28,11 +28,10 @@ KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit us
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
 COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3 tesseract subp2tiff subptools wget)
 LIB_NEEDED=(libao)
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# Comment for view default ffmpeg log
-#FFMPEG_LOG_LVL="-loglevel debug -stats"													# Uncomment for view debug ffmpeg log
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# Hide ffmpeg log
 
 # Video variables
-X265_LOG_LVL="log-level=error:"																# Comment for view all x265 codec log
+X265_LOG_LVL="log-level=error:"																# Hide x265 codec log
 VIDEO_EXT_AVAILABLE="mkv|vp9|m4v|m2ts|avi|ts|mts|mpg|flv|mp4|mov|wmv|3gp|vob|mpeg|webm|ogv|bik"
 SUBTI_EXT_AVAILABLE="srt|ssa|idx|sup"
 ISO_EXT_AVAILABLE="iso"
@@ -42,23 +41,25 @@ NVENC="1"																					# Set number of video encoding in same time, the c
 # Audio variables
 AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
 CUE_EXT_AVAILABLE="cue"
+M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 
 # VGM variables
 VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|int|ktss|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
-M3U_EXT_AVAILABLE="m3u"
 
 # Messages
 MESS_SEPARATOR=" --------------------------------------------------------------"
-MESS_ZERO_FILE_AUTH="	-/!\- No file to process. Restart ffmes by selecting a file or in a directory containing it."
-MESS_INVALID_ANSWER="	-/!\- Invalid answer, please try again."
-MESS_ONE_VIDEO_FILE_AUTH="	-/!\- Only one video file at a time. Restart ffmes to select one video or in a directory containing one."
-MESS_ONE_AUDIO_FILE_AUTH="	-/!\- Only one audio file at a time. Restart ffmes to select one audio or in a directory containing one."
-MESS_BATCH_FILE_AUTH="	-/!\- Only more than one file file at a time. Restart ffmes in a directory containing several files."
-MESS_EXT_FILE_AUTH="	-/!\- Only one extention type at a time."
-MESS_UNAME_AUTH="	-/!\- Only for Linux x86_64."
+MESS_ZERO_VIDEO_FILE_AUTH="   -/!\- No video file to process. Restart ffmes by selecting a file or in a directory containing it."
+MESS_ZERO_AUDIO_FILE_AUTH="   -/!\- No audio file to process. Restart ffmes by selecting a file or in a directory containing it."
+MESS_ZERO_VGM_FILE_AUTH="   -/!\- No VGM file to process. Restart ffmes by selecting a file or in a directory containing it."
+MESS_INVALID_ANSWER="   -/!\- Invalid answer, please try again."
+MESS_ONE_VIDEO_FILE_AUTH="   -/!\- Only one video file at a time. Restart ffmes to select one video or in a directory containing one."
+MESS_ONE_AUDIO_FILE_AUTH="   -/!\- Only one audio file at a time. Restart ffmes to select one audio or in a directory containing one."
+MESS_BATCH_FILE_AUTH="   -/!\- Only more than one file file at a time. Restart ffmes in a directory containing several files."
+MESS_EXT_FILE_AUTH="   -/!\- Only one extention type at a time."
+MESS_UNAME_AUTH="   -/!\- Only for Linux x86_64."
 
 ## EMBEDS BINARIES SECTION
 binmerge() {					# https://github.com/putnam/binmerge
@@ -97,20 +98,26 @@ zxtune123() {					# https://zxtune.bitbucket.io/
 ## VARIABLES, DISPLAY & MENU SECTION
 Usage() {
 cat <<- EOF
-ffmes $VERSION - GNU GPL-2.0 Copyright - Written by Romain Barbarot <https://github.com/Jocker666z/ffmes>
+ffmes $VERSION - GNU GPL-2.0 Copyright - <https://github.com/Jocker666z/ffmes>
+Bash tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg.
+In batch or single file.
 
-Usage: ffmes [option]
-ffmes               for launch main menu
-ffmes file          for treat one file
-ffmes directory     for treat in batch a specific directory
+Usage: ffmes [options]
+                          Without option treat current directory.
+  -i|--input <file>       Treat one file.
+  -i|--input <directory>  Treat in batch a specific directory.
+  -h|--help               Display this help.
+  -j|--videojobs <number> Number of video encoding in same time.
+                          Default: 2
+  -s|--select <number>    Preselect option (by-passing main menu).
+  -v|--verbose            Display ffmpeg log level as info.
+  -vv|--fullverbose       Display ffmpeg log level as debug.
 
-If ffmes is not set in alias replace "ffmes" by "bash ~/ffmes/ffmes.sh".
-However, it is strongly recommended to use an alias, but you can still continue to hurt yourself.
 EOF
 }
 DetectCDDVD () {				# CD/DVD detection
 for DEVICE in "${OPTICAL_DEVICE[@]}"; do
-    DeviceTest=$(setcd -i "$DEVICE")
+    DeviceTest=$(setcd -i "$DEVICE" 2>/dev/null)
     case "$DeviceTest" in
         *'Disc found'*)
 			DVD_DEVICE="$DEVICE"
@@ -176,17 +183,19 @@ NBM3U="${#LSTM3U[@]}"
 }
 Restart () {					# Restart script & for keep argument
 Clean
-if [ -f "$ARGUMENT" ]; then                              # If target is file
-	bash "$FFMES_PATH"/ffmes.sh "$ARGUMENT" && exit
+if [ -n "$ARGUMENT" ]; then									# If target is file
+	bash "$FFMES_PATH"/ffmes.sh -i "$ARGUMENT" && exit
 else
 	bash "$FFMES_PATH"/ffmes.sh && exit
 fi
 }
 TrapStop () {					# Ctrl+z Trap for loop exit
+stty -igncr									# Enable the enter key
 Clean
 kill -s SIGTERM $!
 }
 TrapExit () {					# Ctrl+c Trap for script exit
+stty -igncr									# Enable the enter key
 Clean
 echo
 echo
@@ -5194,42 +5203,89 @@ VGMRip_Clean() {				# Clean & arrange VGM rip files
 	esac
 }
 
-# Arguments variables & usage
-if [ -d "$1" ]; then								# If target is directory
-    cd "$1" || exit									# Move to directory
-elif [ -f "$1" ]; then                              # If target is file
-    TESTARGUMENT1=$(mediainfo "$1" | grep -E 'Video|Audio|ISO' | head -n1)
-    TESTARGUMENT2=$(file "$1" | grep -i -E 'Video|Audio')
-    if [[ -z "$TESTARGUMENT1" ]] && [[ -n "$TESTARGUMENT2" ]] ; then
-		TESTARGUMENT="$TESTARGUMENT2"
-	else
-		TESTARGUMENT="$TESTARGUMENT1"
-	fi
-    if test -n "$TESTARGUMENT"; then
-        ARGUMENT="$1"
-    else
-        echo
-        echo "  Missed, \"$1\" is not a video, audio or ISO file."
-        echo
-        exit
-    fi
-elif test -n "$1"; then								# If don't understand/help
-	Usage
-    exit
-fi
+# Arguments variables
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+    -i|--input)
+		shift
+		InputFileDir="$1"
+			if [ -d "$InputFileDir" ]; then															# If target is directory
+				cd "$InputFileDir" || exit															# Move to directory
+			elif [ -f "$InputFileDir" ]; then														# If target is file
+				TESTARGUMENT1=$(mediainfo "$InputFileDir" | grep -E 'Video|Audio|ISO' | head -n1)	# Test files 1
+				TESTARGUMENT2=$(file "$InputFileDir" | grep -i -E 'Video|Audio')					# Test files 2
+				if [[ -z "$TESTARGUMENT1" ]] && [[ -n "$TESTARGUMENT2" ]] ; then
+					TESTARGUMENT="$TESTARGUMENT2"
+				else
+					TESTARGUMENT="$TESTARGUMENT1"
+				fi
+				if test -n "$TESTARGUMENT"; then
+					ARGUMENT="$InputFileDir"
+				else
+					echo
+					echo "   -/!\- Missed, \"$1\" is not a video, audio or ISO file."
+					echo
+					exit
+				fi
+			fi
+    ;;
+    -j|--videojobs)																					# Select 
+		shift
+		if ! [[ "$1" =~ ^[0-9]+$ ]] ; then															# If not integer
+			echo "   -/!\- Video jobs option must be an integer."
+			exit
+		else
+			unset NVENC																				# Unset default NVENC
+			NVENC=$(( $1 - 1 ))																		# Substraction
+			if [[ "$NVENC" -lt 0 ]] ; then															# If result inferior than 0
+				echo "   -/!\- Video jobs must be greater than zero."
+				exit
+			fi
+		fi
+    ;;
+    -s|--select)																					# Select 
+		shift
+		reps="$1"
+    ;;
+    -h|--help)																						# Help
+		Usage
+		exit
+    ;;
+    -v|--verbose)
+		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
+		unset X265_LOG_LVL																			# Unset, for display x265 info log
+		FFMPEG_LOG_LVL="-loglevel info -stats"														# Set ffmpeg log level to stats
+    ;;
+    -vv|--fullverbose)
+		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
+		unset X265_LOG_LVL																			# Unset, for display x265 info log
+		FFMPEG_LOG_LVL="-loglevel debug -stats"														# Set ffmpeg log level to debug
+    ;;
+    *)
+		Usage
+		exit
+    ;;
+esac
+shift
+done
 
-CheckCacheDirectory                     # Check if cache directory exist
+CheckCacheDirectory							# Check if cache directory exist
 StartLoading "Search the files processed"
-SetGlobalVariables                      # Set global variable
-DetectCDDVD								# CD/DVD detection
+SetGlobalVariables							# Set global variable
+DetectCDDVD									# CD/DVD detection
 StopLoading $?
-trap TrapExit 2 3						# Set Ctrl+c clean trap for exit all script
-trap TrapStop 20						# Set Ctrl+z clean trap for exit current loop (for debug)
-MainMenu                                # Display main menu
-
+trap TrapExit 2 3							# Set Ctrl+c clean trap for exit all script
+trap TrapStop 20							# Set Ctrl+z clean trap for exit current loop (for debug)
+if [ -z "$reps" ]; then						# By-pass main menu if using command argument
+	MainMenu								# Display main menu
+fi
+echo "$NVENC"
 while true; do
 echo "  [q]exit [m]menu [r]restart"
-read -e -p "  -> " reps
+if [ -z "$reps" ]; then						# By-pass selection if using command argument
+	read -e -p "  -> " reps
+fi
 
 case $reps in
 
@@ -5247,7 +5303,7 @@ case $reps in
 
  0 ) # DVD rip (experimental)
     DVDRip
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
 	CustomVideoEncod                               # question for make video custom encoding
@@ -5262,7 +5318,7 @@ case $reps in
  1 ) # video -> full custom
 	if [ "$NBV" -gt "0" ]; then
 	MultipleVideoExtention
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
 	CustomVideoEncod                               # question for make video custom encoding
@@ -5274,7 +5330,7 @@ case $reps in
 	Clean                                          # clean temp files
 	else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_VIDEO_FILE_AUTH"
         echo
 	fi
 	;;
@@ -5293,7 +5349,7 @@ case $reps in
     videoformat="avcopy.acopy"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     MultipleVideoExtention
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
     CustomVideoStream                              # question for make stream custom encoding (appear source have more of 2 streams)
@@ -5302,7 +5358,7 @@ case $reps in
 	Clean                                          # clean temp files
 	else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_VIDEO_FILE_AUTH"
         echo
 	fi
 	;;
@@ -5313,7 +5369,7 @@ case $reps in
 	mediainfo "${LSTVIDEO[0]}"
 	else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_VIDEO_FILE_AUTH"
         echo
 	fi
 	;;
@@ -5324,7 +5380,7 @@ case $reps in
     # NAME ----------------------------------------------------------------------------------
     videoformat="addcopy"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
 	Mkvmerge
@@ -5339,7 +5395,7 @@ case $reps in
  12 ) # Concatenate video
 	if [ "$NBV" -gt "1" ] && [ "$NBVEXT" -eq "1" ]; then
 	ConcatenateVideo
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
 	CustomVideoEncod                               # question for make video custom encoding
@@ -5363,7 +5419,7 @@ case $reps in
 
  13 ) # Extract stream video
 	if [[ "$NBV" -eq "1" ]]; then
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
     ExtractPartVideo
@@ -5377,7 +5433,7 @@ case $reps in
 
  14 ) # Cut video
 	if [[ "$NBV" -eq "1" ]]; then
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
     CutVideo
@@ -5392,7 +5448,7 @@ case $reps in
 
  15 ) # Audio night normalization
 	if [[ "$NBV" -eq "1" ]]; then
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoAudioSourceInfo
 	StopLoading $?
     AddAudioNightNorm
@@ -5406,7 +5462,7 @@ case $reps in
 
  16 ) # Split by chapter mkv
 	if [ "$NBV" -eq "1" ] && [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
-    StartLoading "Analysis of the file: ${LSTVIDEO[0]}"
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
 	VideoSourceInfo
 	StopLoading $?
     SplitByChapter
@@ -5457,7 +5513,7 @@ case $reps in
 	fi
 	if [ "$NBVGM" -eq "0" ]; then
 		echo
-		echo "$MESS_ZERO_FILE_AUTH"
+		echo "$MESS_ZERO_VGM_FILE_AUTH"
 		echo
 	fi
 	if [[ "$GBSCOUNT" -gt "1" ]]; then
@@ -5491,7 +5547,7 @@ case $reps in
     Clean                                          # clean temp files
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5517,7 +5573,7 @@ case $reps in
     Clean                                          # clean temp files
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5544,7 +5600,7 @@ case $reps in
     Clean                                          # clean temp files
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5571,7 +5627,7 @@ case $reps in
     Clean                                          # clean temp files
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5598,7 +5654,7 @@ case $reps in
     Clean                                          # clean temp files
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5626,7 +5682,7 @@ case $reps in
     Clean                                          # clean temp files
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5636,7 +5692,7 @@ case $reps in
 	AudioTagEditor
 	else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
 	;;
@@ -5649,7 +5705,7 @@ case $reps in
 	mediainfo "${LSTAUDIO[0]}"
 	else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
 	;;
@@ -5662,7 +5718,7 @@ case $reps in
     Clean
     else
         echo
-        echo "$MESS_ZERO_FILE_AUTH"
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
         echo
 	fi
     ;;
@@ -5701,6 +5757,14 @@ case $reps in
 	Restart
 	;;
 
+ * ) # update
+        echo
+        echo "$MESS_INVALID_ANSWER"
+        echo
+	;;
+
 esac
+unset reps
+
 done
 exit
