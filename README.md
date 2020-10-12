@@ -39,6 +39,7 @@ Options:
 * -s|--select <number> : preselect option 
 * -v|--verbose : display ffmpeg log level as info
 * -vv|--fullverbose : display ffmpeg log level as debug
+
 Exemples:
 1. if no alias: 
     * `bash ~/ffmes/ffmes.sh` with audio/video in same directory of script
