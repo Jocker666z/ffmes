@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.58
+VERSION=v0.58a
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -3532,7 +3532,7 @@ AudioTagEditor() {				# Option 30 	- Tag editor
 	# Display tags in table
 	clear
 	echo
-	echo "Inplace file tags:"
+	echo "Inplace files tags:"
 	printf '%.0s-' {1..141}; echo
 	paste <(printf "%-40.40s\n" "Files") <(printf "%s\n" "|") <(printf "%-4.4s\n" "Disc") <(printf "%s\n" "|") <(printf "%-5.5s\n" "Track") <(printf "%s\n" "|") <(printf "%-20.20s\n" "Title") <(printf "%s\n" "|") <(printf "%-17.17s\n" "Artist") <(printf "%s\n" "|") <(printf "%-20.20s\n" "Album") <(printf "%s\n" "|") <(printf "%-5.5s\n" "date") | column -s $'\t' -t
 	printf '%.0s-' {1..141}; echo
@@ -5280,7 +5280,7 @@ trap TrapStop 20							# Set Ctrl+z clean trap for exit current loop (for debug)
 if [ -z "$reps" ]; then						# By-pass main menu if using command argument
 	MainMenu								# Display main menu
 fi
-echo "$NVENC"
+
 while true; do
 echo "  [q]exit [m]menu [r]restart"
 if [ -z "$reps" ]; then						# By-pass selection if using command argument

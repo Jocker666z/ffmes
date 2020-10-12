@@ -1,4 +1,8 @@
 # Changelog
+v0.58a:
+* Various:
+	* fix - remove NVENC value after main menu
+
 v0.58:
 * Audio tag:
 	* add - m3u8 in M3U_EXT_AVAILABLE
