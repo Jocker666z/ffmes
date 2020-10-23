@@ -1,4 +1,15 @@
 # Changelog
+v0.59:
+* Audio:
+	* chg - FLAC default option to -compression_level 12 -ar 44100
+* Various:
+	* chg - some messages
+	* add - some comments in script
+* VGM:
+	* add - support of Sony PS3 files in laac
+	* fix - if various extensions in the same directory, the processing is now carried out correctly
+	* update - vgmstream to r1050-3312-g70d20924-12-gde953729 Oct 23 2020
+
 v0.58a:
 * Various:
 	* fix - remove NVENC value after main menu

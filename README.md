@@ -35,7 +35,7 @@ Options:
 * -i|--input <file> : treat one file
 * -i|--input <directory> : treat in batch a specific directory
 * -h|--help : display help
-* -j|--videojobs <number> Number of video encoding in same time (Default: 2)
+* -j|--videojobs <number> : number of video encoding in same time (default: 2)
 * -s|--select <number> : preselect option 
 * -v|--verbose : display ffmpeg log level as info
 * -vv|--fullverbose : display ffmpeg log level as debug
@@ -90,13 +90,13 @@ All come from open source programs.
 	* 18, convert DVD subtitle (idx/sub) to srt
 * Audio :
 	* 20, CD rip
-	* 21, VGM Rip to flac (Linux x86_64 only)
-	* 22, CUE Splitter to flac
-	* 23, audio to wav
+	* 21, VGM rip to flac (Linux x86_64 only)
+	* 22, CUE splitter to flac
+	* 23, audio to wav (PCM)
 	* 24, audio to flac
-	* 25, audio to mp3
-	* 26, audio to ogg
-	* 27, audio to opus
+	* 25, audio to mp3 (libmp3lame)
+	* 26, audio to ogg (libvorbis)
+	* 27, audio to opus (libopus)
 * Audio tools :
 	* 30, tag editor
 	* 31, view detailed audio file informations
@@ -195,7 +195,7 @@ Files supported :
 * Sharp X1 : s98
 * Sony Playstation: psf, minipsf, xa, vag
 * Sony Playstation 2: ads, adpcm, genh, psf2, int, minipsf2, ss2, vag, vpk, sng, vgs
-* Sony Playstation 3: aa3, adx, at3, genh, msf, mtaf, sgd, ss2, vag, xvag, wem
+* Sony Playstation 3: aa3, adx, at3, genh, laac, msf, mtaf, sgd, ss2, vag, xvag, wem
 * Sony Playstation 4: wem
 * Sony PSP: at3
 * Panasonic 3DO: aifc, str
