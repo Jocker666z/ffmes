@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.59
+VERSION=v0.60
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -2550,7 +2550,9 @@ for files in "${LSTAUDIO[@]}"; do
 	# Opus auto adapted bitrate
 	if [ "$AdaptedBitrate" = "1" ]; then
 		TestBitrate=$(mediainfo --Output="General;%OverallBitRate%" "$files")
-		if [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
+		if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]] ; then		# If not integer = file not valid
+			akb=""
+		elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
 			akb="-b:a 64K"
 		elif [ "$TestBitrate" -ge 96001 ] && [ "$TestBitrate" -le 128000 ]; then
 			akb="-b:a 96K"

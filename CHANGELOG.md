@@ -1,4 +1,15 @@
 # Changelog
+v0.60:
+* Audio:
+	* fix - opus encoding, add interger detection in test mode "accurate auto adapted bitrate from source", if source is not valid no longer display bash error
+	* update - opustags to v1.5.0
+* VGM:
+	* add - support of Sony PS3 files in laac
+	* fix - if various extensions in the same directory, the processing is now carried out correctly
+	* update - vgmstream to r1050-3312-g70d20924-112-gd7bd5a2a Nov 17 2020
+	* update - vgm2wav to git version of 17 november 2020
+	* update - gbsplay & gbsinfo to 0.0.94-102-g081b3f9
+
 v0.59:
 * Audio:
 	* chg - FLAC default option to -compression_level 12 -ar 44100
