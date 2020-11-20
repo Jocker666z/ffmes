@@ -1,4 +1,17 @@
 # Changelog
+v0.61:
+* Audio:
+	* add - add quit option in all audio option
+	* add - FLAC, add option auto for bit depth & sample rate
+	* add - WavPack encoding option (25)
+	* chg - if a number of channel selected, no display false stereo files detection
+	* fix - if multi audio extention choice, now regenerate list audio extention variable (LSTAUDIOEXT), for prevent display of silent detect if no wav or flac in source
+* Audio tag:
+	* fix - add Monkey's Audio (APE) limitation -> not supported
+* Various:
+	* add - now verbose mode disable loading animation & dev/null output in audio encoding
+	* fix - loading display, truncate filename now work properly
+
 v0.60:
 * Audio:
 	* fix - opus encoding, add interger detection in test mode "accurate auto adapted bitrate from source", if source is not valid no longer display bash error

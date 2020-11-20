@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.60
+VERSION=v0.61
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -293,9 +293,10 @@ echo "  21 - VGM rip to flac                                |-Audio"
 echo "  22 - CUE splitter to flac                           |"
 echo "  23 - audio to wav (PCM)                             |"
 echo "  24 - audio to flac                                  |"
-echo "  25 - audio to mp3 (libmp3lame)                      |"
-echo "  26 - audio to ogg (libvorbis)                       |"
-echo "  27 - audio to opus (libopus)                        |"
+echo "  25 - audio to wavpack                               |"
+echo "  26 - audio to mp3 (libmp3lame)                      |"
+echo "  27 - audio to ogg (libvorbis)                       |"
+echo "  28 - audio to opus (libopus)                        |"
 echo "  -----------------------------------------------------"
 echo "  30 - tag editor                                     |"
 echo "  31 - view detailed audio file informations          |"
@@ -310,50 +311,57 @@ DisplayTruncate() {				# Line width truncate
 cut -c 1-"$TERM_WIDTH" | awk '{print $0"..."}'
 }
 Loading() {						# Loading animation
-local CL="\e[2K"
-local delay=0.10
-local spinstr="▉▉░"
-case $1 in
-	start)
-		while :
-		do
-			local temp=${spinstr#?}
-			printf "${CL}$spinstr ${task}\r"
-			local spinstr=$temp${spinstr%"$temp"}
-			sleep $delay
-			printf "\b\b\b\b\b\b"
-		done
-		printf "    \b\b\b\b"
-		printf "${CL}✓ ${task} ${msg}\n"
-		;;
-	stop)
-		kill $_sp_pid > /dev/null 2>&1
-		printf "${CL}✓ ${task} ${msg}\n"
-		;;
-esac
+if [[ -z "$VERBOSE" ]]; then
+	local CL="\e[2K"
+	local delay=0.10
+	local spinstr="▉▉░"
+	case $1 in
+		start)
+			while :
+			do
+				local temp=${spinstr#?}
+				printf "${CL}$spinstr ${task}\r"
+				local spinstr=$temp${spinstr%"$temp"}
+				sleep $delay
+				printf "\b\b\b\b\b\b"
+			done
+			printf "    \b\b\b\b"
+			printf "${CL}✓ ${task} ${msg}\n"
+			;;
+		stop)
+			kill $_sp_pid > /dev/null 2>&1
+			printf "${CL}✓ ${task} ${msg}\n"
+			;;
+	esac
+fi
 }
 StartLoading() {				# Start loading animation
-task=$1
-Ltask="${#task}"
-if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
-	task=$(echo "${task:0:$TERM_WIDTH}" | awk '{print $0"..."}')
+if [[ -z "$VERBOSE" ]]; then
+	task=$1
+	Ltask="${#task}"
+	if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
+		task=$(echo "${task:0:$TERM_WIDTH}" | awk '{print $0"..."}')
+	fi
+	msg=$2
+	Lmsg="${#2}"
+	if [ "$Lmsg" -gt "$TERM_WIDTH" ]; then
+		msg=$(echo "${msg:0:$TERM_WIDTH}" | awk '{print $0"..."}')
+	fi
+	# $1 : msg to display
+	tput civis		# hide cursor
+	Loading "start" "${task}" &
+	# set global spinner pid
+	_sp_pid=$!
+	disown
 fi
-msg=$2
-if [ "$Ltask" -gt "$TERM_WIDTH" ]; then
-	msg=$(echo "${msg:0:$TERM_WIDTH}" | awk '{print $0"..."}')
-fi
-# $1 : msg to display
-tput civis		# hide cursor
-Loading "start" "${task}" &
-# set global spinner pid
-_sp_pid=$!
-disown
 }
 StopLoading() {					# Stop loading animation
-# $1 : command exit status
-tput cnorm		# normal cursor
-Loading "stop" "${task}" "${msg}" $_sp_pid
-unset _sp_pid
+if [[ -z "$VERBOSE" ]]; then
+	# $1 : command exit status
+	tput cnorm		# normal cursor
+	Loading "stop" "${task}" "${msg}" $_sp_pid
+	unset _sp_pid
+fi
 }
 ffmesUpdate() {					# Option 99  	- ffmes ugly update to last version (hidden option)
 mkdir "$FFMES_PATH"/update-temp
@@ -2598,7 +2606,11 @@ for files in "${LSTAUDIO[@]}"; do
 	fi
 	# Encoding
 	(
-	ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
+	if [[ -z "$VERBOSE" ]]; then
+		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
+	else
+		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont
+	fi
 	StopLoading $?
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
@@ -2767,16 +2779,18 @@ case $qarm in
 	;;
 esac
 }
-ConfTestFalseStereo() {			# 
-read -p " Detect and convert false stereo files in mono? [y/N]:" qarm
-case $qarm in
-	"Y"|"y")
-		TestFalseStereo="1"
-	;;
-	*)
-		return
-	;;
-esac
+ConfTestFalseStereo() {			#
+if [[ -z "$confchan" ]]; then				# if number of channel forced, no display option
+	read -p " Detect and convert false stereo files in mono? [y/N]:" qarm
+	case $qarm in
+		"Y"|"y")
+			TestFalseStereo="1"
+		;;
+		*)
+			return
+		;;
+	esac
+fi
 }
 ConfSilenceDetect() {			# 
 TESTWAV=$(echo "${LSTAUDIOEXT[@]}" | grep wav )
@@ -2822,8 +2836,11 @@ echo "  [12] > | signed               |   auto |     8 |"
 echo " *[13] > | signed little-endian |   auto |    16 |"
 echo "  [14] > | signed little-endian |   auto |    24 |"
 echo "  [15] > | signed little-endian |   auto |    32 |"
+echo "  [q]  > | for exit"
 read -e -p "-> " rpakb
-if [ "$rpakb" = "1" ]; then
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif [ "$rpakb" = "1" ]; then
 	acodec="-acodec u8"
 	akb="-ar 44100"
 elif [ "$rpakb" = "2" ]; then
@@ -2888,7 +2905,7 @@ fi
 	echo "          Although the compression process involves a tradeoff between speed and size, "
 	echo "          the decoding process is always quite fast and not dependent on the level of compression."
 	echo "        * If you choose and audio bit depth superior of source file, the encoding will fail."
-	echo "        * Option tagued [no], leave this option as source file."
+	echo "        * Option tagued [auto], same value of source file."
     echo
 	echo "$MESS_SEPARATOR"
     echo " For complete control of configuration:"
@@ -2908,8 +2925,12 @@ fi
     echo "  [6] > |   12  |  48kHz |  auto |"
     echo "  [7] > |   12  |   auto |    16 |"
     echo "  [8] > |   12  |   auto |    24 |"
+    echo "  [9] > |   12  |   auto |  auto |"
+	echo "  [q] > | for exit"
 	read -e -p "-> " rpakb
-	if echo $rpakb | grep -q 'c' ; then
+	if [ "$rpakb" = "q" ]; then
+		Restart
+	elif echo $rpakb | grep -q 'c' ; then
 		akb="$rpakb"
 	elif [ "$rpakb" = "1" ]; then
 		akb="-compression_level 12 -sample_fmt s16 -ar 44100"
@@ -2927,8 +2948,74 @@ fi
 		akb="-compression_level 12 -sample_fmt s16"
 	elif [ "$rpakb" = "8" ]; then
 		akb="-compression_level 12 -sample_fmt s32"
+	elif [ "$rpakb" = "9" ]; then
+		akb="-compression_level 12"
 	else
 		akb="-compression_level 12 -ar 44100"
+	fi
+	}
+ConfWavPack() {					# Option 25 	- audio to wavpack
+if [ "$reps" -eq 1 ]; then
+    CustomInfoChoice
+else
+    clear
+    echo
+    echo " Under, first on the list of $NBA files to edit."
+    cat "$FFMES_CACHE_STAT"
+fi
+    echo " Choose WavPack desired configuration:"
+    echo " Notes: * libFLAC uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
+	echo "          The value 4 allows a very good compression without having a huge encoding time."
+	echo "        * Option tagued [auto], same value of source file."
+    echo
+	echo "$MESS_SEPARATOR"
+    echo " For complete control of configuration:"
+    echo " [-compression_level 2 -cutoff 24000 -sample_fmt s16 -ar 48000] -> Example of input format"
+    echo
+	echo "$MESS_SEPARATOR"
+    echo " Otherwise choose a number:"
+    echo
+    echo "         | comp. | sample |   bit |"
+    echo "         | level |   rate | depth |"
+    echo "         |-------|--------|-------|"
+    echo "  [1]  > |    4  |  44kHz |    16 |"
+    echo "  [2]  > |    4  |  44kHz | 24/32 |"
+    echo " *[3]  > |    4  |  44kHz |  auto |"
+    echo "  [4]  > |    2  |  44kHz |  auto |"
+    echo "  [5]  > |    4  |  48kHz |    16 |"
+    echo "  [6]  > |    4  |  48kHz | 24/32 |"
+    echo "  [7]  > |    4  |  48kHz |  auto |"
+    echo "  [8]  > |    2  |  48kHz |  auto |"
+    echo "  [9]  > |    4  |   auto |    16 |"
+    echo "  [10] > |    4  |   auto | 24/32 |"
+    echo "  [11] > |    4  |   auto |  auto |"
+    echo "  [12] > |    2  |   auto |  auto |"
+	echo "  [q] >  | for exit"
+	read -e -p "-> " rpakb
+	if [ "$rpakb" = "q" ]; then
+		Restart
+	elif echo $rpakb | grep -q 'c' ; then
+		akb="$rpakb"
+	elif [ "$rpakb" = "1" ]; then
+		akb="-compression_level 4 -sample_fmt s16p -ar 44100"
+	elif [ "$rpakb" = "2" ]; then
+		akb="-compression_level 4 -sample_fmt s32p -ar 44100"
+	elif [ "$rpakb" = "3" ]; then
+		akb="-compression_level 4 -ar 44100"
+	elif [ "$rpakb" = "4" ]; then
+		akb="-compression_level 4 -sample_fmt s16p -ar 48000"
+	elif [ "$rpakb" = "5" ]; then
+		akb="-compression_level 4 -sample_fmt s32p -ar 48000"
+	elif [ "$rpakb" = "6" ]; then
+		akb="-compression_level 4 -ar 48000"
+	elif [ "$rpakb" = "7" ]; then
+		akb="-compression_level 4 -sample_fmt s16p"
+	elif [ "$rpakb" = "8" ]; then
+		akb="-compression_level 4 -sample_fmt s32p"
+	elif [ "$rpakb" = "9" ]; then
+		akb="-compression_level 4"
+	else
+		akb="-compression_level 4 -ar 44100"
 	fi
 	}
 ConfOPUS() {					# Option 1,27 	- Conf audio/video opus, audio to opus (libopus)
@@ -2972,8 +3059,11 @@ if [[ "$AudioCodecType" = "Opus" ]]; then
 	echo "         |  280k  | 321kb -> 400kb |"
 	echo "         |  320k  | 400kb -> ∞     |"
 fi
+echo "  [q]  > | for exit"
 read -e -p "-> " rpakb
-if [ "$rpakb" = "1" ]; then
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif [ "$rpakb" = "1" ]; then
 	akb="-b:a 64K"
 elif [ "$rpakb" = "2" ]; then
 	akb="-b:a 96K"
@@ -2999,6 +3089,7 @@ else
 	akb="-b:a 220K"
 fi
 }
+
 ConfOGG() {						# Option 1,26 	- Conf audio/video libvorbis, audio to ogg (libvorbis)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
@@ -3035,8 +3126,11 @@ echo "  [7]  > | 256k | 19kHz |"
 echo "  [8]  > | 320k | 20kHz |"
 echo " *[9]  > | 500k | 22kHz |"
 echo "  [10] > | 500k |  N/A  |"
+echo "  [q]  > | for exit"
 read -e -p "-> " rpakb
-if echo $rpakb | grep -q 'k' ; then
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif echo $rpakb | grep -q 'k' ; then
 	akb="-b:a $rpakb"
 elif [ "$rpakb" = "1" ]; then
 	akb="-q 2 -cutoff 14000 -ar 44100"
@@ -3088,8 +3182,11 @@ echo "  [3]   | 170-210k |"
 echo "  [4]   | 190-250k |"
 echo "  [5]   | 220-260k |"
 echo " *[6] > | 320k     |"
+echo "  [q] > | for exit"
 read -e -p "-> " rpakb
-if echo $rpakb | grep -q 'k' ; then
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif echo $rpakb | grep -q 'k' ; then
 	akb="-b:a $rpakb"
 elif [ "$rpakb" = "1" ]; then
 	akb="-q:a 4"
@@ -3124,8 +3221,11 @@ echo "  [3] > | 340k |"
 echo "  [4] > | 440k |"
 echo "  [5] > | 540k |"
 echo " *[6] > | 640k |"
+echo "  [q] > | for exit"
 read -e -p "-> " rpakb
-if echo $rpakb | grep -q 'k' ; then
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif echo $rpakb | grep -q 'k' ; then
 	akb="-b:a $rpakb"
 elif [ "$rpakb" = "1" ]; then
 	akb="-b:a 140k"
@@ -3207,6 +3307,7 @@ if [ "$NBAEXT" -gt "1" ]; then
 	elif test -n "$AUDIO_EXT_AVAILABLE"; then
 		StartLoading "Search the files processed"
 		mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -regex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 		NBA="${#LSTAUDIO[@]}"
 		StopLoading $?
 	fi
@@ -5254,11 +5355,13 @@ while [[ $# -gt 0 ]]; do
 		exit
     ;;
     -v|--verbose)
+		VERBOSE="1"																					# Set verbose, for dev/null and loading disable
 		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
 		unset X265_LOG_LVL																			# Unset, for display x265 info log
 		FFMPEG_LOG_LVL="-loglevel info -stats"														# Set ffmpeg log level to stats
     ;;
     -vv|--fullverbose)
+		VERBOSE="1"																					# Set verbose, for dev/null and loading disable
 		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
 		unset X265_LOG_LVL																			# Unset, for display x265 info log
 		FFMPEG_LOG_LVL="-loglevel debug -stats"														# Set ffmpeg log level to debug
@@ -5606,7 +5709,34 @@ case $reps in
 	fi
     ;;
 
- 25 ) # audio -> mp3 @ vbr190-250kb
+ 25 ) # audio -> wavpack lossless
+	if [ "$NBA" -gt "0" ]; then
+	MultipleAudioExtention
+    AudioSourceInfo
+    ConfWavPack
+    ConfChannels
+    ConfPeakNorm
+    ConfTestFalseStereo
+    ConfSilenceDetect
+    # CONF_START ////////////////////////////////////////////////////////////////////////////
+    # AUDIO ---------------------------------------------------------------------------------
+    acodec="-acodec wavpack"
+    soundconf="$acodec $akb"
+    # CONTAINER -----------------------------------------------------------------------------
+    extcont="wv"
+    #CONF_END ///////////////////////////////////////////////////////////////////////////////
+    FFmpeg_audio_cmd                               # encoding
+    RemoveAudioSource
+    RemoveAudioTarget
+    Clean                                          # clean temp files
+    else
+        echo
+        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
+        echo
+	fi
+    ;;
+
+ 26 ) # audio -> mp3 @ vbr190-250kb
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
     AudioSourceInfo
@@ -5633,7 +5763,7 @@ case $reps in
 	fi
     ;;
 
- 26 ) # audio -> ogg
+ 27 ) # audio -> ogg
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
     AudioSourceInfo
@@ -5660,7 +5790,7 @@ case $reps in
 	fi
     ;;
 
- 27 ) # audio -> opus
+ 28 ) # audio -> opus
 	if [ "$NBA" -gt "0" ]; then
 	AudioCodecType="Opus"
 	MultipleAudioExtention
@@ -5688,16 +5818,21 @@ case $reps in
 	fi
     ;;
 
- 30 ) # tools -> view stats
-	if [ "$NBA" -gt "0" ]; then
+ 30 ) # tools -> audio tag
+	if [ "$NBA" -gt "0" ] && [[ ! "${LSTAUDIO[*]}" =~ ".ape" ]]; then
 	AudioTagEditor
 	else
-        echo
-        echo "$MESS_ZERO_AUDIO_FILE_AUTH"
-        echo
+		if [ "$NBA" -eq "0" ]; then
+			echo
+			echo "$MESS_ZERO_AUDIO_FILE_AUTH"
+			echo
+		elif [[ "${LSTAUDIO[*]}" =~ ".ape" ]]; then
+			echo
+			echo "	-/!\- Monkey's Audio (APE) not supported."
+			echo
+		fi
 	fi
 	;;
-
 
  31 ) # tools -> view stats
 	if [ "$NBA" -gt "0" ]; then

@@ -94,9 +94,10 @@ All come from open source programs.
 	* 22, CUE splitter to flac
 	* 23, audio to wav (PCM)
 	* 24, audio to flac
-	* 25, audio to mp3 (libmp3lame)
-	* 26, audio to ogg (libvorbis)
-	* 27, audio to opus (libopus)
+	* 25, audio to wavpack
+	* 26, audio to mp3 (libmp3lame)
+	* 27, audio to ogg (libvorbis)
+	* 28, audio to opus (libopus)
 * Audio tools :
 	* 30, tag editor
 	* 31, view detailed audio file informations
@@ -212,7 +213,7 @@ Files supported :
 		* signed 8-bit
 		* unsigned 8-bit
 	* Channels layout 1.0 to 5.1
-	* False stereo files detection
+	* False stereo files detection (if a channels configuration not selected)
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
@@ -220,10 +221,23 @@ Files supported :
 ### Option 24 details - FLAC encoding
 * Encoding options:
 	* Quality :
-		* full custom option
-		* 24 bit support
+		* Sample rate: 44kHz, 48kHz, or auto
+		* 24 bits support
+		* Full command line option
 	* Channels layout 1.0 to 5.1
-	* False stereo files detection
+	* False stereo files detection (if a channels configuration not selected)
+	* 0db peak normalization
+	* Silence detect & remove, at start & end (only wav & flac source)
+	* After encoding, option for remove all source files, if not for remove created files
+
+### Option 25 details - WavPack encoding
+* Encoding options:
+	* Quality :
+		* Sample rate: 44kHz, 48kHz, or auto
+		* 24/32 bits support
+		* Full command line option
+	* Channels layout 1.0 to 5.1
+	* False stereo files detection (if a channels configuration not selected)
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
@@ -234,7 +248,7 @@ Files supported :
 		* vbr, 64kb to 510kb (selectable options).
 		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
 	* Channels layout 1.0, 2.0, 3.0, 5.1
-	* False stereo files detection
+	* False stereo files detection (if a channels configuration not selected)
 	* 0db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
@@ -255,6 +269,7 @@ Options:
 Restriction:
 * Max depth directory 1
 * Asian character not supported (display in degrading mode)
+* Monkey's Audio (APE) not supported
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
@@ -292,5 +307,7 @@ Restriction:
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding#Profiles
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding_tiers_and_levels
 		* https://x265.readthedocs.io/en/default/presets.html
+* Audio codecs:
+	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison#Monkey.27s_Audio_.28APE.29
 * VGM:
 	* http://loveemu.hatenablog.com/entry/Conversion_Tools_for_Video_Game_Music
