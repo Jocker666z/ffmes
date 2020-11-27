@@ -1,4 +1,18 @@
 # Changelog
+v0.62:
+* Video:
+	* add - if VAAPI device found at /dev/dri/renderD128, it's used for decode video (increases the encoding speed very slightly)
+* Audio:
+	* add - in script variable for change peak db normalization
+* Audio tag:
+	* update - opustags to v1.5.1
+* Various:
+	* add - now verbose mode disable dev/null output in vgm encoding
+* VGM:
+	* add - support of Nintendo DS files in sad
+	* update - vgm2wav to git version of 26 november 2020
+	* update - vgmstream to r1050-3312-g70d20924-130-g925da9b2 Nov 26 2020
+
 v0.61:
 * Audio:
 	* add - add quit option in all audio option
@@ -15,6 +29,7 @@ v0.61:
 v0.60:
 * Audio:
 	* fix - opus encoding, add interger detection in test mode "accurate auto adapted bitrate from source", if source is not valid no longer display bash error
+* Audio tag:
 	* update - opustags to v1.5.0
 * VGM:
 	* add - support of Sony PS3 files in laac

@@ -35,6 +35,7 @@ Options:
 * -i|--input <file> : treat one file
 * -i|--input <directory> : treat in batch a specific directory
 * -h|--help : display help
+* --novaapi : no use vaapi for decode video.
 * -j|--videojobs <number> : number of video encoding in same time (default: 2)
 * -s|--select <number> : preselect option 
 * -v|--verbose : display ffmpeg log level as info
@@ -125,6 +126,7 @@ All come from open source programs.
 			* x264: profile, tune, preset & bitrate (crf & cbr)
 			* x265: profile, tune, HDR, preset & bitrate (crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
+		* if VAAPI device found at /dev/dri/renderD128, it's used for decode video
 * Audio:
 	* Stream copy or encoding
 	* Encoding options (apply to all streams):
@@ -180,7 +182,7 @@ Files supported :
 * NEC PC-6001, PC-6601, PC-8801, PC-9801: s98
 * NEC PC-Engine/TurboGrafx-16: hes
 * Nintendo 3DS: mus, bcstm, wem, bcwav, fsb
-* Nintendo DS: adx, mini2sf
+* Nintendo DS: adx, mini2sf, sad
 * Nintendo GB & GBC: gbs
 * Nintendo GBA: minigsf
 * Nintendo GameCube: adx, cfn, dsp, hps, adp, thp, mus
@@ -286,6 +288,8 @@ Restriction:
 	* Description: action performed after encoding at "Remove source audio?" question
 	* 0=no remove
 	* 1=remove
+* PeakNormDB (default=3)
+	* Description: Peak db normalization option, this value is written as positive but is used in negative (e.g. 4 = -4)
 
 --------------------------------------------------------------------------------------------------
 ## Issue

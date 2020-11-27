@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.61
+VERSION=v0.62
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -37,6 +37,7 @@ SUBTI_EXT_AVAILABLE="srt|ssa|idx|sup"
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
 NVENC="1"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
+VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
 AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
@@ -44,9 +45,10 @@ CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
+PeakNormDB="0"																				# Peak db normalization option, this value is written as positive but is used in negative, e.g. 4 = -4
 
 # VGM variables
-VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|int|ktss|laac|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
+VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|int|ktss|laac|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sad|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 
 # Messages
@@ -109,6 +111,7 @@ Usage: ffmes [options]
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
                           Default: 2
+  --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -v|--verbose            Display ffmpeg log level as info.
   -vv|--fullverbose       Display ffmpeg log level as debug.
@@ -206,6 +209,14 @@ rm "$FFMES_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_MAP" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 rm "$VGM_TAG" &>/dev/null
+}
+TestVAAPI() {					# VAAPI device test
+if [ -e "$VAAPI_device" ]; then
+	GPUDECODE="-hwaccel vaapi -hwaccel_device /dev/dri/renderD128"
+else
+	GPUDECODE=""
+fi
+
 }
 CheckCacheDirectory() {			# Check if cache directory exist
 if [ ! -d $FFMES_CACHE ]; then
@@ -393,7 +404,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 		echo "FFmpeg processing: ${files%.*}.$videoformat.$extcont"
 		(
-		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${files%.*}".$videoformat.$extcont
+		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${files%.*}".$videoformat.$extcont
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 			wait -n
@@ -2363,8 +2374,8 @@ AudioSourceInfo() {				# Audio source stats
 
 	# Grep audio db peak & add
 	LineDBPeak=$(cat "$FFMES_CACHE_STAT" | grep -nE -- ".*Stream.*.*Audio.*" | cut -c1)
-	TestDBPeak=$(ffmpeg -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
-	sed -i "${LineDBPeak}s/.*/&, DB peak:$TestDBPeak/" "$FFMES_CACHE_STAT"
+	TestDBPeak=$(ffmpeg -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')dB
+	sed -i "${LineDBPeak}s/.*/&, DB peak: $TestDBPeak/" "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
 	sed -i '1 i\ Source file stats:' "$FFMES_CACHE_STAT"                             # Add title
@@ -2520,14 +2531,14 @@ for files in "${LSTAUDIO[@]}"; do
 		TESTDB=$(ffmpeg -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
 		if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
 			if [[ $TESTDB = *"-"* ]]; then
-				GREPVOLUME=$(echo "$TESTDB" | cut -c2-)dB
+				GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
 				afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo',volume=$GREPVOLUME -mapping_family 1"
 			else
 				afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 			fi
 		else
 			if [[ $TESTDB = *"-"* ]]; then
-				GREPVOLUME=$(echo "$TESTDB" | cut -c2-)dB
+				GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
 				afilter="-af volume=$GREPVOLUME"
 			else
 				afilter=""
@@ -2607,9 +2618,9 @@ for files in "${LSTAUDIO[@]}"; do
 	# Encoding
 	(
 	if [[ -z "$VERBOSE" ]]; then
-		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
+		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
 	else
-		ffmpeg -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont
+		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont
 	fi
 	StopLoading $?
 	) &
@@ -2769,7 +2780,7 @@ fi
 }
 ConfPeakNorm() {				# 
 echo
-read -p " Apply a 0db peak normalization? (1st file DB peak:$TestDBPeak) [y/N]:" qarm
+read -p " Apply a -"$PeakNormDB"db peak normalization? (1st file DB peak:$TestDBPeak) [y/N]:" qarm
 case $qarm in
 	"Y"|"y")
 		PeakNorm="1"
@@ -3958,14 +3969,22 @@ FFmpeg_vgm_cmd_norm_stereo() {	# FFmpeg normalization & test channel command
 	fi
 
 	# Encoding Wav
-	ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav &>/dev/null
+	if [[ -z "$VERBOSE" ]]; then
+		ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav &>/dev/null
+	else
+		ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav $afilter $confchan -acodec pcm_s16le -f wav temp-out.wav
+	fi
 	rm "${files%.*}".wav &>/dev/null
 	mv temp-out.wav "${files%.*}".wav &>/dev/null
 	}
 FFmpeg_vgm_cmd() {				# FFmpeg vgm encoding command
 	# Encoding flac
 	StartLoading "" "Encoding: ${files%.*}.flac"
-	ffmpeg -y -i "${files%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="$TAG_TRACK" -metadata title="$TAG_SONG" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "${files%.*}".flac  &>/dev/null
+	if [[ -z "$VERBOSE" ]]; then
+		ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="$TAG_TRACK" -metadata title="$TAG_SONG" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "${files%.*}".flac &>/dev/null
+	else
+		ffmpeg $FFMPEG_LOG_LVL -y -i "${files%.*}".wav -acodec flac -compression_level 12 -sample_fmt s16 -metadata TRACK="$TAG_TRACK" -metadata title="$TAG_SONG" -metadata album="$TAG_ALBUM" -metadata artist="$TAG_ARTIST" -metadata date="$TAG_DATE" "${files%.*}".flac
+	fi
 	StopLoading $?
 	# Rename if possible
 	if [ -n "$TAG_TRACK" ] && [ -n "$TAG_SONG" ]; then
@@ -3988,7 +4007,7 @@ VGMRip_amiga() {				# Option 211 	- VGM rip amiga with uade123 (hidden option)
 		echo
 	fi
 	if test -z "$TAG_ARTIST"; then
-		echo "Please indicate the artist"
+		echo "Please indicate the artist for $files"
 		read -e -p " -> " TAG_ARTIST
 		echo
 	fi
@@ -4050,7 +4069,7 @@ VGMRip() {						# Option 21 	- VGM rip
 			echo
 		fi
 		if test -z "$TAG_ARTIST"; then
-			echo "Please indicate the artist"
+			echo "Please indicate the artist for $files"
 			read -e -p " -> " TAG_ARTIST
 			echo
 		fi
@@ -4122,7 +4141,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep "Author" | awk -F'"' '$0=$2')				# Artist
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4230,7 +4249,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*: //' | head -1)				# Artist
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4290,14 +4309,14 @@ VGMRip() {						# Option 21 	- VGM rip
 							echo
 						fi
 					fi
-					if test -z "$TAG_ARTIST"; then
+					#if test -z "$TAG_ARTIST"; then
 					TAG_ARTIST=$(sed -n 's/Composer:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
-					fi
+					#fi
 					if test -z "$TAG_MACHINE"; then
 						TAG_MACHINE=$(sed -n 's/System:/&\n/;s/.*\n//p' "$VGM_TAG" | awk '{$1=$1}1')
 						if test -z "$TAG_MACHINE"; then
@@ -4343,7 +4362,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//' | head -1)
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4391,7 +4410,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						fi
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -4523,7 +4542,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4572,7 +4591,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4618,7 +4637,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4664,7 +4683,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					if test -z "$TAG_ARTIST"; then
 						TAG_ARTIST=$(cat "$VGM_TAG" | grep -i -a artist | sed 's/^.*=//')
 						if test -z "$TAG_ARTIST"; then
-							echo "Please indicate the artist"
+							echo "Please indicate the artist for $files"
 							read -e -p " -> " TAG_ARTIST
 							echo
 						fi
@@ -4692,7 +4711,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						echo
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -4737,7 +4756,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						if test -z "$TAG_ARTIST"; then
 							TAG_ARTIST=$(cat "$VGM_TAG" | sed '3q;d')
 							if test -z "$TAG_ARTIST"; then
-								echo "Please indicate the artist"
+								echo "Please indicate the artist for $files"
 								read -e -p " -> " TAG_ARTIST
 								echo
 							fi
@@ -4883,7 +4902,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						if test -z "$TAG_ARTIST"; then
 							TAG_ARTIST=$(cat "$VGM_TAG" | sed '3q;d')
 							if test -z "$TAG_ARTIST"; then
-								echo "Please indicate the artist"
+								echo "Please indicate the artist for $files"
 								read -e -p " -> " TAG_ARTIST
 								echo
 							fi
@@ -4932,7 +4951,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						echo
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -5116,7 +5135,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						echo
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -5146,7 +5165,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						echo
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -5209,7 +5228,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*hps|*HPS|*int|*INT|*laac|*LAAC|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG)					# Various Machines
+				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*hps|*HPS|*int|*INT|*laac|*LAAC|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG|*sad|*SAD)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -5217,7 +5236,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						echo
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -5252,7 +5271,7 @@ VGMRip() {						# Option 21 	- VGM rip
 						echo
 					fi
 					if test -z "$TAG_ARTIST"; then
-						echo "Please indicate the artist"
+						echo "Please indicate the artist for $files"
 						read -e -p " -> " TAG_ARTIST
 						echo
 					fi
@@ -5346,6 +5365,9 @@ while [[ $# -gt 0 ]]; do
 			fi
 		fi
     ;;
+    --novaapi)																						# No VAAPI 
+		unset VAAPI_device																			# Unset VAAPI device
+    ;;
     -s|--select)																					# Select 
 		shift
 		reps="$1"
@@ -5378,6 +5400,7 @@ CheckCacheDirectory							# Check if cache directory exist
 StartLoading "Search the files processed"
 SetGlobalVariables							# Set global variable
 DetectCDDVD									# CD/DVD detection
+TestVAAPI									# VAAPI detection
 StopLoading $?
 trap TrapExit 2 3							# Set Ctrl+c clean trap for exit all script
 trap TrapStop 20							# Set Ctrl+z clean trap for exit current loop (for debug)
@@ -5712,12 +5735,12 @@ case $reps in
  25 ) # audio -> wavpack lossless
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
-    AudioSourceInfo
-    ConfWavPack
-    ConfChannels
-    ConfPeakNorm
-    ConfTestFalseStereo
-    ConfSilenceDetect
+	AudioSourceInfo
+	ConfWavPack
+	ConfChannels
+	ConfPeakNorm
+	ConfTestFalseStereo
+	ConfSilenceDetect
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec wavpack"
