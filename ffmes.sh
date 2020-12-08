@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.62
+VERSION=v0.63
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -16,6 +16,7 @@ FFMES_CACHE="/home/$USER/.cache/ffmes"														# cache directory
 FFMES_CACHE_STAT="/home/$USER/.cache/ffmes/stat-$(date +%Y%m%s%N).info"						# stat-DATE.info, stats of source file
 FFMES_CACHE_MAP="/home/$USER/.cache/ffmes/map-$(date +%Y%m%s%N).info"						# map-DATE.info, map file
 FFMES_CACHE_TAG="/home/$USER/.cache/ffmes/tag-$(date +%Y%m%s%N).info"						# tag-DATE.info, audio tag file
+FFMES_CACHE_CONCAT="/home/$USER/.cache/ffmes/contat-$(date +%Y%m%s%N).info"					# contat-DATE.info, concatenate list file
 LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdvd cache
 ABCDE_EXTRACT="/home/$USER/Music"															# abcde extract directory
 ABCDE_CONF="$FFMES_PATH/conf/abcde-ffmes.conf"												# abcde configuration file
@@ -23,12 +24,14 @@ VGM_TAG="/home/$USER/.cache/ffmes/vgmtag-$(date +%Y%m%s%N).info"							# vgm tag
 OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player drives names
 
 # General variables
-NPROC=$(nproc --all| awk '{ print $1 - 1 }')												# Set number of processor
+NPROC=$(nproc --all)																		# Set number of processor
+CPULOADMAX="97"																				# CPU usage max. in percent
+AutoCPULoad="1"																				# adaptive CPU load = 1 = activate
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
 COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3 tesseract subp2tiff subptools wget)
 LIB_NEEDED=(libao)
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# Hide ffmpeg log
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# ffmpeg log
 
 # Video variables
 X265_LOG_LVL="log-level=error:"																# Hide x265 codec log
@@ -36,7 +39,7 @@ VIDEO_EXT_AVAILABLE="mkv|vp9|m4v|m2ts|avi|ts|mts|mpg|flv|mp4|mov|wmv|3gp|vob|mpe
 SUBTI_EXT_AVAILABLE="srt|ssa|idx|sup"
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
-NVENC="1"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
+NVENC="2"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
@@ -48,7 +51,7 @@ RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 PeakNormDB="0"																				# Peak db normalization option, this value is written as positive but is used in negative, e.g. 4 = -4
 
 # VGM variables
-VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|int|ktss|laac|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sad|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
+VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|imc|int|ktss|laac|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sad|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 
 # Messages
@@ -111,6 +114,7 @@ Usage: ffmes [options]
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
                           Default: 2
+  --noautocpu             No use adaptive CPU load function
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -v|--verbose            Display ffmpeg log level as info.
@@ -145,7 +149,8 @@ if test -n "$TESTARGUMENT"; then		# if argument
 	fi
 else									# if no argument -> batch
 	# List source(s) video file(s) & number of differents extentions
-	mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	#mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
 	mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	# List source(s) audio file(s) & number of differents extentions
 	mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
@@ -207,6 +212,8 @@ Clean() {						# Clean Temp
 find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;			# consider if file exist in cache directory after 3 days, delete it
 rm "$FFMES_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_MAP" &>/dev/null
+rm "$FFMES_CACHE_CONCAT" &>/dev/null
+rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 rm "$VGM_TAG" &>/dev/null
 }
@@ -226,9 +233,9 @@ fi
 CheckFiles() {					# Promp a message to user with number of video, audio, sub to edit, and command not found
 # Video
 if  [[ $TESTARGUMENT == *"Video"* ]]; then
-	echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
+	echo "  * Video to edit: ${LSTVIDEO[0]##*/}" | DisplayTruncate
 elif  [[ $TESTARGUMENT != *"Video"* ]] && [ "$NBV" -eq "1" ]; then
-	echo "  * Video to edit: ${LSTVIDEO[0]}" | DisplayTruncate
+	echo "  * Video to edit: ${LSTVIDEO[0]##*/}" | DisplayTruncate
 elif [ "$NBV" -gt "1" ]; then                 # If no arg + 1> videos
 	echo -e "  * Video to edit: $NBV files"
 fi
@@ -286,8 +293,9 @@ echo
 echo "  / ffmes $VERSION /"
 echo "  -----------------------------------------------------"
 echo "   0 - DVD rip                                        |"
-echo "   1 - video encoding, full custom options            |-Video"
-echo "   2 - copy stream to mkv with map option             |"
+echo "   1 - video encoding                                 |-Video"
+echo "   2 - video encoding by file splitting (beta)        |"
+echo "   3 - copy stream to mkv with map option             |"
 echo "  -----------------------------------------------------"
 echo "  10 - view detailed video file informations          |"
 echo "  11 - add audio stream or subtitle in video file     |-Video Tools"
@@ -374,6 +382,19 @@ if [[ -z "$VERBOSE" ]]; then
 	unset _sp_pid
 fi
 }
+CPULoadAdjustVideo() {			#
+if [ "$AutoCPULoad" -eq "1" ]; then				# 1 = activated
+	local CurrentCPULoad=$(cat <(grep 'cpu ' /proc/stat) <(sleep 1 && grep 'cpu ' /proc/stat) | awk -v RS="" '{print ($13-$2+$15-$4)*100/($13-$2+$15-$4+$16-$5)}' | cut -f1 -d".")
+	local CurrentLoad=$(cat /proc/loadavg | awk '{ print $1 }' | cut -f1 -d".")
+	local ffmpegProcess=$(ps --no-headers -C ffmpeg | wc -l)
+
+	if [ "$CurrentCPULoad" -lt "$CPULOADMAX" ] && [ "$CurrentLoad" -le "$NPROC" ] && [ "$NVENC" -le "$NPROC" ]; then
+		NVENC=$((NVENC+1))
+	elif [ "$CurrentCPULoad" -ge "$CPULOADMAX" ] && [ "$CurrentCPULoad" -gt "$NPROC" ]; then
+		NVENC=$((NVENC-1))
+	fi
+fi
+}
 ffmesUpdate() {					# Option 99  	- ffmes ugly update to last version (hidden option)
 mkdir "$FFMES_PATH"/update-temp
 cd "$FFMES_PATH"/update-temp
@@ -384,6 +405,43 @@ rm -R "$FFMES_PATH"/bin
 cp -R -- "$FFMES_PATH"/update-temp/ffmes/* "$FFMES_PATH"/
 rm -R "$FFMES_PATH"/update-temp
 }
+ProgressBarString(){
+  local s=$1
+  local n=$2
+  for((i=0;i<n; i++)); do echo -n "$s"; done
+}
+ProgressBar(){
+  local percentage=$1
+  local file=$3
+  local time=$4
+  local status=$5
+  local width=$(echo "scale=0; 0.3 * $TERM_WIDTH" | bc | cut -d. -f1)
+  local equals_n=$(echo "$percentage * $width / 100" | bc | cut -d. -f1)
+  local dots_n=$((width - equals_n))
+
+  #ANSI escape sequence magic
+  local Esc="\033["
+  local up="$Esc""K""$Esc""1A""$Esc""K"
+
+  #Clear the line
+  ProgressBarString ' ' "$TERM_WIDTH"
+  echo -ne "\r"
+
+  #Print the current screen
+  printf  "%5s%% [" " $percentage "
+    ProgressBarString '=' "$equals_n"
+    ProgressBarString '.' "$dots_n"
+  echo -n "] [$time] [$status]     "
+
+  #Go up unless finished
+  if [[ "$percentage" == 100 ]] 
+  then
+    echo
+  else
+    echo -e "$up"
+  fi
+}
+
 ## VIDEO SECTION
 FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	START=$(date +%s)							# Start time counter
@@ -392,7 +450,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	for files in "${LSTVIDEO[@]}"; do
 
 		if [ "$ENCODV" != "1" ]; then
-			StartLoading "Test timestamp of: $files"
+			StartLoading "Test timestamp of: ${files##*/}"
 			TimestampTest=$(ffprobe -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$files" | awk -F',' '/K/ {print $1}' | tail -1)
 			shopt -s nocasematch
 			if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
@@ -402,7 +460,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 			StopLoading $?
 		fi
 
-		echo "FFmpeg processing: ${files%.*}.$videoformat.$extcont"
+		echo "FFmpeg processing: ${files##*/}"
 		(
 		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${files%.*}".$videoformat.$extcont
 		) &
@@ -465,6 +523,236 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	echo "$MESS_SEPARATOR"
 	echo
 }
+FFmpeg_video_cmd2() {			# FFmpeg video encoding command
+	START=$(date +%s)							# Start time counter
+
+	stty igncr									# Disable the enter key
+
+	for files in "${LSTVIDEO[@]}"; do
+		unset LSTVIDEOSPLIT
+		unset LSTVIDEOSPLITED
+		unset COUNTER
+		unset TimePartial
+
+		# Create Temp directory for splited video
+		ffmesSplitCache=$(echo "ffmes-split-cache-$(date +%Y%m%s%N)")
+		if [ ! -d "$ffmesSplitCache" ]; then
+			mkdir -p "$ffmesSplitCache"
+		else
+			rm -R "$ffmesSplitCache"
+			mkdir -p "$ffmesSplitCache"
+		fi
+		# Get size of video
+		FilesSize=$(du -chsm "$files" | tail -n1 | awk '{print $1;}')
+		# Select size of splited file
+		if [ "$FilesSize" -ge 0 ] && [ "$FilesSize" -lt 10 ]; then
+			VideoSplitedSize="1M"
+		elif [ "$FilesSize" -gt 10 ] && [ "$FilesSize" -le 50 ]; then
+			VideoSplitedSize="5M"
+		elif [ "$FilesSize" -gt 50 ] && [ "$FilesSize" -le 100 ]; then
+			VideoSplitedSize="10M"
+		elif [ "$FilesSize" -gt 100 ] && [ "$FilesSize" -le 500 ]; then
+			VideoSplitedSize="30M"
+		elif [ "$FilesSize" -gt 500 ] && [ "$FilesSize" -le 1000 ]; then
+			VideoSplitedSize="55M"
+		elif [ "$FilesSize" -gt 1000 ]; then
+			VideoSplitedSize="100M"
+		fi
+		
+		# Display
+		echo " FFmpeg processing: ${files##*/}"
+
+		# Split file
+		StartSplit=$(date +%s)							# Start time counter
+		if [[ -z "$VERBOSE" ]]; then
+			mkvmerge -q --split "$VideoSplitedSize" -o "$ffmesSplitCache"/Split_%09d.mkv "$files" &
+			mkvmergePID=$!
+			if [ "${mkvmergePID}" -eq "0" ]; then
+				SplitStatus="Splitting ⚠"
+			else
+				SplitStatus="Splitting"
+				SourceSizeSplitted=$(du -chsm "$files" | tail -n1 | awk '{print $1;}')
+				unset StopBar
+				while [ -d /proc/$mkvmergePID ]; do
+					if [[ "$StopBar" != 1 ]]; then
+						sleep 0.1
+						TimePartial=$(date +%s)
+						TimePartialDiffs=$(($TimePartial-$StartSplit))
+						TimePartialLabel=$(echo "$((TimePartialDiffs/3600))h$((TimePartialDiffs%3600/60))m$((TimePartialDiffs%60))s")
+						TargetSizeSplitted=$(du -chsm "$ffmesSplitCache"/ | tail -n1 | awk '{print $1;}')
+						PercBar=$((200*$TargetSizeSplitted/$SourceSizeSplitted % 2 + 100*$TargetSizeSplitted/$SourceSizeSplitted)) # Rounded percentage
+						if [[ "$PercBar" == 100 ]]; then
+							SplitStatus="Splitting ✓"
+							StopBar="1"
+						fi
+						ProgressBar "$PercBar" "" "" "$TimePartialLabel" "$SplitStatus"
+					fi
+				done
+			fi
+		else
+			mkvmerge --split "$VideoSplitedSize" -o "$ffmesSplitCache"/Split_%09d.mkv "$files"
+		fi
+
+		# Generate array with splited files
+		mapfile -t LSTVIDEOSPLIT < <(find "$ffmesSplitCache"/ -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+		NBVSPLIT="${#LSTVIDEOSPLIT[@]}"
+
+		# Encoding split files
+		NBVTHREATED="0"
+		StartEncoding=$(date +%s)							# Start time counter
+		for filesSplited in "${LSTVIDEOSPLIT[@]}"; do
+			if [ "$ENCODV" != "1" ]; then
+				TimestampTest=$(ffprobe -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$filesSplited" | awk -F',' '/K/ {print $1}' | tail -1)
+				shopt -s nocasematch
+				if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
+					TimestampRegen="-fflags +genpts"
+				fi
+				shopt -u nocasematch
+			fi
+			if [[ -z "$VERBOSE" ]]; then
+				sem -j$NVENC ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$filesSplited" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${filesSplited%.*}".$videoformat.$extcont 2>/dev/null
+				ffmpegStatus=$?
+				if [ "${ffmpegStatus}" -ne "0" ]; then
+					NBVTHREATED="0"
+					EncodingStatus="Encoding ⚠"
+				else
+					NBVTHREATED=$(($COUNTER+1))
+					if [ "$NBVTHREATED" -eq "$NBVSPLIT" ]; then
+						EncodingStatus="Encoding ✓"
+					else
+						EncodingStatus="Encoding"
+					fi
+				fi
+			else
+				sem -j$NVENC ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$filesSplited" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${filesSplited%.*}".$videoformat.$extcont
+			fi
+
+			# Encoding Bar
+			if [[ -z "$VERBOSE" ]]; then
+				TimePartial=$(date +%s)
+				TimePartialDiffs=$(($TimePartial-$StartEncoding))
+				TimePartialLabel=$(echo "$((TimePartialDiffs/3600))h$((TimePartialDiffs%3600/60))m$((TimePartialDiffs%60))s")
+				COUNTER=$NBVTHREATED
+				PercBar=$((200*$NBVTHREATED/$NBVSPLIT % 2 + 100*$NBVTHREATED/$NBVSPLIT)) # Rounded percentage
+				ProgressBar "$PercBar" "" "" "$TimePartialLabel" "$EncodingStatus"
+			fi
+
+			# Launch CPU load adjust after 10s of encoding
+			TimePartialCPULoad=$(date +%s)
+			TimeDelayCPULoad=$(($TimePartialCPULoad-$START))
+			if [ "$TimeDelayCPULoad" -gt 10 ]; then
+				CPULoadAdjustVideo
+			fi
+
+		done
+		sem --wait
+
+		for f in "${LSTVIDEOSPLIT[@]}"; do
+			rm -f "$f" 2> /dev/null
+		done
+
+		# Generate array with encoded split files
+		mapfile -t LSTVIDEOSPLITED < <(find "$PWD"/"$ffmesSplitCache"/ -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+		NBVSPLITED="${#LSTVIDEOSPLITED[@]}"
+
+		# Concatenate encoded split files
+		for filesSplitedEncoded in "${LSTVIDEOSPLITED[@]}"; do
+			quote0="'"
+			quote1="'\\\\\\''"
+			parsedFile=$(echo "$filesSplitedEncoded" | sed "s/$quote0/$quote1/g")
+			echo "file '$parsedFile'" >> "$FFMES_CACHE_CONCAT"
+		done
+
+		# Merging files
+		StartMerging=$(date +%s)							# Start time counter
+		if [[ -z "$VERBOSE" ]]; then
+			ffmpeg $FFMPEG_LOG_LVL -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy "${files%.*}".$videoformat.$extcont 2>/dev/null &
+			ffmpegPID=$!
+			if [ "${ffmpegPID}" -eq "0" ]; then
+				MergeStatus="Merging ⚠"
+			else
+				MergeStatus="Merging"
+				SourceSizeSplitted=$(du -chsm "${LSTVIDEOSPLITED[@]}" | tail -n1 | awk '{print $1;}')
+				unset StopBar
+				while [ -d /proc/$ffmpegPID ]; do
+					if [[ "$StopBar" != 1 ]]; then
+						sleep 0.1
+						TimePartial=$(date +%s)
+						TimePartialDiffs=$(($TimePartial-$StartMerging))
+						TimePartialLabel=$(echo "$((TimePartialDiffs/3600))h$((TimePartialDiffs%3600/60))m$((TimePartialDiffs%60))s")
+						TargetSizeSplitted=$(du -chsm "${files%.*}".$videoformat.$extcont 2>/dev/null | tail -n1 | awk '{print $1;}')
+						PercBar=$((200*$TargetSizeSplitted/$SourceSizeSplitted % 2 + 100*$TargetSizeSplitted/$SourceSizeSplitted)) # Rounded percentage
+						if [[ "$PercBar" == 100 ]]; then
+							MergeStatus="Merging ✓"
+							StopBar="1"
+						fi
+						ProgressBar "$PercBar" "" "" "$TimePartialLabel" "$MergeStatus"
+					fi
+				done
+			fi
+		else
+			ffmpeg $FFMPEG_LOG_LVL -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy "${files%.*}".$videoformat.$extcont
+		fi
+
+		# Clean
+		rm -R "$FFMES_CACHE_CONCAT"
+		rm -R "$ffmesSplitCache"
+
+		# Display
+		echo "$MESS_SEPARATOR"
+	done
+	stty -igncr									# Enable the enter key
+
+	END=$(date +%s)								# End time counter
+	
+	# Check target if valid (size test), if valid mkv fix target stats, and and clean
+	filesPass=()
+	filesReject=()
+	filesSourcePass=()
+	for files in "${LSTVIDEO[@]}"; do
+			if [[ $(stat --printf="%s" "${files%.*}"."$videoformat"."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+				# if mkv regenerate stats
+				if [ "$extcont" = "mkv" ]; then
+					mkvpropedit --add-track-statistics-tags "${files%.*}".$videoformat.$extcont >/dev/null 2>&1
+				fi
+				# populate array
+				filesPass+=("${files%.*}"."$videoformat"."$extcont")
+				filesSourcePass+=("$files")
+			else																	# if file<30 KBytes rejected
+				filesReject+=("${files%.*}"."$videoformat"."$extcont")
+				rm "${files%.*}"."$videoformat"."$extcont" 2>/dev/null
+			fi
+	done
+
+	# Make statistics of processed files
+	DIFFS=$(($END-$START))															# counter in seconds
+	NBVO="${#filesPass[@]}"															# Count file(s) passed
+	if [ "$NBVO" -eq 0 ] ; then
+		SSIZVIDEO="0"
+		TSSIZE="0"
+		PERC="0"
+	else
+		SSIZVIDEO=$(du -chsm "${filesSourcePass[@]}" | tail -n1 | awk '{print $1;}')	# Source file(s) size
+		TSSIZE=$(du -chsm "${filesPass[@]}" | tail -n1 | awk '{print $1;}')				# Target(s) size
+		PERC=$(bc <<< "scale=2; ($TSSIZE - $SSIZVIDEO)/$SSIZVIDEO * 100")				# Size difference between source and target
+	fi
+	
+	# End: encoding messages
+	if test -n "$filesPass"; then
+		echo " File(s) created:"
+		printf '  %s\n' "${filesPass[@]}"
+	fi
+	if test -n "$filesReject"; then
+		echo " File(s) in error:"
+		printf '  %s\n' "${filesReject[@]}"
+	fi
+	echo "$MESS_SEPARATOR"
+	echo " $NBVO/$NBV file(s) have been processed."
+	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
+	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
+	echo "$MESS_SEPARATOR"
+	echo
+}
 VideoSourceInfo() {				# Video source stats
 	# Add all stats in temp.stat.info
 	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
@@ -492,7 +780,7 @@ VideoSourceInfo() {				# Video source stats
 	# Grep source size, chapter number && add file name, size, chapter number
 	ChapterNumber=$(< $FFMES_CACHE/temp.stat.info grep Chapter | tail -1 | awk '{print $4, "chapters"}')
 	SourceSize=$(wc -c "${LSTVIDEO[0]}" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
-	sed -i '1 i\    '"$LSTVIDEO, size: $SourceSize MB, $ChapterNumber"'' "$FFMES_CACHE_STAT"
+	sed -i '1 i\    '"${LSTVIDEO[0]##*/}, size: $SourceSize MB, $ChapterNumber"'' "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
 	sed -i '1 i\ Source file stats:' "$FFMES_CACHE_STAT"
@@ -1161,7 +1449,7 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 	}
 CustomVideoStream() {			# Option 1,2	- Conf stream selection
 	if [ "$nbstream" -gt 2 ] ; then				# If $nbstream > 2 = map question
-		if [ "$reps" -le 1 ]; then				# Display summary target if in profile 1 or 0
+		if [ "$reps" -le 2 ] ; then				# Display summary target if in profile 0, 1, 2
 			CustomInfoChoice
 		else 									# Display streams stats if no in profile 1 (already make by CustomInfoChoice)
 			clear
@@ -1223,6 +1511,9 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
     if test -z "$videoformat"; then
         videoformat=$filevcodec.$fileacodec
     fi
+    
+	# Reset display (last question before encoding)
+	CustomInfoChoice
 	}
 CustomVideoContainer() {		# Option 1  	- Conf container mkv/mp4
 	CustomInfoChoice
@@ -1249,6 +1540,10 @@ CustomVideoContainer() {		# Option 1  	- Conf container mkv/mp4
 			container="matroska"
 		;;
 	esac
+	if [ "$nbstream" -lt 3 ] ; then
+		# Reset display (last question before encoding)
+		CustomInfoChoice
+	fi
 	}
 Confmpeg4() {					# Option 1  	- Conf Xvid 
 	CustomInfoChoice
@@ -1528,6 +1823,11 @@ Confx264_5() {					# Option 1  	- Conf x264/x265
 	echo " Note: This settings influences size and quality, crf is a better choise in 90% of cases."
 	echo
 	echo "$MESS_SEPARATOR"
+	echo " cbr bitrate calculation example:"
+	echo " (200 MiB * 8192 [converts MiB to kBit]) / 600 seconds = ~2730 kBit/s total bitrate"
+	echo " 2730 - 128 kBit/s (desired audio bitrate) = 2602 kBit/s video bitrate"
+	echo
+	echo "$MESS_SEPARATOR"
 	echo " [1200k]     Example of input format for cbr desired bitrate"
 	echo " [-crf 21]   Example of input format for crf desired level"
 	echo
@@ -1662,7 +1962,7 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 	echo " Note: * Before you start, make sure that the files all have the same height/width, codecs and bitrates."
 	echo
 	echo " Files to concatenate:"
-	printf '  %s\n' "${LSTVIDEO[@]}"
+	printf '  %s\n' "${LSTVIDEO[@]##*/}"
 	echo
 	echo " *[↵] > for continue"
 	echo "  [q] > for exit"
@@ -1678,14 +1978,14 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 			quote0="'"
 			quote1="'\\\\\\''"
 			parsedFile=$(echo "$files" | sed "s/$quote0/$quote1/g")
-			echo "file '$parsedFile'" >> concat-list.info
+			echo "file '$parsedFile'" >> "$FFMES_CACHE_CONCAT"
 		done
 
 		# Concatenate
-		ffmpeg $FFMPEG_LOG_LVL -f concat -safe 0 -i concat-list.info -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
+		ffmpeg $FFMPEG_LOG_LVL -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
 
 		# Clean
-		rm concat-list.info
+		rm "$FFMES_CACHE_CONCAT"
 
 		# End time counter
 		END=$(date +%s)
@@ -2329,7 +2629,7 @@ MultipleVideoExtention() {		# Sources video multiple extention question
 		if [ "$VIDEO_EXT_AVAILABLE" = "q" ]; then
 			Restart
 		elif test -n "$VIDEO_EXT_AVAILABLE"; then
-			mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+			mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
 			NBV="${#LSTVIDEO[@]}"
 		fi
 	fi
@@ -2615,7 +2915,8 @@ for files in "${LSTAUDIO[@]}"; do
 	else
 		filesOverwrite+=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')		# Populate array with random strimg
 	fi
-	# Encoding
+
+	#Encoding
 	(
 	if [[ -z "$VERBOSE" ]]; then
 		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
@@ -2624,7 +2925,7 @@ for files in "${LSTAUDIO[@]}"; do
 	fi
 	StopLoading $?
 	) &
-	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
 		wait -n
 	fi
 done
@@ -5228,7 +5529,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*hps|*HPS|*int|*INT|*laac|*LAAC|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG|*sad|*SAD)					# Various Machines
+				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*hps|*HPS|*int|*INT|*laac|*LAAC|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG|*sad|*SAD|*imc|*IMC)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -5365,6 +5666,9 @@ while [[ $# -gt 0 ]]; do
 			fi
 		fi
     ;;
+    --noautocpu)																					# no adaptive CPU load
+		unset AutoCPULoad																			# Unset VAAPI device
+    ;;
     --novaapi)																						# No VAAPI 
 		unset VAAPI_device																			# Unset VAAPI device
     ;;
@@ -5462,7 +5766,27 @@ case $reps in
 	fi
 	;;
 
- 2 ) # video -> mkv|copy|copy
+ 2 ) # video -> full custom - splited video encoding
+	if [ "$NBV" -gt "0" ]; then
+	MultipleVideoExtention
+    StartLoading "Analysis of: ${LSTVIDEO[0]}"
+	VideoSourceInfo
+	StopLoading $?
+	CustomVideoEncod                               # question for make video custom encoding
+	CustomAudioEncod                               # question for make sound custom encoding
+	CustomVideoContainer                           # question for make container custom encoding
+	CustomVideoStream                              # question for make stream custom encoding (appear source have more of 2 streams)
+	FFmpeg_video_cmd2                               # encoding
+	RemoveVideoSource
+	Clean                                          # clean temp files
+	else
+        echo
+        echo "$MESS_ZERO_VIDEO_FILE_AUTH"
+        echo
+	fi
+	;;
+
+ 3 ) # video -> mkv|copy|copy
  	if [ "$NBV" -gt "0" ]; then
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # VIDEO ---------------------------------------------------------------------------------

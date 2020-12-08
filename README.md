@@ -35,6 +35,7 @@ Options:
 * -i|--input <file> : treat one file
 * -i|--input <directory> : treat in batch a specific directory
 * -h|--help : display help
+* --noautocpu : no use adaptive CPU load function
 * --novaapi : no use vaapi for decode video.
 * -j|--videojobs <number> : number of video encoding in same time (default: 2)
 * -s|--select <number> : preselect option 
@@ -77,8 +78,9 @@ All come from open source programs.
 ### Main menu options
 * Video:
 	* 0, DVD rip (vob, ISO, or disc)
-	* 1, video encoding, full custom options
-	* 2, copy stream to mkv with map option
+	* 1, video encoding
+	* 2, video encoding by file splitting (beta)
+	* 3, copy stream to mkv with map option
 * Video tools:
 	* 10, view detailed video file informations
 	* 11, add audio stream or subtitle in video file
@@ -141,7 +143,19 @@ All come from open source programs.
 	* mkv & mp4 support
 * Map streams selection
 
-### Option 2 details - copy stream to mkv with map option
+### Option 2 details - video encoding by file splitting, full custom options
+This option has the same adjustment as option 1.
+Differences in the encoding:
+* the file is not treated in a classical way. Video is splitted with mkvmerge and part is encoded and merged with ffmpeg. Some tests:
+	* Ryzen 3600, video duration: 2h    h264 1080p -> x265 720p  = 18% faster
+	* Ryzen 3600, video duration: 2h10  h264 1080p -> x265 1080p = 10% faster
+	* Ryzen 3600, video duration: 30s   hevc 4k    -> x265 4k    = 2%  faster
+	* Ryzen 3600, video duration: 30s   hevc 4k    -> x265 1080p = 0%  faster
+	* Ryzen 3600, video duration: 20m   hevc 720p  -> x265 720p  = 19% faster
+* Using a CPU management function, start with the default NVENC value (2 processes), then if power is available add an ffmpeg process, or conversely remove one in case of overload.
+This option is currently in beta, although successful in some cases, it requires long-term adjustments.
+
+### Option 3 details - copy stream to mkv with map option
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
 ### Option 15 details - add audio stream with night normalization
@@ -202,7 +216,7 @@ Files supported :
 * Sony Playstation 4: wem
 * Sony PSP: at3
 * Panasonic 3DO: aifc, str
-* PC: mod, voc, fsb
+* PC: fsb, imc, mod, voc
 * Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, wem
 * Various machines CD-DA: bin, bin/cue, iso/cue
 
@@ -288,12 +302,13 @@ Restriction:
 	* Description: action performed after encoding at "Remove source audio?" question
 	* 0=no remove
 	* 1=remove
-* PeakNormDB (default=3)
+* PeakNormDB (default=0)
 	* Description: Peak db normalization option, this value is written as positive but is used in negative (e.g. 4 = -4)
 
 --------------------------------------------------------------------------------------------------
 ## Issue
 * rename bug with mv and CIFS mount: add `cache=loose` in your mount option
+* CUE split fail with 24bits audio
 
 --------------------------------------------------------------------------------------------------
 ## Holy reading

@@ -1,4 +1,16 @@
 # Changelog
+v0.63:
+* Video:
+	* add - example cbr bitrate calulation for x264/x265
+	* add - option 2, video encoding by file splitting with full custom options (see documentation for details)
+	* add - for option 2, a CPU management function, encoding starts with the default NVENC value, then if power is available adds an ffmpeg process or conversely removes some in case of overload. Optional, force disable with argument.
+	* add - for option 2, a progress bar replace ffmpeg -stat
+* VGM:
+	* add - support of PC files in imc (LucasArts iMUSE VIMA ADPCM)
+* Various:
+	* chg - replace parallel function by bash semaphore (more precision)
+	* chg - now video list get with full path
+
 v0.62:
 * Video:
 	* add - if VAAPI device found at /dev/dri/renderD128, it's used for decode video (increases the encoding speed very slightly)
