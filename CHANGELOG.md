@@ -1,4 +1,8 @@
 # Changelog
+v0.64b:
+* Video:
+	* fix - for encoding in libx265 and libx264, tune and profile reappears
+
 v0.64a:
 * Various:
 	* fix - nemo action in readme

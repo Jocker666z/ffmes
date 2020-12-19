@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.64a
+VERSION=v0.64b
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -388,7 +388,7 @@ rm -R "$FFMES_PATH"/bin
 cp -R -- "$FFMES_PATH"/update-temp/ffmes/* "$FFMES_PATH"/
 rm -R "$FFMES_PATH"/update-temp
 }
-ProgressBar() {
+ProgressBar() {					# Audio process progress bar
 	let _progress=(${1}*100/${2}*100)/100
 	let _done=(${_progress}*4)/10
 	let _left=40-$_done
@@ -404,7 +404,7 @@ else
 	printf "\033[2A"
 fi
 }
-ProgressBarClean() {			# ProgressBar vertical clean trick
+ProgressBarClean() {			# Progress bar vertical clean trick
 tput el
 tput cuu 1 && tput el
 }
@@ -430,7 +430,9 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 		echo "FFmpeg processing: ${files##*/}"
 		(
+		set -x
 		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -metadata title="${TagTitle%.*}" -max_muxing_queue_size 4096 -f $container "${files%.*}".$videoformat.$extcont
+		set +x
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 			wait -n
@@ -534,7 +536,7 @@ VideoSourceInfo() {				# Video source stats
 	SWIDTH=$(mediainfo --Inform="Video;%Width%" "${LSTVIDEO[0]}")
 	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
 }
-VideoAudioSourceInfo() {		# Video source stats / Audio only with stream order
+VideoAudioSourceInfo() {		# Video source stats / Audio only with stream order (for audio night normalization)
 	# Add all stats in temp.stat.info
 	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
@@ -1371,7 +1373,7 @@ fi
 
 # Tune x264/x265
 CustomInfoChoice
-if [ "$chvcodec" = "x264" ]; then
+if [ "$chvcodec" = "H264" ]; then
 	echo " Choose tune:"
 	echo " Note: This settings influences the final rendering of the image, and speed of encoding."
 	echo
@@ -1417,7 +1419,7 @@ if [ "$chvcodec" = "x264" ]; then
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
 		chtune="ffmes-film"
 	fi
-elif [ "$chvcodec" = "x265" ]; then
+elif [ "$chvcodec" = "HEVC" ]; then
 	echo " Choose tune:"
 	echo " Notes: * This settings influences the final rendering of the image, and speed of encoding."
 	echo "        * By default x265 always tunes for highest perceived visual."
@@ -1455,7 +1457,7 @@ fi
 
 # Profile x264/x265
 CustomInfoChoice
-if [ "$chvcodec" = "x264" ]; then
+if [ "$chvcodec" = "H264" ]; then
 	echo " Choose the profile:"
 	echo " Note: The choice of the profile affects the compatibility of the result,"
 	echo "       be careful not to apply any more parameters to the source file (no positive effect)"
@@ -1504,7 +1506,7 @@ if [ "$chvcodec" = "x264" ]; then
 		profile="-profile:v high -level 4.1"
 		chprofile="High 4.1"
 	fi
-elif [ "$chvcodec" = "x265" ]; then
+elif [ "$chvcodec" = "HEVC" ]; then
 	echo " Choose a profile or make your profile manually:"
 	echo " Notes: * For bit and chroma settings, if the source is below the parameters, FFmpeg will not replace them but will be at the same level."
 	echo "        * The level (lvl) parameter must be chosen judiciously according to the bit rate of the source file and the result you expect."
@@ -2054,7 +2056,7 @@ CutVideo() {					# Option 14 	- Cut video
 	echo "$MESS_SEPARATOR"
 	echo
 }
-AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization in opus/stereo/350kb
+AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization in opus/stereo/320kb
 	clear
     echo
     cat "$FFMES_CACHE_STAT"
@@ -5477,7 +5479,7 @@ shift
 done
 
 CheckCacheDirectory							# Check if cache directory exist
-StartLoading "Search the files processed"
+StartLoading "Listing of media files to be processed"
 SetGlobalVariables							# Set global variable
 DetectCDDVD									# CD/DVD detection
 TestVAAPI									# VAAPI detection
