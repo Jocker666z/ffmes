@@ -16,7 +16,7 @@ Source media files, supported extension:
 * `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
 * `unzip master.zip && mv ffmes-master ffmes && rm master.zip`
 * `cd ffmes && chmod a+x ffmes.sh`
-* `echo "alias ffmes=\"cd '%P' && bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
+* `echo "alias ffmes=\"bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
 * Nemo action:
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
@@ -24,7 +24,7 @@ Source media files, supported extension:
 Active=true
 Name=ffmes %N
 Comment=ffmes %N
-Exec=gnome-terminal -- bash -c "~/ffmes/ffmes.sh -i '%F'; bash"
+Exec=gnome-terminal -- bash -c "cd '%P' && ~/ffmes/ffmes.sh -i '%F'; bash"
 Selection=any
 Extensions=any;
 ```

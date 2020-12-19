@@ -1,4 +1,8 @@
 # Changelog
+v0.64a:
+* Various:
+	* fix - nemo action in readme
+
 v0.64:
 * Video:
 	* add - title tag of video is now updated by source filename
