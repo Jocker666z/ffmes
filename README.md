@@ -4,7 +4,7 @@ Bash tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. In b
 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
-* Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv
+* Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts
 * Subtitle in *.srt *.ssa *.sub *.sup
 * VGM files (see documentation)
 
@@ -16,7 +16,7 @@ Source media files, supported extension:
 * `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
 * `unzip master.zip && mv ffmes-master ffmes && rm master.zip`
 * `cd ffmes && chmod a+x ffmes.sh`
-* `echo "alias ffmes=\"bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
+* `echo "alias ffmes=\"cd '%P' && bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
 * Nemo action:
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
@@ -35,9 +35,8 @@ Options:
 * -i|--input <file> : treat one file
 * -i|--input <directory> : treat in batch a specific directory
 * -h|--help : display help
-* --noautocpu : no use adaptive CPU load function
 * --novaapi : no use vaapi for decode video.
-* -j|--videojobs <number> : number of video encoding in same time (default: 2)
+* -j|--videojobs <number> : number of video encoding in same time (default: 3)
 * -s|--select <number> : preselect option 
 * -v|--verbose : display ffmpeg log level as info
 * -vv|--fullverbose : display ffmpeg log level as debug
@@ -79,8 +78,7 @@ All come from open source programs.
 * Video:
 	* 0, DVD rip (vob, ISO, or disc)
 	* 1, video encoding
-	* 2, video encoding by file splitting (beta)
-	* 3, copy stream to mkv with map option
+	* 2, copy stream to mkv with map option
 * Video tools:
 	* 10, view detailed video file informations
 	* 11, add audio stream or subtitle in video file
@@ -143,19 +141,7 @@ All come from open source programs.
 	* mkv & mp4 support
 * Map streams selection
 
-### Option 2 details - video encoding by file splitting, full custom options
-This option has the same adjustment as option 1.
-Differences in the encoding:
-* the file is not treated in a classical way. Video is splitted with mkvmerge and part is encoded and merged with ffmpeg. Some tests:
-	* Ryzen 3600, video duration: 2h    h264 1080p -> x265 720p  = 18% faster
-	* Ryzen 3600, video duration: 2h10  h264 1080p -> x265 1080p = 10% faster
-	* Ryzen 3600, video duration: 30s   hevc 4k    -> x265 4k    = 2%  faster
-	* Ryzen 3600, video duration: 30s   hevc 4k    -> x265 1080p = 0%  faster
-	* Ryzen 3600, video duration: 20m   hevc 720p  -> x265 720p  = 19% faster
-* Using a CPU management function, start with the default NVENC value (2 processes), then if power is available add an ffmpeg process, or conversely remove one in case of overload.
-This option is currently in beta, although successful in some cases, it requires long-term adjustments.
-
-### Option 3 details - copy stream to mkv with map option
+### Option 2 details - copy stream to mkv with map option
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
 ### Option 15 details - add audio stream with night normalization

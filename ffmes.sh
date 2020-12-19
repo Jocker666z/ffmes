@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.63
+VERSION=v0.64
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -25,8 +25,6 @@ OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player dr
 
 # General variables
 NPROC=$(nproc --all)																		# Set number of processor
-CPULOADMAX="97"																				# CPU usage max. in percent
-AutoCPULoad="1"																				# adaptive CPU load = 1 = activate
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
 COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk python3 tesseract subp2tiff subptools wget)
@@ -43,7 +41,7 @@ NVENC="2"																					# Set number of video encoding in same time, the c
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
-AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv"
+AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv|dts"
 CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
@@ -113,8 +111,7 @@ Usage: ffmes [options]
   -i|--input <directory>  Treat in batch a specific directory.
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
-                          Default: 2
-  --noautocpu             No use adaptive CPU load function
+                          Default: 3
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -v|--verbose            Display ffmpeg log level as info.
@@ -242,9 +239,9 @@ fi
 
 # Audio
 if  [[ $TESTARGUMENT == *"Audio"* ]]; then
-	echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
+	echo "  * Audio to edit: ${LSTAUDIO[0]##*/}" | DisplayTruncate
 elif [[ $TESTARGUMENT != *"Audio"* ]] && [ "$NBA" -eq "1" ]; then
-	echo "  * Audio to edit: ${LSTAUDIO[0]}" | DisplayTruncate
+	echo "  * Audio to edit: ${LSTAUDIO[0]##*/}" | DisplayTruncate
 elif test -z "$ARGUMENT" && [ "$NBA" -gt "1" ]; then                 # If no arg + 1> videos
 	echo -e "  * Audio to edit: $NBA files"
 fi
@@ -294,8 +291,7 @@ echo "  / ffmes $VERSION /"
 echo "  -----------------------------------------------------"
 echo "   0 - DVD rip                                        |"
 echo "   1 - video encoding                                 |-Video"
-echo "   2 - video encoding by file splitting (beta)        |"
-echo "   3 - copy stream to mkv with map option             |"
+echo "   2 - copy stream to mkv with map option             |"
 echo "  -----------------------------------------------------"
 echo "  10 - view detailed video file informations          |"
 echo "  11 - add audio stream or subtitle in video file     |-Video Tools"
@@ -382,19 +378,6 @@ if [[ -z "$VERBOSE" ]]; then
 	unset _sp_pid
 fi
 }
-CPULoadAdjustVideo() {			#
-if [ "$AutoCPULoad" -eq "1" ]; then				# 1 = activated
-	local CurrentCPULoad=$(cat <(grep 'cpu ' /proc/stat) <(sleep 1 && grep 'cpu ' /proc/stat) | awk -v RS="" '{print ($13-$2+$15-$4)*100/($13-$2+$15-$4+$16-$5)}' | cut -f1 -d".")
-	local CurrentLoad=$(cat /proc/loadavg | awk '{ print $1 }' | cut -f1 -d".")
-	local ffmpegProcess=$(ps --no-headers -C ffmpeg | wc -l)
-
-	if [ "$CurrentCPULoad" -lt "$CPULOADMAX" ] && [ "$CurrentLoad" -le "$NPROC" ] && [ "$NVENC" -le "$NPROC" ]; then
-		NVENC=$((NVENC+1))
-	elif [ "$CurrentCPULoad" -ge "$CPULOADMAX" ] && [ "$CurrentCPULoad" -gt "$NPROC" ]; then
-		NVENC=$((NVENC-1))
-	fi
-fi
-}
 ffmesUpdate() {					# Option 99  	- ffmes ugly update to last version (hidden option)
 mkdir "$FFMES_PATH"/update-temp
 cd "$FFMES_PATH"/update-temp
@@ -405,41 +388,25 @@ rm -R "$FFMES_PATH"/bin
 cp -R -- "$FFMES_PATH"/update-temp/ffmes/* "$FFMES_PATH"/
 rm -R "$FFMES_PATH"/update-temp
 }
-ProgressBarString(){
-  local s=$1
-  local n=$2
-  for((i=0;i<n; i++)); do echo -n "$s"; done
+ProgressBar() {
+	let _progress=(${1}*100/${2}*100)/100
+	let _done=(${_progress}*4)/10
+	let _left=40-$_done
+	_done=$(printf "%${_done}s")
+	_left=$(printf "%${_left}s")
+
+    echo -e "\r\e[0K File(s) in processing: [${3}]"
+    echo -e "\r\e[0K Progress: [${_done// /#}${_left// /-}] ${_progress}%"
+
+if [[ "$_progress" = "100" ]]; then
+	printf "\033[0A"
+else
+	printf "\033[2A"
+fi
 }
-ProgressBar(){
-  local percentage=$1
-  local file=$3
-  local time=$4
-  local status=$5
-  local width=$(echo "scale=0; 0.3 * $TERM_WIDTH" | bc | cut -d. -f1)
-  local equals_n=$(echo "$percentage * $width / 100" | bc | cut -d. -f1)
-  local dots_n=$((width - equals_n))
-
-  #ANSI escape sequence magic
-  local Esc="\033["
-  local up="$Esc""K""$Esc""1A""$Esc""K"
-
-  #Clear the line
-  ProgressBarString ' ' "$TERM_WIDTH"
-  echo -ne "\r"
-
-  #Print the current screen
-  printf  "%5s%% [" " $percentage "
-    ProgressBarString '=' "$equals_n"
-    ProgressBarString '.' "$dots_n"
-  echo -n "] [$time] [$status]     "
-
-  #Go up unless finished
-  if [[ "$percentage" == 100 ]] 
-  then
-    echo
-  else
-    echo -e "$up"
-  fi
+ProgressBarClean() {			# ProgressBar vertical clean trick
+tput el
+tput cuu 1 && tput el
 }
 
 ## VIDEO SECTION
@@ -448,6 +415,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 	stty igncr									# Disable the enter key
 	for files in "${LSTVIDEO[@]}"; do
+		TagTitle="${files##*/}"
 
 		if [ "$ENCODV" != "1" ]; then
 			StartLoading "Test timestamp of: ${files##*/}"
@@ -462,7 +430,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 		echo "FFmpeg processing: ${files##*/}"
 		(
-		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${files%.*}".$videoformat.$extcont
+		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -metadata title="${TagTitle%.*}" -max_muxing_queue_size 4096 -f $container "${files%.*}".$videoformat.$extcont
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 			wait -n
@@ -508,236 +476,6 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	# End: encoding messages
 	echo
 	echo "$MESS_SEPARATOR"
-	if test -n "$filesPass"; then
-		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
-	fi
-	if test -n "$filesReject"; then
-		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
-	fi
-	echo "$MESS_SEPARATOR"
-	echo " $NBVO/$NBV file(s) have been processed."
-	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
-	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
-	echo "$MESS_SEPARATOR"
-	echo
-}
-FFmpeg_video_cmd2() {			# FFmpeg video encoding command
-	START=$(date +%s)							# Start time counter
-
-	stty igncr									# Disable the enter key
-
-	for files in "${LSTVIDEO[@]}"; do
-		unset LSTVIDEOSPLIT
-		unset LSTVIDEOSPLITED
-		unset COUNTER
-		unset TimePartial
-
-		# Create Temp directory for splited video
-		ffmesSplitCache=$(echo "ffmes-split-cache-$(date +%Y%m%s%N)")
-		if [ ! -d "$ffmesSplitCache" ]; then
-			mkdir -p "$ffmesSplitCache"
-		else
-			rm -R "$ffmesSplitCache"
-			mkdir -p "$ffmesSplitCache"
-		fi
-		# Get size of video
-		FilesSize=$(du -chsm "$files" | tail -n1 | awk '{print $1;}')
-		# Select size of splited file
-		if [ "$FilesSize" -ge 0 ] && [ "$FilesSize" -lt 10 ]; then
-			VideoSplitedSize="1M"
-		elif [ "$FilesSize" -gt 10 ] && [ "$FilesSize" -le 50 ]; then
-			VideoSplitedSize="5M"
-		elif [ "$FilesSize" -gt 50 ] && [ "$FilesSize" -le 100 ]; then
-			VideoSplitedSize="10M"
-		elif [ "$FilesSize" -gt 100 ] && [ "$FilesSize" -le 500 ]; then
-			VideoSplitedSize="30M"
-		elif [ "$FilesSize" -gt 500 ] && [ "$FilesSize" -le 1000 ]; then
-			VideoSplitedSize="55M"
-		elif [ "$FilesSize" -gt 1000 ]; then
-			VideoSplitedSize="100M"
-		fi
-		
-		# Display
-		echo " FFmpeg processing: ${files##*/}"
-
-		# Split file
-		StartSplit=$(date +%s)							# Start time counter
-		if [[ -z "$VERBOSE" ]]; then
-			mkvmerge -q --split "$VideoSplitedSize" -o "$ffmesSplitCache"/Split_%09d.mkv "$files" &
-			mkvmergePID=$!
-			if [ "${mkvmergePID}" -eq "0" ]; then
-				SplitStatus="Splitting ⚠"
-			else
-				SplitStatus="Splitting"
-				SourceSizeSplitted=$(du -chsm "$files" | tail -n1 | awk '{print $1;}')
-				unset StopBar
-				while [ -d /proc/$mkvmergePID ]; do
-					if [[ "$StopBar" != 1 ]]; then
-						sleep 0.1
-						TimePartial=$(date +%s)
-						TimePartialDiffs=$(($TimePartial-$StartSplit))
-						TimePartialLabel=$(echo "$((TimePartialDiffs/3600))h$((TimePartialDiffs%3600/60))m$((TimePartialDiffs%60))s")
-						TargetSizeSplitted=$(du -chsm "$ffmesSplitCache"/ | tail -n1 | awk '{print $1;}')
-						PercBar=$((200*$TargetSizeSplitted/$SourceSizeSplitted % 2 + 100*$TargetSizeSplitted/$SourceSizeSplitted)) # Rounded percentage
-						if [[ "$PercBar" == 100 ]]; then
-							SplitStatus="Splitting ✓"
-							StopBar="1"
-						fi
-						ProgressBar "$PercBar" "" "" "$TimePartialLabel" "$SplitStatus"
-					fi
-				done
-			fi
-		else
-			mkvmerge --split "$VideoSplitedSize" -o "$ffmesSplitCache"/Split_%09d.mkv "$files"
-		fi
-
-		# Generate array with splited files
-		mapfile -t LSTVIDEOSPLIT < <(find "$ffmesSplitCache"/ -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
-		NBVSPLIT="${#LSTVIDEOSPLIT[@]}"
-
-		# Encoding split files
-		NBVTHREATED="0"
-		StartEncoding=$(date +%s)							# Start time counter
-		for filesSplited in "${LSTVIDEOSPLIT[@]}"; do
-			if [ "$ENCODV" != "1" ]; then
-				TimestampTest=$(ffprobe -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$filesSplited" | awk -F',' '/K/ {print $1}' | tail -1)
-				shopt -s nocasematch
-				if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
-					TimestampRegen="-fflags +genpts"
-				fi
-				shopt -u nocasematch
-			fi
-			if [[ -z "$VERBOSE" ]]; then
-				sem -j$NVENC ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$filesSplited" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${filesSplited%.*}".$videoformat.$extcont 2>/dev/null
-				ffmpegStatus=$?
-				if [ "${ffmpegStatus}" -ne "0" ]; then
-					NBVTHREATED="0"
-					EncodingStatus="Encoding ⚠"
-				else
-					NBVTHREATED=$(($COUNTER+1))
-					if [ "$NBVTHREATED" -eq "$NBVSPLIT" ]; then
-						EncodingStatus="Encoding ✓"
-					else
-						EncodingStatus="Encoding"
-					fi
-				fi
-			else
-				sem -j$NVENC ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$filesSplited" -threads 0 $stream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 1024 -f $container "${filesSplited%.*}".$videoformat.$extcont
-			fi
-
-			# Encoding Bar
-			if [[ -z "$VERBOSE" ]]; then
-				TimePartial=$(date +%s)
-				TimePartialDiffs=$(($TimePartial-$StartEncoding))
-				TimePartialLabel=$(echo "$((TimePartialDiffs/3600))h$((TimePartialDiffs%3600/60))m$((TimePartialDiffs%60))s")
-				COUNTER=$NBVTHREATED
-				PercBar=$((200*$NBVTHREATED/$NBVSPLIT % 2 + 100*$NBVTHREATED/$NBVSPLIT)) # Rounded percentage
-				ProgressBar "$PercBar" "" "" "$TimePartialLabel" "$EncodingStatus"
-			fi
-
-			# Launch CPU load adjust after 10s of encoding
-			TimePartialCPULoad=$(date +%s)
-			TimeDelayCPULoad=$(($TimePartialCPULoad-$START))
-			if [ "$TimeDelayCPULoad" -gt 10 ]; then
-				CPULoadAdjustVideo
-			fi
-
-		done
-		sem --wait
-
-		for f in "${LSTVIDEOSPLIT[@]}"; do
-			rm -f "$f" 2> /dev/null
-		done
-
-		# Generate array with encoded split files
-		mapfile -t LSTVIDEOSPLITED < <(find "$PWD"/"$ffmesSplitCache"/ -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
-		NBVSPLITED="${#LSTVIDEOSPLITED[@]}"
-
-		# Concatenate encoded split files
-		for filesSplitedEncoded in "${LSTVIDEOSPLITED[@]}"; do
-			quote0="'"
-			quote1="'\\\\\\''"
-			parsedFile=$(echo "$filesSplitedEncoded" | sed "s/$quote0/$quote1/g")
-			echo "file '$parsedFile'" >> "$FFMES_CACHE_CONCAT"
-		done
-
-		# Merging files
-		StartMerging=$(date +%s)							# Start time counter
-		if [[ -z "$VERBOSE" ]]; then
-			ffmpeg $FFMPEG_LOG_LVL -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy "${files%.*}".$videoformat.$extcont 2>/dev/null &
-			ffmpegPID=$!
-			if [ "${ffmpegPID}" -eq "0" ]; then
-				MergeStatus="Merging ⚠"
-			else
-				MergeStatus="Merging"
-				SourceSizeSplitted=$(du -chsm "${LSTVIDEOSPLITED[@]}" | tail -n1 | awk '{print $1;}')
-				unset StopBar
-				while [ -d /proc/$ffmpegPID ]; do
-					if [[ "$StopBar" != 1 ]]; then
-						sleep 0.1
-						TimePartial=$(date +%s)
-						TimePartialDiffs=$(($TimePartial-$StartMerging))
-						TimePartialLabel=$(echo "$((TimePartialDiffs/3600))h$((TimePartialDiffs%3600/60))m$((TimePartialDiffs%60))s")
-						TargetSizeSplitted=$(du -chsm "${files%.*}".$videoformat.$extcont 2>/dev/null | tail -n1 | awk '{print $1;}')
-						PercBar=$((200*$TargetSizeSplitted/$SourceSizeSplitted % 2 + 100*$TargetSizeSplitted/$SourceSizeSplitted)) # Rounded percentage
-						if [[ "$PercBar" == 100 ]]; then
-							MergeStatus="Merging ✓"
-							StopBar="1"
-						fi
-						ProgressBar "$PercBar" "" "" "$TimePartialLabel" "$MergeStatus"
-					fi
-				done
-			fi
-		else
-			ffmpeg $FFMPEG_LOG_LVL -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy "${files%.*}".$videoformat.$extcont
-		fi
-
-		# Clean
-		rm -R "$FFMES_CACHE_CONCAT"
-		rm -R "$ffmesSplitCache"
-
-		# Display
-		echo "$MESS_SEPARATOR"
-	done
-	stty -igncr									# Enable the enter key
-
-	END=$(date +%s)								# End time counter
-	
-	# Check target if valid (size test), if valid mkv fix target stats, and and clean
-	filesPass=()
-	filesReject=()
-	filesSourcePass=()
-	for files in "${LSTVIDEO[@]}"; do
-			if [[ $(stat --printf="%s" "${files%.*}"."$videoformat"."$extcont" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-				# if mkv regenerate stats
-				if [ "$extcont" = "mkv" ]; then
-					mkvpropedit --add-track-statistics-tags "${files%.*}".$videoformat.$extcont >/dev/null 2>&1
-				fi
-				# populate array
-				filesPass+=("${files%.*}"."$videoformat"."$extcont")
-				filesSourcePass+=("$files")
-			else																	# if file<30 KBytes rejected
-				filesReject+=("${files%.*}"."$videoformat"."$extcont")
-				rm "${files%.*}"."$videoformat"."$extcont" 2>/dev/null
-			fi
-	done
-
-	# Make statistics of processed files
-	DIFFS=$(($END-$START))															# counter in seconds
-	NBVO="${#filesPass[@]}"															# Count file(s) passed
-	if [ "$NBVO" -eq 0 ] ; then
-		SSIZVIDEO="0"
-		TSSIZE="0"
-		PERC="0"
-	else
-		SSIZVIDEO=$(du -chsm "${filesSourcePass[@]}" | tail -n1 | awk '{print $1;}')	# Source file(s) size
-		TSSIZE=$(du -chsm "${filesPass[@]}" | tail -n1 | awk '{print $1;}')				# Target(s) size
-		PERC=$(bc <<< "scale=2; ($TSSIZE - $SSIZVIDEO)/$SSIZVIDEO * 100")				# Size difference between source and target
-	fi
-	
-	# End: encoding messages
 	if test -n "$filesPass"; then
 		echo " File(s) created:"
 		printf '  %s\n' "${filesPass[@]}"
@@ -1334,16 +1072,17 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 		case $yn in
 			"x264")
                 codec="libx264 -x264-params colorprim=bt709:transfer=bt709:colormatrix=bt709:fullrange=off -pix_fmt yuv420p"
-                chvcodec="x264"
+                chvcodec="H264"
                 Confx264_5
 			;;
 			"x265")
 				codec="libx265"
-				chvcodec="x265"
+				chvcodec="HEVC"
 				Confx264_5
 			;;
 			"mpeg4")
 				codec="mpeg4 -vtag xvid"
+				chvcodec="XVID"
 				Confmpeg4
 			;;
 			"q"|"Q")
@@ -1351,7 +1090,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 			;;
 			*)
 				codec="libx265"
-				chvcodec="x265"
+				chvcodec="HEVC"
 				Confx264_5
 			;;
 		esac
@@ -1366,7 +1105,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 		# Set video configuration variable
 		chvidstream="Copy"
 		filevcodec="vcopy"
-		videoconf="-vcodec copy"                                            # Set video variable
+		videoconf="-c:v copy"                                            # Set video variable
 
 	fi
 
@@ -1408,21 +1147,25 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 		case $chacodec in
 			"opus")
 				codeca="libopus"
+				chacodec="OPUS"
 				ConfOPUS
 				ConfChannels
 			;;
 			"vorbis")
 				codeca="libvorbis"
+				chacodec="OGG"
 				ConfOGG
 				ConfChannels
 			;;
 			"ac3")
 				codeca="ac3"
+				chacodec="AC3"
 				ConfAC3
 				ConfChannels
 			;;
 			"flac")
 				codeca="flac"
+				chacodec="FLAC"
 				ConfFLAC
 				ConfChannels
 			;;
@@ -1431,7 +1174,7 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 			;;
 			*)
 				codeca="libopus"
-				chacodec="libopus"
+				chacodec="OPUS"
 				ConfOPUS
 				ConfChannels
 			;;
@@ -1448,50 +1191,77 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 	fi
 	}
 CustomVideoStream() {			# Option 1,2	- Conf stream selection
+	if [ "$reps" -le 1 ] ; then				# Display summary target if in profile 0, 1
+		CustomInfoChoice
+	else 									# Display streams stats if no in profile 1 (already make by CustomInfoChoice)
+		clear
+		echo
+		cat "$FFMES_CACHE_STAT"
+		echo
+	fi
+
 	if [ "$nbstream" -gt 2 ] ; then				# If $nbstream > 2 = map question
-		if [ "$reps" -le 2 ] ; then				# Display summary target if in profile 0, 1, 2
-			CustomInfoChoice
-		else 									# Display streams stats if no in profile 1 (already make by CustomInfoChoice)
-			clear
-			echo
-			cat "$FFMES_CACHE_STAT"
-			echo
-		fi
 
 		# Choice Stream
 		echo " Select video, audio(s) & subtitle(s) streams, or leave for keep unchanged:"
 		echo " Notes: * The order of the streams you specify will be the order of in final file."
-		echo "        * Remove data stream for not have any encoding issue."
-		if test -z $probeaudio && [ "$qa" = "r" ]; then						# Alert if remove audio selected
-			echo
-			echo -e "      [!] Be careful you have selected previously no audio stream, do not \e[1m\033[31mmap\033[0m them."
-		fi
 		echo
-		echo "  [map 0 3 1] > Example of input format for select stream"
+		echo "  [0 3 1]     > Example of input format for select stream"
 		echo " *[enter]     > for no change"
 		echo "  [q]         > for exit"
 		read -e -p "-> " rpstreamch
-		if [ "$rpstreamch" = "q" ]; then
-			Restart
-		elif echo $rpstreamch | grep -q 'map' ; then
-			echo "$rpstreamch" | sed 's/.\{4\}//' > $FFMES_CACHE_MAP		# remove map in variable
-			sed -i 's/ /\n/g' $FFMES_CACHE_MAP								# make multiline
-			sed -i 's/^/0:/' $FFMES_CACHE_MAP								# add 0:
-			sed -i 's/^/-map /' $FFMES_CACHE_MAP							# add -map
-			sed -i ':a;N;$!ba;s/\n/ /g' $FFMES_CACHE_MAP					# all in one line
-			stream=$(cat $FFMES_CACHE_MAP)									# set map variable
-			if [ "$extcont" = mkv ]; then
-				subtitleconf="-codec:s copy"								# mkv subtitle variable
-			elif [ "$extcont" = mp4 ]; then
-				subtitleconf="-codec:s mov_text"							# mp4 subtitle variable
-			fi
-		elif [ "$extcont" = mkv ]; then
-			stream="-map 0"													# if mkv keep all stream
-			subtitleconf="-codec:s copy"									# mkv subtitle variable
-		elif [ "$extcont" = mp4 ]; then
-			stream="-map 0"													# if mkv keep all stream
-			subtitleconf="-codec:s mov_text"								# mp4 subtitle variable
+		if [ -z "$rpstreamch" ]; then					# If -map 0
+			rpstreamch_parsed="all"
+		else
+			rpstreamch_parsed=$(echo "${rpstreamch// /}")
 		fi
+
+		# Get stream info
+		case "$rpstreamch_parsed" in
+			"all")
+				mapfile -t VINDEX < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
+				mapfile -t VCODECTYPE < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+				;;
+			"q"|"Q")
+				Restart
+				;;
+			*)
+				VINDEX=( $rpstreamch )
+				# Keep codec used
+				mapfile -t VCODECTYPE1 < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+				VCODECNAME=()
+				for i in "${VINDEX[@]}"; do
+					VCODECTYPE+=("${VCODECTYPE1[$i]}")
+				done
+				;;
+		esac
+
+		# Get -map arguments
+		for i in ${!VINDEX[*]}; do
+			case "${VCODECTYPE[i]}" in
+				# Video Stream
+				video)
+					stream+=("-map 0:${VINDEX[i]}")
+					;;
+				
+				# Audio Stream
+				audio)
+					stream+=("-map 0:${VINDEX[i]}")
+					;;
+
+				# Subtitle Stream
+				subtitle)
+					stream+=("-map 0:${VINDEX[i]}")
+					;;
+
+				# Other Stream
+				*)
+					stream+=("-map 0:${VINDEX[i]}")
+					;;
+				esac
+		done
+		stream="${stream[@]}"
+
 	else																	# If $nbstream <= 2
 		if [ "$reps" -le 1 ]; then											# Refresh summary $nbstream <= 2
 				CustomInfoChoice
@@ -1513,7 +1283,9 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
     fi
     
 	# Reset display (last question before encoding)
-	CustomInfoChoice
+	if [ "$reps" -le 1 ]; then											# Refresh summary $nbstream <= 2
+			CustomInfoChoice
+	fi
 	}
 CustomVideoContainer() {		# Option 1  	- Conf container mkv/mp4
 	CustomInfoChoice
@@ -1581,292 +1353,292 @@ Confmpeg4() {					# Option 1  	- Conf Xvid
 	fi
 	}
 Confx264_5() {					# Option 1  	- Conf x264/x265
-	# Preset x264/x265
-	CustomInfoChoice
-	echo " Choose the preset:"
+# Preset x264/x265
+CustomInfoChoice
+echo " Choose the preset:"
+echo
+echo "  ----------------------------------------------> Encoding Speed"
+echo "  veryfast - faster - fast -  medium - slow* - slower - veryslow"
+echo "  -----------------------------------------------------> Quality"
+read -e -p "-> " reppreset
+if test -n "$reppreset"; then
+	preset="-preset $reppreset"
+	chpreset="$reppreset"
+else
+	preset="-preset medium"
+	chpreset="slow"
+fi
+
+# Tune x264/x265
+CustomInfoChoice
+if [ "$chvcodec" = "x264" ]; then
+	echo " Choose tune:"
+	echo " Note: This settings influences the final rendering of the image, and speed of encoding."
 	echo
-	echo "  ----------------------------------------------> Encoding Speed"
-	echo "  veryfast - faster - fast -  medium - slow* - slower - veryslow"
-	echo "  -----------------------------------------------------> Quality"
-	read -e -p "-> " reppreset
-	if test -n "$reppreset"; then
-		preset="-preset $reppreset"
-		chpreset="$reppreset"
+	echo " *[cfilm]       > for movie content, ffmes custom tuning (high quality)"
+	echo "  [canimation]  > for animation content, ffmes custom tuning (high quality)"
+	echo
+	echo "  [no]          > for no tuning"
+	echo "  [film]        > for movie content; lower debloking"
+	echo "  [animation]   > for animation; more deblocking and reference frames"
+	echo "  [grain]       > for preserves the grain structure in old, grainy film material"
+	echo "  [stillimage]  > for slideshow-like content "
+	echo "  [fastdecode]  > for allows faster decoding (disabling certain filters)"
+	echo "  [zerolatency] > for fast encoding and low-latency streaming "
+	read -e -p " -> " reptune
+	if [ "$reptune" = "film" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "animation" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "grain" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "stillimage" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "fastdecode" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "zerolatency" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "cfilm" ]; then
+		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
+		chtune="ffmes-film"
+	elif [ "$reptune" = "canimation" ]; then
+		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9 -deblock -2:-2 -psy-rd 1.0:0.25 -aq 0.5 -qcomp 0.8"
+		chtune="ffmes-animation"
+	elif [ "$reptune" = "no" ]; then
+		tune=""
+		chtune=""
 	else
-		preset="-preset medium"
-		chpreset="slow"
+		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
+		chtune="ffmes-film"
 	fi
-
-	# Tune x264/x265
-	CustomInfoChoice
-	if [ "$chvcodec" = "x264" ]; then
-		echo " Choose tune:"
-		echo " Note: This settings influences the final rendering of the image, and speed of encoding."
-		echo
-		echo " *[cfilm]       > for movie content, ffmes custom tuning (high quality)"
-		echo "  [canimation]  > for animation content, ffmes custom tuning (high quality)"
-		echo
-		echo "  [no]          > for no tuning"
-		echo "  [film]        > for movie content; lower debloking"
-		echo "  [animation]   > for animation; more deblocking and reference frames"
-		echo "  [grain]       > for preserves the grain structure in old, grainy film material"
-		echo "  [stillimage]  > for slideshow-like content "
-		echo "  [fastdecode]  > for allows faster decoding (disabling certain filters)"
-		echo "  [zerolatency] > for fast encoding and low-latency streaming "
-		read -e -p " -> " reptune
-		if [ "$reptune" = "film" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "animation" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "grain" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "stillimage" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "fastdecode" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "zerolatency" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "cfilm" ]; then
-			tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
-			chtune="ffmes-film"
-		elif [ "$reptune" = "canimation" ]; then
-			tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9 -deblock -2:-2 -psy-rd 1.0:0.25 -aq 0.5 -qcomp 0.8"
-			chtune="ffmes-animation"
-		elif [ "$reptune" = "no" ]; then
-			tune=""
-			chtune=""
-		else
-			tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
-			chtune="ffmes-film"
-		fi
-	elif [ "$chvcodec" = "x265" ]; then
-		echo " Choose tune:"
-		echo " Notes: * This settings influences the final rendering of the image, and speed of encoding."
-		echo "        * By default x265 always tunes for highest perceived visual."
-		echo
-		echo " *[default]     > for movie content; default, intermediate tuning of the two following"
-		echo "  [psnr]        > for movie content; disables adaptive quant, psy-rd, and cutree"
-		echo "  [ssim]        > for movie content; enables adaptive quant auto-mode, disables psy-rd"
-		echo "  [grain]       > for preserves the grain structure in old, grainy film material"
-		echo "  [fastdecode]  > for allows faster decoding (disabling certain filters)"
-		echo "  [zerolatency] > for fast encoding and low-latency streaming "
-		read -e -p "-> " reptune
-		if [ "$reptune" = "psnr" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "ssim" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "grain" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "fastdecode" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "zerolatency" ]; then
-			tune="-tune $reptune"
-			chtune="$reptune"
-		elif [ "$reptune" = "no" ]; then
-			tune=""
-			chtune="$reptune tuning"
-		else
-			tune=""
-			chtune="default tuning"
-		fi
-    fi
-
-	# Profile x264/x265
-    CustomInfoChoice
-    if [ "$chvcodec" = "x264" ]; then
-		echo " Choose the profile:"
-		echo " Note: The choice of the profile affects the compatibility of the result,"
-		echo "       be careful not to apply any more parameters to the source file (no positive effect)"
-		echo
-		echo "                                   | max definition/fps by level   |"
-		echo "        | lvl | profile  | max db  | res.     >fps                 |"
-		echo "        |-----|----------|---------|-------------------------------|"
-		echo "  [1] > | 3.0 | Baseline | 10 Mb/s | 720×480  >30  || 720×576  >25 |"
-		echo "  [2] > | 3.1 | main     | 14 Mb/s | 1280×720 >30  || 720×576  >66 |"
-		echo "  [3] > | 4.0 | Main     | 20 Mb/s | 1920×1080>30  || 2048×1024>30 |"
-		echo "  [4] > | 4.0 | High     | 25 Mb/s | 1920×1080>30  || 2048×1024>30 |"
-		echo " *[5] > | 4.1 | High     | 63 Mb/s | 1920×1080>30  || 2048×1024>30 |"
-		echo "  [6] > | 4.2 | High     | 63 Mb/s | 1920×1080>64  || 2048×1088>60 |"
-		echo "  [7] > | 5.0 | High     | 169Mb/s | 1920×1080>72  || 2560×1920>30 |"
-		echo "  [8] > | 5.1 | High     | 300Mb/s | 1920×1080>120 || 4096×2048>30 |"
-		echo "  [9] > | 5.2 | High     | 300Mb/s | 1920×1080>172 || 4096×2160>60 |"
-		read -e -p "-> " repprofile
-		if [ "$repprofile" = "1" ]; then
-			profile="-profile:v baseline -level 3.0"
-			chprofile="Baseline 3.0"
-		elif [ "$repprofile" = "2" ]; then
-			profile="-profile:v baseline -level 3.1"
-			chprofile="Baseline 3.1"
-		elif [ "$repprofile" = "3" ]; then
-			profile="-profile:v main -level 4.0"
-			chprofile="Baseline 4.0"
-		elif [ "$repprofile" = "4" ]; then
-			profile="-profile:v high -level 4.0"
-			chprofile="High 4.0"
-		elif [ "$repprofile" = "5" ]; then
-			profile="-profile:v high -level 4.1"
-			chprofile="High 4.1"
-		elif [ "$repprofile" = "6" ]; then
-			profile="-profile:v high -level 4.2"
-			chprofile="High 4.2"
-		elif [ "$repprofile" = "7" ]; then
-			profile="-profile:v high -level 5.0"
-			chprofile="High 5.0"
-		elif [ "$repprofile" = "8" ]; then
-			profile="-profile:v high -level 5.1"
-			chprofile="High 5.1"
-		elif [ "$repprofile" = "9" ]; then
-			profile="-profile:v high -level 5.2"
-			chprofile="High 5.2"
-		else
-			profile="-profile:v high -level 4.1"
-			chprofile="High 4.1"
-		fi
-	elif [ "$chvcodec" = "x265" ]; then
-		echo " Choose a profile or make your profile manually:"
-		echo " Notes: * For bit and chroma settings, if the source is below the parameters, FFmpeg will not replace them but will be at the same level."
-		echo "        * The level (lvl) parameter must be chosen judiciously according to the bit rate of the source file and the result you expect."
-		echo "        * The choice of the profile affects the player compatibility of the result."
-		echo
-		echo
-		echo "$MESS_SEPARATOR"
-		echo " Manually options (expert):"
-		echo "  * 8bit profiles: main, main-intra, main444-8, main444-intra"
-		echo "  * 10bit profiles: main10, main10-intra, main422-10, main422-10-intra, main444-10, main444-10-intra"
-		echo "  * 12bit profiles: main12, main12-intra, main422-12, main422-12-intra, main444-12, main444-12-intra"
-		echo "  * Level: 1, 2, 2.1, 3.1, 4, 4.1, 5, 5.1, 5.2, 6, 6.1, 6.2"
-		echo "  * High level: high-tier=1"
-		echo "  * No high level: no-high"
-		echo " [-profile:v main -x265-params level=3.1:no-high-tier] -> Example of input format for manually profile"
-		echo
-		echo "$MESS_SEPARATOR"
-		echo " ffmes predefined profiles:"
-		echo
-		echo "                                                    | max db | max definition/fps by level |"
-		echo "         | lvl | hight | intra | bit | HDR | chroma | Mb/s   | res.     >fps               |"
-		echo "         |-----|-------|-------|-----|-----|--------|--------|-----------------------------|"
-		echo "   [1] > | 3.1 | 0     | 0     | 8   | 0   | 4:2:0  | 10     | 1280×720 >30                |"
-		echo "   [2] > | 4.1 | 0     | 0     | 8   | 0   | 4:2:0  | 20     | 2048×1080>60                |"
-		echo "  *[3] > | 4.1 | 1     | 0     | 8   | 0   | 4:2:0  | 50     | 2048×1080>60                |"
-		echo "   [4] > | 4.1 | 1     | 0     | 12  | 0   | 4:4:4  | 150    | 2048×1080>60                |"
-		echo "   [5] > | 4.1 | 1     | 0     | 12  | 1   | 4:4:4  | 150    | 2048×1080>60                |"
-		echo "   [6] > | 4.1 | 1     | 1     | 12  | 0   | 4:4:4  | 1800   | 2048×1080>60                |"
-		echo "   [7] > | 5.2 | 1     | 0     | 8   | 0   | 4:2:0  | 240    | 4096×2160>120               |"
-		echo "   [8] > | 5.2 | 1     | 0     | 12  | 0   | 4:4:4  | 720    | 4096×2160>120               |"
-		echo "   [9] > | 5.2 | 1     | 0     | 12  | 1   | 4:4:4  | 720    | 4096×2160>120               |"
-		echo "  [10] > | 5.2 | 1     | 1     | 12  | 0   | 4:4:4  | 8640   | 4096×2160>120               |"
-		echo "  [11] > | 6.2 | 1     | 0     | 12  | 0   | 4:4:4  | 2400   | 8192×4320>120               |"
-		echo "  [12] > | 6.2 | 1     | 0     | 12  | 1   | 4:4:4  | 2400   | 8192×4320>120               |"
-		echo "  [13] > | 6.2 | 1     | 1     | 12  | 0   | 4:4:4  | 28800  | 8192×4320>120               |"
-		read -e -p "-> " repprofile
-		if echo "$repprofile" | grep -q 'profil'; then
-				profile="$repprofile"
-				chprofile="$repprofile"
-		elif [ "$repprofile" = "1" ]; then
-				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=3.1 -pix_fmt yuv420p"
-				chprofile="3.1 - 8 bit - 4:2:0"
-		elif [ "$repprofile" = "2" ]; then
-				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=4.1 -pix_fmt yuv420p"
-				chprofile="4.1 - 8 bit - 4:2:0"
-		elif [ "$repprofile" = "3" ]; then
-				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p"
-				chprofile="4.1 - 8 bit - 4:2:0"
-		elif [ "$repprofile" = "4" ]; then
-				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p12le"
-				chprofile="4.1 - 12 bit - 4:4:4"
-		elif [ "$repprofile" = "5" ]; then
-				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-				chprofile="4.1 - 12 bit - 4:4:4 - HDR"
-		elif [ "$repprofile" = "6" ]; then
-				profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p12le"
-				chprofile="4.1 - 12 bit - 4:4:4 - intra"
-		elif [ "$repprofile" = "7" ]; then
-				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p"
-				chprofile="5.2 - 8 bit - 4:2:0"
-		elif [ "$repprofile" = "8" ]; then
-				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p12le"
-				chprofile="5.2 - 12 bit - 4:4:4"
-		elif [ "$repprofile" = "9" ]; then
-				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-				chprofile="5.2 - 12 bit - 4:4:4 - HDR"
-		elif [ "$repprofile" = "10" ]; then
-				profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p12le"
-				chprofile="5.2 - 12 bit - 4:4:4 - intra"
-		elif [ "$repprofile" = "11" ]; then
-				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1 -pix_fmt yuv420p12le"
-				chprofile="6.2 - 12 bit - 4:4:4"
-		elif [ "$repprofile" = "12" ]; then
-				profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-				chprofile="6.2 - 12 bit - 4:4:4 - HDR"
-		elif [ "$repprofile" = "13" ]; then
-				profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1 -pix_fmt yuv420p12le"
-				chprofile="6.2 - 12 bit - 4:4:4 - intra"
-		else
-				profile="-profile:v main -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p"
-				chprofile="High 4.1 - 8 bit - 4:2:0"
-		fi
+elif [ "$chvcodec" = "x265" ]; then
+	echo " Choose tune:"
+	echo " Notes: * This settings influences the final rendering of the image, and speed of encoding."
+	echo "        * By default x265 always tunes for highest perceived visual."
+	echo
+	echo " *[default]     > for movie content; default, intermediate tuning of the two following"
+	echo "  [psnr]        > for movie content; disables adaptive quant, psy-rd, and cutree"
+	echo "  [ssim]        > for movie content; enables adaptive quant auto-mode, disables psy-rd"
+	echo "  [grain]       > for preserves the grain structure in old, grainy film material"
+	echo "  [fastdecode]  > for allows faster decoding (disabling certain filters)"
+	echo "  [zerolatency] > for fast encoding and low-latency streaming "
+	read -e -p "-> " reptune
+	if [ "$reptune" = "psnr" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "ssim" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "grain" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "fastdecode" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "zerolatency" ]; then
+		tune="-tune $reptune"
+		chtune="$reptune"
+	elif [ "$reptune" = "no" ]; then
+		tune=""
+		chtune="$reptune tuning"
+	else
+		tune=""
+		chtune="default tuning"
 	fi
+fi
 
-	# Bitrate x264/x265
-	CustomInfoChoice
-	echo " Choose a number or enter the desired bitrate:"
-	echo " Note: This settings influences size and quality, crf is a better choise in 90% of cases."
+# Profile x264/x265
+CustomInfoChoice
+if [ "$chvcodec" = "x264" ]; then
+	echo " Choose the profile:"
+	echo " Note: The choice of the profile affects the compatibility of the result,"
+	echo "       be careful not to apply any more parameters to the source file (no positive effect)"
+	echo
+	echo "                                   | max definition/fps by level   |"
+	echo "        | lvl | profile  | max db  | res.     >fps                 |"
+	echo "        |-----|----------|---------|-------------------------------|"
+	echo "  [1] > | 3.0 | Baseline | 10 Mb/s | 720×480  >30  || 720×576  >25 |"
+	echo "  [2] > | 3.1 | main     | 14 Mb/s | 1280×720 >30  || 720×576  >66 |"
+	echo "  [3] > | 4.0 | Main     | 20 Mb/s | 1920×1080>30  || 2048×1024>30 |"
+	echo "  [4] > | 4.0 | High     | 25 Mb/s | 1920×1080>30  || 2048×1024>30 |"
+	echo " *[5] > | 4.1 | High     | 63 Mb/s | 1920×1080>30  || 2048×1024>30 |"
+	echo "  [6] > | 4.2 | High     | 63 Mb/s | 1920×1080>64  || 2048×1088>60 |"
+	echo "  [7] > | 5.0 | High     | 169Mb/s | 1920×1080>72  || 2560×1920>30 |"
+	echo "  [8] > | 5.1 | High     | 300Mb/s | 1920×1080>120 || 4096×2048>30 |"
+	echo "  [9] > | 5.2 | High     | 300Mb/s | 1920×1080>172 || 4096×2160>60 |"
+	read -e -p "-> " repprofile
+	if [ "$repprofile" = "1" ]; then
+		profile="-profile:v baseline -level 3.0"
+		chprofile="Baseline 3.0"
+	elif [ "$repprofile" = "2" ]; then
+		profile="-profile:v baseline -level 3.1"
+		chprofile="Baseline 3.1"
+	elif [ "$repprofile" = "3" ]; then
+		profile="-profile:v main -level 4.0"
+		chprofile="Baseline 4.0"
+	elif [ "$repprofile" = "4" ]; then
+		profile="-profile:v high -level 4.0"
+		chprofile="High 4.0"
+	elif [ "$repprofile" = "5" ]; then
+		profile="-profile:v high -level 4.1"
+		chprofile="High 4.1"
+	elif [ "$repprofile" = "6" ]; then
+		profile="-profile:v high -level 4.2"
+		chprofile="High 4.2"
+	elif [ "$repprofile" = "7" ]; then
+		profile="-profile:v high -level 5.0"
+		chprofile="High 5.0"
+	elif [ "$repprofile" = "8" ]; then
+		profile="-profile:v high -level 5.1"
+		chprofile="High 5.1"
+	elif [ "$repprofile" = "9" ]; then
+		profile="-profile:v high -level 5.2"
+		chprofile="High 5.2"
+	else
+		profile="-profile:v high -level 4.1"
+		chprofile="High 4.1"
+	fi
+elif [ "$chvcodec" = "x265" ]; then
+	echo " Choose a profile or make your profile manually:"
+	echo " Notes: * For bit and chroma settings, if the source is below the parameters, FFmpeg will not replace them but will be at the same level."
+	echo "        * The level (lvl) parameter must be chosen judiciously according to the bit rate of the source file and the result you expect."
+	echo "        * The choice of the profile affects the player compatibility of the result."
+	echo
 	echo
 	echo "$MESS_SEPARATOR"
-	echo " cbr bitrate calculation example:"
-	echo " (200 MiB * 8192 [converts MiB to kBit]) / 600 seconds = ~2730 kBit/s total bitrate"
-	echo " 2730 - 128 kBit/s (desired audio bitrate) = 2602 kBit/s video bitrate"
+	echo " Manually options (expert):"
+	echo "  * 8bit profiles: main, main-intra, main444-8, main444-intra"
+	echo "  * 10bit profiles: main10, main10-intra, main422-10, main422-10-intra, main444-10, main444-10-intra"
+	echo "  * 12bit profiles: main12, main12-intra, main422-12, main422-12-intra, main444-12, main444-12-intra"
+	echo "  * Level: 1, 2, 2.1, 3.1, 4, 4.1, 5, 5.1, 5.2, 6, 6.1, 6.2"
+	echo "  * High level: high-tier=1"
+	echo "  * No high level: no-high"
+	echo " [-profile:v main -x265-params level=3.1:no-high-tier] -> Example of input format for manually profile"
 	echo
 	echo "$MESS_SEPARATOR"
-	echo " [1200k]     Example of input format for cbr desired bitrate"
-	echo " [-crf 21]   Example of input format for crf desired level"
+	echo " ffmes predefined profiles:"
 	echo
-	echo "  [1] > for crf 0    ∧ |"
-	echo "  [2] > for crf 5   Q| |"
-	echo "  [3] > for crf 10  U| |S"
-	echo "  [4] > for crf 15  A| |I"
-	echo " *[5] > for crf 20  L| |Z"
-	echo "  [6] > for crf 22  I| |E"
-	echo "  [7] > for crf 25  T| |"
-	echo "  [8] > for crf 30  Y| |"
-	echo "  [9] > for crf 35   | ∨"
-	read -e -p "-> " rpvkb
-	if echo $rpvkb | grep -q 'k'; then
-		vkb="-b:v $rpvkb"
-	elif echo $rpvkb | grep -q 'crf'; then
-		vkb="$rpvkb"
-	elif [ "$rpvkb" = "1" ]; then
-		vkb="-crf 0"
-	elif [ "$rpvkb" = "2" ]; then
-		vkb="-crf 5"
-	elif [ "$rpvkb" = "3" ]; then
-		vkb="-crf 10"
-	elif [ "$rpvkb" = "4" ]; then
-		vkb="-crf 15"
-	elif [ "$rpvkb" = "5" ]; then
-		vkb="-crf 20"
-	elif [ "$rpvkb" = "6" ]; then
-		vkb="-crf 22"
-	elif [ "$rpvkb" = "7" ]; then
-		vkb="-crf 25"
-	elif [ "$rpvkb" = "8" ]; then
-		vkb="-crf 30"
-	elif [ "$rpvkb" = "9" ]; then
-		vkb="-crf 35"
+	echo "                                                    | max db | max definition/fps by level |"
+	echo "         | lvl | hight | intra | bit | HDR | chroma | Mb/s   | res.     >fps               |"
+	echo "         |-----|-------|-------|-----|-----|--------|--------|-----------------------------|"
+	echo "   [1] > | 3.1 | 0     | 0     | 8   | 0   | 4:2:0  | 10     | 1280×720 >30                |"
+	echo "   [2] > | 4.1 | 0     | 0     | 8   | 0   | 4:2:0  | 20     | 2048×1080>60                |"
+	echo "  *[3] > | 4.1 | 1     | 0     | 8   | 0   | 4:2:0  | 50     | 2048×1080>60                |"
+	echo "   [4] > | 4.1 | 1     | 0     | 12  | 0   | 4:4:4  | 150    | 2048×1080>60                |"
+	echo "   [5] > | 4.1 | 1     | 0     | 12  | 1   | 4:4:4  | 150    | 2048×1080>60                |"
+	echo "   [6] > | 4.1 | 1     | 1     | 12  | 0   | 4:4:4  | 1800   | 2048×1080>60                |"
+	echo "   [7] > | 5.2 | 1     | 0     | 8   | 0   | 4:2:0  | 240    | 4096×2160>120               |"
+	echo "   [8] > | 5.2 | 1     | 0     | 12  | 0   | 4:4:4  | 720    | 4096×2160>120               |"
+	echo "   [9] > | 5.2 | 1     | 0     | 12  | 1   | 4:4:4  | 720    | 4096×2160>120               |"
+	echo "  [10] > | 5.2 | 1     | 1     | 12  | 0   | 4:4:4  | 8640   | 4096×2160>120               |"
+	echo "  [11] > | 6.2 | 1     | 0     | 12  | 0   | 4:4:4  | 2400   | 8192×4320>120               |"
+	echo "  [12] > | 6.2 | 1     | 0     | 12  | 1   | 4:4:4  | 2400   | 8192×4320>120               |"
+	echo "  [13] > | 6.2 | 1     | 1     | 12  | 0   | 4:4:4  | 28800  | 8192×4320>120               |"
+	read -e -p "-> " repprofile
+	if echo "$repprofile" | grep -q 'profil'; then
+			profile="$repprofile"
+			chprofile="$repprofile"
+	elif [ "$repprofile" = "1" ]; then
+			profile="-profile:v main -x265-params "$X265_LOG_LVL"level=3.1 -pix_fmt yuv420p"
+			chprofile="3.1 - 8 bit - 4:2:0"
+	elif [ "$repprofile" = "2" ]; then
+			profile="-profile:v main -x265-params "$X265_LOG_LVL"level=4.1 -pix_fmt yuv420p"
+			chprofile="4.1 - 8 bit - 4:2:0"
+	elif [ "$repprofile" = "3" ]; then
+			profile="-profile:v main -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p"
+			chprofile="4.1 - 8 bit - 4:2:0"
+	elif [ "$repprofile" = "4" ]; then
+			profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p12le"
+			chprofile="4.1 - 12 bit - 4:4:4"
+	elif [ "$repprofile" = "5" ]; then
+			profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+			chprofile="4.1 - 12 bit - 4:4:4 - HDR"
+	elif [ "$repprofile" = "6" ]; then
+			profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p12le"
+			chprofile="4.1 - 12 bit - 4:4:4 - intra"
+	elif [ "$repprofile" = "7" ]; then
+			profile="-profile:v main -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p"
+			chprofile="5.2 - 8 bit - 4:2:0"
+	elif [ "$repprofile" = "8" ]; then
+			profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p12le"
+			chprofile="5.2 - 12 bit - 4:4:4"
+	elif [ "$repprofile" = "9" ]; then
+			profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+			chprofile="5.2 - 12 bit - 4:4:4 - HDR"
+	elif [ "$repprofile" = "10" ]; then
+			profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=5.2:high-tier=1 -pix_fmt yuv420p12le"
+			chprofile="5.2 - 12 bit - 4:4:4 - intra"
+	elif [ "$repprofile" = "11" ]; then
+			profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1 -pix_fmt yuv420p12le"
+			chprofile="6.2 - 12 bit - 4:4:4"
+	elif [ "$repprofile" = "12" ]; then
+			profile="-profile:v main444-12 -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+			chprofile="6.2 - 12 bit - 4:4:4 - HDR"
+	elif [ "$repprofile" = "13" ]; then
+			profile="-profile:v main444-12-intra -x265-params "$X265_LOG_LVL"level=6.2:high-tier=1 -pix_fmt yuv420p12le"
+			chprofile="6.2 - 12 bit - 4:4:4 - intra"
 	else
-		vkb="-crf 20"
+			profile="-profile:v main -x265-params "$X265_LOG_LVL"level=4.1:high-tier=1 -pix_fmt yuv420p"
+			chprofile="High 4.1 - 8 bit - 4:2:0"
 	fi
-	}
+fi
+
+# Bitrate x264/x265
+CustomInfoChoice
+echo " Choose a number or enter the desired bitrate:"
+echo " Note: This settings influences size and quality, crf is a better choise in 90% of cases."
+echo
+echo "$MESS_SEPARATOR"
+echo " cbr bitrate calculation example:"
+echo " (200 MiB * 8192 [converts MiB to kBit]) / 600 seconds = ~2730 kBit/s total bitrate"
+echo " 2730 - 128 kBit/s (desired audio bitrate) = 2602 kBit/s video bitrate"
+echo
+echo "$MESS_SEPARATOR"
+echo " [1200k]     Example of input format for cbr desired bitrate"
+echo " [-crf 21]   Example of input format for crf desired level"
+echo
+echo "  [1] > for crf 0    ∧ |"
+echo "  [2] > for crf 5   Q| |"
+echo "  [3] > for crf 10  U| |S"
+echo "  [4] > for crf 15  A| |I"
+echo " *[5] > for crf 20  L| |Z"
+echo "  [6] > for crf 22  I| |E"
+echo "  [7] > for crf 25  T| |"
+echo "  [8] > for crf 30  Y| |"
+echo "  [9] > for crf 35   | ∨"
+read -e -p "-> " rpvkb
+if echo $rpvkb | grep -q 'k'; then
+	vkb="-b:v $rpvkb"
+elif echo $rpvkb | grep -q 'crf'; then
+	vkb="$rpvkb"
+elif [ "$rpvkb" = "1" ]; then
+	vkb="-crf 0"
+elif [ "$rpvkb" = "2" ]; then
+	vkb="-crf 5"
+elif [ "$rpvkb" = "3" ]; then
+	vkb="-crf 10"
+elif [ "$rpvkb" = "4" ]; then
+	vkb="-crf 15"
+elif [ "$rpvkb" = "5" ]; then
+	vkb="-crf 20"
+elif [ "$rpvkb" = "6" ]; then
+	vkb="-crf 22"
+elif [ "$rpvkb" = "7" ]; then
+	vkb="-crf 25"
+elif [ "$rpvkb" = "8" ]; then
+	vkb="-crf 30"
+elif [ "$rpvkb" = "9" ]; then
+	vkb="-crf 35"
+else
+	vkb="-crf 20"
+fi
+}
 Mkvmerge() {					# Option 11 	- Add audio stream or subtitle in video file
 	# Keep extention with wildcard for current audio and sub
 	mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
@@ -1884,7 +1656,7 @@ Mkvmerge() {					# Option 11 	- Add audio stream or subtitle in video file
     cat "$FFMES_CACHE_STAT"
     echo
 	echo "  You will merge the following files:"
-	echo "   ${LSTVIDEO[0]}"
+	echo "   ${LSTVIDEO[0]##*/}"
 	if [ "$NBA" -gt 0 ] ; then
 		printf '   %s\n' "${LSTAUDIO[@]}"
 	fi
@@ -1982,7 +1754,7 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 		done
 
 		# Concatenate
-		ffmpeg $FFMPEG_LOG_LVL -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
+		ffmpeg $FFMPEG_LOG_LVL -fflags +genpts -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
 
 		# Clean
 		rm "$FFMES_CACHE_CONCAT"
@@ -2056,15 +1828,19 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 	while :
 	do
 	read -e -p "-> " rpstreamch
-	case $rpstreamch in
-	
+	rpstreamch_parsed=$(echo "${rpstreamch// /}")
+	case "$rpstreamch_parsed" in
 		"all")
 			mapfile -t VINDEX < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
 			mapfile -t VCODECNAME < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
 			break
-		;;
-		[0-9]*)
-			VINDEX=("$rpstreamch")
+			;;
+		"q"|"Q")
+			Restart
+			break
+			;;
+		*)
+			VINDEX=( $rpstreamch )
 			# Keep codec used
 			mapfile -t VCODECNAME1 < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
 			VCODECNAME=()
@@ -2072,15 +1848,6 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 				VCODECNAME+=("${VCODECNAME1[$i]}")
 			done
 			break
-		;;
-		"q"|"Q")
-			Restart
-			break
-		;;
-			*)
-				echo
-				echo "$MESS_INVALID_ANSWER"
-				echo
 			;;
 	esac
 	done 
@@ -2128,17 +1895,17 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 					;;
 				esac
 
-				StartLoading "" "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT"
+				#StartLoading "" "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT"
 				if [ "$MKVEXTRACT" = "1" ]; then
-					mkvextract "$files" tracks "${VINDEX[i]}":"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
+					mkvextract "$files" tracks "${VINDEX[i]}":"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				elif [ "$MPEG2EXTRACT" = "1" ]; then
-					ffmpeg -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				elif [ "$DVDPCMEXTRACT" = "1" ]; then
-					ffmpeg  -y -i "$files" -map 0:"${VINDEX[i]}" -acodec pcm_s16le -ar 48000 "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -map 0:"${VINDEX[i]}" -acodec pcm_s16le -ar 48000 "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				else
-					ffmpeg  -y -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" &>/dev/null
+					ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				fi
-				StopLoading $?
+				#StopLoading $?
 
 				# Check Target if valid (size test) and clean
 				if [[ $(stat --printf="%s" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
@@ -2243,7 +2010,7 @@ CutVideo() {					# Option 14 	- Cut video
 	# Cut
 	echo
 	echo "FFmpeg processing: ${LSTVIDEO[0]%.*}.cut.${LSTVIDEO[0]##*.}"
-	ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTVIDEO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}"
+	ffmpeg $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}"
 
 	# End time counter
 	END=$(date +%s)
@@ -2811,10 +2578,9 @@ FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 # Start time counter
 START=$(date +%s)
 
-# Message
+ #Message
 echo
 echo "$MESS_SEPARATOR"
-echo " File(s) in processing:"
 
 # Copy $extcont for test and reset inside loop
 ExtContSource="$extcont"
@@ -2905,7 +2671,7 @@ for files in "${LSTAUDIO[@]}"; do
 	else
 		stream="-map 0:a"
 	fi
-	StartLoading "" "$files"
+
 	# Stock files pass in loop
 	filesInLoop+=("$files")					# Populate array
 	# If source extention same as target
@@ -2923,11 +2689,17 @@ for files in "${LSTAUDIO[@]}"; do
 	else
 		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont
 	fi
-	StopLoading $?
 	) &
 	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
 		wait -n
 	fi
+
+	# Progress
+	if [[ -z "$VERBOSE" ]]; then
+		NBAFilesInLoop="${#filesInLoop[@]}"
+		ProgressBar "$NBAFilesInLoop" "$NBA" "$files"
+	fi
+
 done
 wait
 stty -igncr									# Enable the enter key
@@ -2976,7 +2748,7 @@ else
 fi
 
 # End encoding messages
-echo "$MESS_SEPARATOR"
+ProgressBarClean
 if test -n "$filesPass"; then
 	echo " File(s) created:"
 	printf '  %s\n' "${filesPass[@]}"
@@ -3330,7 +3102,7 @@ fi
 		akb="-compression_level 4 -ar 44100"
 	fi
 	}
-ConfOPUS() {					# Option 1,27 	- Conf audio/video opus, audio to opus (libopus)
+ConfOPUS() {					# Option 1,28 	- Conf audio/video opus, audio to opus (libopus)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -3350,14 +3122,18 @@ echo "  [2]  > |  96k | comparable to mp3 120k  |"
 echo "  [3]  > | 128k | comparable to mp3 160k  |"
 echo "  [4]  > | 160k | comparable to mp3 192k  |"
 echo "  [5]  > | 192k | comparable to mp3 280k  |"
-echo " *[6]  > | 220k | comparable to mp3 320k  |"
+if [[ "$AudioCodecType" = "Opus" ]]; then
+	echo "  [6]  > | 220k | comparable to mp3 320k  |"
+else
+	echo " *[6]  > | 220k | comparable to mp3 320k  |"
+fi
 echo "  [7]  > | 256k | 5.1 audio source        |"
 echo "  [8]  > | 320k | 7.1 audio source        |"
 echo "  [9]  > | 450k | 7.1 audio source        |"
 echo "  [10] > | 510k | highest bitrate of opus |"
 if [[ "$AudioCodecType" = "Opus" ]]; then
 	echo "  -----------------------------------------"
-	echo "  [X]  > |    adaptive bitrate     |"
+	echo " *[X]  > |    adaptive bitrate     |"
 	echo "         |-------------------------|"
 	echo "         | Target |     Source     |"
 	echo "         |--------|----------------|"
@@ -3398,11 +3174,14 @@ elif [ "$rpakb" = "10" ]; then
 elif [ "$rpakb" = "X" ]  && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then
 	AdaptedBitrate="1"
 else
-	akb="-b:a 220K"
+	if [[ "$AudioCodecType" = "Opus" ]]; then
+		AdaptedBitrate="1"
+	else
+		akb="-b:a 220K"
+	fi
 fi
 }
-
-ConfOGG() {						# Option 1,26 	- Conf audio/video libvorbis, audio to ogg (libvorbis)
+ConfOGG() {						# Option 1,27 	- Conf audio/video libvorbis, audio to ogg (libvorbis)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -3468,7 +3247,7 @@ else
 	akb="-q 10 -cutoff 22050 -ar 44100"
 fi
 }
-ConfMP3() {						# Option 25 	- Audio to mp3 (libmp3lame)
+ConfMP3() {						# Option 26 	- Audio to mp3 (libmp3lame)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -5666,9 +5445,6 @@ while [[ $# -gt 0 ]]; do
 			fi
 		fi
     ;;
-    --noautocpu)																					# no adaptive CPU load
-		unset AutoCPULoad																			# Unset VAAPI device
-    ;;
     --novaapi)																						# No VAAPI 
 		unset VAAPI_device																			# Unset VAAPI device
     ;;
@@ -5766,27 +5542,7 @@ case $reps in
 	fi
 	;;
 
- 2 ) # video -> full custom - splited video encoding
-	if [ "$NBV" -gt "0" ]; then
-	MultipleVideoExtention
-    StartLoading "Analysis of: ${LSTVIDEO[0]}"
-	VideoSourceInfo
-	StopLoading $?
-	CustomVideoEncod                               # question for make video custom encoding
-	CustomAudioEncod                               # question for make sound custom encoding
-	CustomVideoContainer                           # question for make container custom encoding
-	CustomVideoStream                              # question for make stream custom encoding (appear source have more of 2 streams)
-	FFmpeg_video_cmd2                               # encoding
-	RemoveVideoSource
-	Clean                                          # clean temp files
-	else
-        echo
-        echo "$MESS_ZERO_VIDEO_FILE_AUTH"
-        echo
-	fi
-	;;
-
- 3 ) # video -> mkv|copy|copy
+ 2 ) # video -> mkv|copy|copy
  	if [ "$NBV" -gt "0" ]; then
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # VIDEO ---------------------------------------------------------------------------------
@@ -5797,7 +5553,7 @@ case $reps in
     extcont="mkv"
     container="matroska"
     # NAME ----------------------------------------------------------------------------------
-    videoformat="avcopy.acopy"
+    videoformat="avcopy"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     MultipleVideoExtention
     StartLoading "Analysis of: ${LSTVIDEO[0]}"

@@ -1,4 +1,18 @@
 # Changelog
+v0.64:
+* Video:
+	* add - title tag of video is now updated by source filename
+	* chg - replace old map function (sed parse) by full bash. Normaly invisible change for user, except input (map x -> x)
+	* chg - replace filename add, example: libx265 -> HEVC
+	* remove - remove option 2, good performance but impossible to have repeatable results, especially in terms of streams delay for subtitle.
+* Audio:
+	* add - support of DTS files (in .dts)
+	* chg - replace loading by progress bar, more visual and no longer spam the screen  (I use this base https://github.com/fearside/ProgressBar/blob/master/progressbar.sh)
+	* chg - now in opus encoding adaptive bitrate is default option
+* Various:
+	* fix - nemo action in readme
+	* fix - various clean code and display
+
 v0.63:
 * Video:
 	* add - example cbr bitrate calulation for x264/x265
