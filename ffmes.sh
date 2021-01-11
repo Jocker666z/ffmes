@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.64b
+VERSION=v0.65
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -49,7 +49,7 @@ RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
 PeakNormDB="0"																				# Peak db normalization option, this value is written as positive but is used in negative, e.g. 4 = -4
 
 # VGM variables
-VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|hps|imc|int|ktss|laac|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sad|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
+VGM_EXT_AVAILABLE="aa3|ads|adp|adpcm|adx|aif|aifc|aix|ast|at3|bcstm|bcwav|bfstm|bfwav|bin|cfn|gbs|dat|dsp|dsf|eam|fsb|genh|hes|his|hps|imc|int|ktss|laac|mini2sf|minigsf|minipsf|miniusf|minipsf2|mod|msf|mtaf|mus|nsf|rak|raw|s98|S98|sad|sfd|sgd|snd|sndh|sng|spsd|ss2|ssf|spc|str|psf|psf2|vag|vgm|vgz|vpk|tak|thp|vgs|voc|wem|xa|xvag|xwav"
 VGM_ISO_EXT_AVAILABLE="bin|iso"
 
 # Messages
@@ -78,13 +78,13 @@ gbsinfo() {						# https://github.com/mmitch/gbsplay
 "$FFMES_PATH"/bin/gbsinfo "$@"
 }
 info68() {						# https://sourceforge.net/projects/sc68/
-env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/info68 "$@"
+"$FFMES_PATH"/bin/info68 "$@"
 }
 opustags() {					# https://github.com/fmang/opustags
 "$FFMES_PATH"/bin/opustags "$@"
 }
 sc68() {						# https://sourceforge.net/projects/sc68/
-env LD_LIBRARY_PATH="$FFMES_PATH/bin/lib/" "$FFMES_PATH"/bin/sc68 "$@"
+"$FFMES_PATH"/bin/sc68 "$@"
 }
 vgm2wav() {						# https://github.com/vgmrips/vgmplay
 "$FFMES_PATH"/bin/vgm2wav "$@"
@@ -146,7 +146,6 @@ if test -n "$TESTARGUMENT"; then		# if argument
 	fi
 else									# if no argument -> batch
 	# List source(s) video file(s) & number of differents extentions
-	#mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
 	mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	# List source(s) audio file(s) & number of differents extentions
@@ -388,7 +387,7 @@ rm -R "$FFMES_PATH"/bin
 cp -R -- "$FFMES_PATH"/update-temp/ffmes/* "$FFMES_PATH"/
 rm -R "$FFMES_PATH"/update-temp
 }
-ProgressBar() {					# Audio process progress bar
+ProgressBar() {					# Audio encoding progress bar
 	let _progress=(${1}*100/${2}*100)/100
 	let _done=(${_progress}*4)/10
 	let _left=40-$_done
@@ -404,7 +403,7 @@ else
 	printf "\033[2A"
 fi
 }
-ProgressBarClean() {			# Progress bar vertical clean trick
+ProgressBarClean() {			# Audio encoding progress bar, vertical clean trick
 tput el
 tput cuu 1 && tput el
 }
@@ -430,9 +429,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 		echo "FFmpeg processing: ${files##*/}"
 		(
-		set -x
 		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -metadata title="${TagTitle%.*}" -max_muxing_queue_size 4096 -f $container "${files%.*}".$videoformat.$extcont
-		set +x
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 			wait -n
@@ -1106,7 +1103,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 
 		# Set video configuration variable
 		chvidstream="Copy"
-		filevcodec="vcopy"
+		filevcodec="VCOPY"
 		videoconf="-c:v copy"                                            # Set video variable
 
 	fi
@@ -1188,7 +1185,7 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 	else
 
         chsoundstream="Copy"                              # No audio change
-        fileacodec="acopy"
+        fileacodec="ACOPY"
         soundconf="-acodec copy"
 	fi
 	}
@@ -1263,6 +1260,11 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 				esac
 		done
 		stream="${stream[@]}"
+		if [ "$extcont" = mkv ]; then
+			subtitleconf="-c:s copy"									# mkv subtitle variable
+		elif [ "$extcont" = mp4 ]; then
+			subtitleconf="-c:s mov_text"								# mp4 subtitle variable
+		fi
 
 	else																	# If $nbstream <= 2
 		if [ "$reps" -le 1 ]; then											# Refresh summary $nbstream <= 2
@@ -4344,10 +4346,12 @@ VGMRip() {						# Option 21 	- VGM rip
 					TAG_SONG="${files%.*}"
 					TAG_ALBUM="$TAG_GAME ($TAG_MACHINE)"											# Album
 
-					SUBSONG=$(cat "$VGM_TAG" | grep -i -a track | sed 's/^.*: //' | head -1)
+					SUBSONG=$(cat "$VGM_TAG" | grep -i -a track | sed 's/^.*: //' | tail -1)
 					for SUBSONG in `seq -w 1 $SUBSONG`; do
 						# Extract VGM
-						sc68 -t $SUBSONG "$files" -w -o "$SUBSONG".wav
+						sc68 -c -t $SUBSONG "$files" > "$SUBSONG".raw
+						sox -t raw -r 44100 -b 16 -c 2 -L -e signed-integer "$SUBSONG".raw "$SUBSONG".wav
+						rm "$SUBSONG".raw
 
 						# Remove silence from audio files while leaving gaps, if audio during more than 10s
 						TEST_DURATION=$(mediainfo --Output="General;%Duration%" "$SUBSONG".wav)
@@ -4886,7 +4890,6 @@ VGMRip() {						# Option 21 	- VGM rip
 									else
 										echo "X.nsf::NSF,$NB,[untitled],0:03:00,,0:00:00" >> "$VGM_TAG"
 									fi
-									#exit
 									NSF-m3u-parser															# relaunch M3U parser
 									M3UTrackNumber=$(wc -l "$VGM_TAG" | awk '{print $1}')
 								fi
@@ -5310,7 +5313,7 @@ VGMRip() {						# Option 21 	- VGM rip
 					FFmpeg_vgm_cmd
 				;;
 
-				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*hps|*HPS|*int|*INT|*laac|*LAAC|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG|*sad|*SAD|*imc|*IMC)					# Various Machines
+				*aa3|*AA3|*ads|*ADS|*adp|*ADP|*adpcm|*ADPCM|*aif|*AIF|*aifc|*AIFC|*aix|*AIX|*ss2|*SS2|*adx|*ADX|*bfstm|*BFSTM|*bfwav|*BFWAV|*cfn|*CFN|*dsp|*DSP|*eam|*EAM|*genh|*GENH|*his|*HIS|*hps|*HPS|*int|*INT|*laac|*LAAC|*rak|*RAK|*raw|*RAW|*sng|*SNG|*spsd|*SPSD|*str|*STR|*thp|*THP|*vag|*VAG|*vgs|*VGS|*vpk|*VPK|*wem|*WEM|*xwav|*XWAV|*bcstm|*BCSTM|*bcwav|*BCWAV|*fsb|*FSB|*msf|*MSF|*ktss|*KTSS|*sfd|*SFD|*mtaf|*MTAF|*sgd|*SGD|*xvag|*XVAG|*sad|*SAD|*imc|*IMC)					# Various Machines
 					# Extract Tag
 					if test -z "$TAG_GAME"; then
 						echo "Please indicate the game title"
@@ -5555,7 +5558,7 @@ case $reps in
     extcont="mkv"
     container="matroska"
     # NAME ----------------------------------------------------------------------------------
-    videoformat="avcopy"
+    videoformat="AVCOPY"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
     MultipleVideoExtention
     StartLoading "Analysis of: ${LSTVIDEO[0]}"

@@ -1,7 +1,14 @@
 # Changelog
+v0.65:
+* Video:
+	* fix - remove bash debug at encoding
+	* fix - error with hdmv_pgs_subtitle copy
+* VGM:
+	* update - sc68 and info68 by static build no able to play file just convert in raw
+
 v0.64b:
 * Video:
-	* fix - for encoding in libx265 and libx264, tune and profile reappears
+	* fix - in encoding in libx265 and libx264, tune and profile reappears
 
 v0.64a:
 * Various:

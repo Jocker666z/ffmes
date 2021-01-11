@@ -25,6 +25,8 @@ Active=true
 Name=ffmes %N
 Comment=ffmes %N
 Exec=gnome-terminal -- bash -c "cd '%P' && ~/ffmes/ffmes.sh -i '%F'; bash"
+Quote=double
+EscapeSpaces=true
 Selection=any
 Extensions=any;
 ```
@@ -202,8 +204,8 @@ Files supported :
 * Sony Playstation 4: wem
 * Sony PSP: at3
 * Panasonic 3DO: aifc, str
-* PC: fsb, imc, mod, voc
-* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, wem
+* PC: fsb, his, imc, mod, voc
+* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, wem, pcm
 * Various machines CD-DA: bin, bin/cue, iso/cue
 
 ### Option 23 details - PCM encoding
