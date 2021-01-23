@@ -1,12 +1,13 @@
 # ffmes - ffmpeg media encode script 
 
-Bash tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. In batch or single file.
+Bash tool handling media files, DVD and audio CD. Mainly with ffmpeg. In batch or single file.
 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
 * Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts
 * Subtitle in *.srt *.ssa *.sub *.sup
-* VGM files (see documentation)
+
+Note: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with vgm2flac -> https://github.com/Jocker666z/vgm2flac
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
@@ -59,19 +60,8 @@ Exemples:
 ffmes is tested, under Debian stable and unstable almost every day.
 If you encounter problems or have proposals, I am open to discussion.
 
-## Embeds binaries & scripts
-All come from open source programs.
-* binmerge - https://github.com/putnam/binmerge
-* espctag - https://sourceforge.net/projects/espctag/
-* gbsinfo - https://github.com/mmitch/gbsplay
-* gbsplay - https://github.com/mmitch/gbsplay
-* info68 - https://sourceforge.net/projects/sc68/
+## Embed binarie
 * opustags - https://github.com/fmang/opustags
-* sc68 - https://sourceforge.net/projects/sc68/
-* vgm2wav - https://github.com/ValleyBell/libvgm
-* vgmstream_cli - https://github.com/losnoco/vgmstream
-* vgmtag - https://github.com/vgmrips/vgmtools
-* zxtune - https://zxtune.bitbucket.io/
 
 --------------------------------------------------------------------------------------------------
 ## Documentations
@@ -93,14 +83,13 @@ All come from open source programs.
 	* 18, convert DVD subtitle (idx/sub) to srt
 * Audio :
 	* 20, CD rip
-	* 21, VGM rip to flac (Linux x86_64 only)
-	* 22, CUE splitter to flac
-	* 23, audio to wav (PCM)
-	* 24, audio to flac
-	* 25, audio to wavpack
-	* 26, audio to mp3 (libmp3lame)
-	* 27, audio to ogg (libvorbis)
-	* 28, audio to opus (libopus)
+	* 21, CUE splitter to flac
+	* 22, audio to wav (PCM)
+	* 23, audio to flac
+	* 24, audio to wavpack
+	* 25, audio to mp3 (libmp3lame)
+	* 26, audio to ogg (libvorbis)
+	* 27, audio to opus (libopus)
 * Audio tools :
 	* 30, tag editor
 	* 31, view detailed audio file informations
@@ -171,44 +160,7 @@ Tesseract engine available:
 * By recognizing character patterns, fast but not reliable
 * By neural net (LSTM), slow but reliable (default)
 
-### Option 21 details - VGM Rip to flac
-This function limited to Linux x86_64, it embeds binaries compiled for this platform, so it remains (and will) unstable as a whole.
-Encoding automated apply 0db peak normalization, remove silence, and false stereo files detection.
-
-Files supported :
-* 3DO : aif
-* Amiga/Atari: mod, snd, sndh
-* Fujitsu FM-7, FM Towns: s98
-* Microsoft Xbox: aix, mus, sfd, xwav
-* Microsoft Xbox 360: wem
-* NEC PC-6001, PC-6601, PC-8801, PC-9801: s98
-* NEC PC-Engine/TurboGrafx-16: hes
-* Nintendo 3DS: mus, bcstm, wem, bcwav, fsb
-* Nintendo DS: adx, mini2sf, sad
-* Nintendo GB & GBC: gbs
-* Nintendo GBA: minigsf
-* Nintendo GameCube: adx, cfn, dsp, hps, adp, thp, mus
-* Nintendo N64: miniusf
-* Nintendo NES: nsf
-* Nintendo SNES: spc
-* Nintendo Switch: bfstm, bfwav, ktss
-* Nintendo Wii: mus
-* Sega Mark III/Master System: vgm, vgz
-* Sega Mega Drive/Genesis: vgm, vgz
-* Sega Saturn: minissf, ssf
-* Sega Dreamcast: dsf, spsd
-* Sharp X1 : s98
-* Sony Playstation: psf, minipsf, xa, vag
-* Sony Playstation 2: ads, adpcm, genh, psf2, int, minipsf2, ss2, vag, vpk, sng, vgs
-* Sony Playstation 3: aa3, adx, at3, genh, laac, msf, mtaf, sgd, ss2, vag, xvag, wem
-* Sony Playstation 4: wem
-* Sony PSP: at3
-* Panasonic 3DO: aifc, str
-* PC: fsb, his, imc, mod, voc
-* Various machines: vgm, vgz, adx, rak, tak, dat, eam, at3, raw, wem, pcm
-* Various machines CD-DA: bin, bin/cue, iso/cue
-
-### Option 23 details - PCM encoding
+### Option 22 details - PCM encoding
 * Encoding options:
 	* Quality :
 		* signed 16-bit little-endian
@@ -222,7 +174,7 @@ Files supported :
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 24 details - FLAC encoding
+### Option 23 details - FLAC encoding
 * Encoding options:
 	* Quality :
 		* Sample rate: 44kHz, 48kHz, or auto
@@ -234,7 +186,7 @@ Files supported :
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 25 details - WavPack encoding
+### Option 24 details - WavPack encoding
 * Encoding options:
 	* Quality :
 		* Sample rate: 44kHz, 48kHz, or auto
@@ -246,7 +198,7 @@ Files supported :
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 27 details - opus encoding
+### Option 25 details - opus encoding
 * Encoding options:
 	* Bitrate
 		* vbr, 64kb to 510kb (selectable options).
@@ -315,6 +267,4 @@ Restriction:
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding_tiers_and_levels
 		* https://x265.readthedocs.io/en/default/presets.html
 * Audio codecs:
-	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison#Monkey.27s_Audio_.28APE.29
-* VGM:
-	* http://loveemu.hatenablog.com/entry/Conversion_Tools_for_Video_Game_Music
+	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison

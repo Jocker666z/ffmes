@@ -1,4 +1,11 @@
 # Changelog
+v0.66:
+* Audio:
+	* fix - display of filename after "File(s) in processing:"
+* Audio tag:
+	* update - opustags to v1.6.0
+* VGM : Remove VGM encoding (& associate bin). I make a new script only for this, vgm2flac -> https://github.com/Jocker666z/vgm2flac
+
 v0.65:
 * Video:
 	* fix - remove bash debug at encoding
