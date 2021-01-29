@@ -1,4 +1,12 @@
 # Changelog
+v0.67:
+Video
+	* chg - in x264/x265 bitrate option, prevention of typing errors on cbr mode
+	* add - in x264/x265 bitrate option, now you can choose the approximate total size of the video stream by entering a value in mb
+Various:
+	* add - ffprobe in dependencies
+
+
 v0.66:
 * Audio:
 	* fix - display of filename after "File(s) in processing:"

@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.66
+VERSION=v0.67
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -26,7 +26,7 @@ OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player dr
 NPROC=$(nproc --all)																		# Set number of processor
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk tesseract subp2tiff subptools wget)
+COMMAND_NEEDED=(ffmpeg ffprobe abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk tesseract subp2tiff subptools wget)
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# ffmpeg log
 
 # Video variables
@@ -468,11 +468,12 @@ VideoSourceInfo() {				# Video source stats
 	# Clean temp file
 	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
 
-	# Grep interlaced, hdr, and width/height, Overall bit rate of source (with mediainfo)
+	# Grep info for in script use
 	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "${LSTVIDEO[0]}")
 	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "${LSTVIDEO[0]}")
 	SWIDTH=$(mediainfo --Inform="Video;%Width%" "${LSTVIDEO[0]}")
 	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
+	SourceDurationSecond=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${LSTVIDEO[0]}")
 }
 VideoAudioSourceInfo() {		# Video source stats / Audio only with stream order (for audio night normalization)
 	# Add all stats in temp.stat.info
@@ -1536,17 +1537,13 @@ fi
 
 # Bitrate x264/x265
 CustomInfoChoice
-echo " Choose a number or enter the desired bitrate:"
+echo " Choose a CRF number, video strem size or enter the desired bitrate:"
 echo " Note: This settings influences size and quality, crf is a better choise in 90% of cases."
 echo
 echo "$MESS_SEPARATOR"
-echo " cbr bitrate calculation example:"
-echo " (200 MiB * 8192 [converts MiB to kBit]) / 600 seconds = ~2730 kBit/s total bitrate"
-echo " 2730 - 128 kBit/s (desired audio bitrate) = 2602 kBit/s video bitrate"
-echo
-echo "$MESS_SEPARATOR"
-echo " [1200k]     Example of input format for cbr desired bitrate"
-echo " [-crf 21]   Example of input format for crf desired level"
+echo " [1200k]     Example of input for cbr desired bitrate in kb"
+echo " [1500m]     Example of input for aproximative total size of video stream in mb"
+echo " [-crf 21]   Example of input for crf desired level"
 echo
 echo "  [1] > for crf 0    ∧ |"
 echo "  [2] > for crf 5   Q| |"
@@ -1558,9 +1555,19 @@ echo "  [7] > for crf 25  T| |"
 echo "  [8] > for crf 30  Y| |"
 echo "  [9] > for crf 35   | ∨"
 read -e -p "-> " rpvkb
-if echo $rpvkb | grep -q 'k'; then
-	vkb="-b:v $rpvkb"
-elif echo $rpvkb | grep -q 'crf'; then
+if echo "$rpvkb" | grep -q 'k'; then
+	# Remove all after k from variable for prevent syntax error
+	local video_stream_kb="${rpvkb%k*}"
+	# Set cbr variable
+	vkb="-b:v ${video_stream_kb}k"
+elif echo "$rpvkb" | grep -q 'm'; then
+	# Remove all after m from variable
+	local video_stream_size="${rpvkb%m*}"
+	# Bitrate calculation
+	local video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$SourceDurationSecond")
+	# Set cbr variable
+	vkb="-b:v ${video_stream_kb}k"
+elif echo "$rpvkb" | grep -q 'crf'; then
 	vkb="$rpvkb"
 elif [ "$rpvkb" = "1" ]; then
 	vkb="-crf 0"

@@ -11,7 +11,7 @@ Note: VGM encoding removed from ffmes, I cut the script in half for easier maint
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
-`ffmpeg mkvtoolnix mediainfo abcde sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all wget`
+`ffmpeg ffprobe mkvtoolnix mediainfo abcde sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all wget`
 
 ## Install
 * `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
@@ -114,8 +114,8 @@ If you encounter problems or have proposals, I am open to discussion.
 		* deinterlace
 		* fix frame rate to 24fps
 		* codecs:
-			* x264: profile, tune, preset & bitrate (crf & cbr)
-			* x265: profile, tune, HDR, preset & bitrate (crf & cbr)
+			* x264: profile, tune, preset & bitrate (video stream total size, crf & cbr)
+			* x265: profile, tune, HDR, preset & bitrate (video stream total size, crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
 		* if VAAPI device found at /dev/dri/renderD128, it's used for decode video
 * Audio:
