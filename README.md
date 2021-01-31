@@ -1,67 +1,72 @@
 # ffmes - ffmpeg media encode script 
 
-Bash tool handling media files, DVD and audio CD. Mainly with ffmpeg. In batch or single file.
+Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single file.
 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
 * Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts
 * Subtitle in *.srt *.ssa *.sub *.sup
 
-Note: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with vgm2flac -> https://github.com/Jocker666z/vgm2flac
+**Note**: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies
-`ffmpeg ffprobe mkvtoolnix mediainfo abcde sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all wget`
+`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all wget opustags`
 
-## Install
-* `cd && wget https://github.com/Jocker666z/ffmes/archive/master.zip`
-* `unzip master.zip && mv ffmes-master ffmes && rm master.zip`
-* `cd ffmes && chmod a+x ffmes.sh`
-* `echo "alias ffmes=\"bash ~/ffmes/ffmes.sh\"" >> ~/.bash_aliases && source ~/.bash_aliases` (alias optional but recommended & handy)
-* Nemo action:
+## Install & update
+`curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
+
+### Nemo action
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
 [Nemo Action]
 Active=true
 Name=ffmes %N
 Comment=ffmes %N
-Exec=gnome-terminal -- bash -c "cd '%P' && ~/ffmes/ffmes.sh -i '%F'; bash"
+Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
 Quote=double
 EscapeSpaces=true
 Selection=any
 Extensions=any;
 ```
 
+### opustags intall
+Required for tag option.
+
+Build dependencies: `git build-essential cmake`
+
+```
+git clone https://github.com/fmang/opustags && cd opustags
+mkdir build && cd build && cmake .. 
+make -j"$(nproc)"
+su -c "make install" -m "root"
+```
+
 ## Use
-Options:
-* without option treat current directory
-* -i|--input <file> : treat one file
-* -i|--input <directory> : treat in batch a specific directory
-* -h|--help : display help
-* --novaapi : no use vaapi for decode video.
-* -j|--videojobs <number> : number of video encoding in same time (default: 3)
-* -s|--select <number> : preselect option 
-* -v|--verbose : display ffmpeg log level as info
-* -vv|--fullverbose : display ffmpeg log level as debug
+```
+Usage: ffmes options
+                          Without option treat current directory.
+  -i|--input <file>       Treat one file.
+  -i|--input <directory>  Treat in batch a specific directory.
+  -h|--help               Display this help.
+  -j|--videojobs <number> Number of video encoding in same time.
+                          Default: 3
+  --novaapi               No use vaapi for decode video.
+  -s|--select <number>    Preselect option (by-passing main menu).
+  -v|--verbose            Display ffmpeg log level as info.
+  -vv|--fullverbose       Display ffmpeg log level as debug
+```
 
 Exemples:
-1. if no alias: 
-    * `bash ~/ffmes/ffmes.sh` with audio/video in same directory of script
-    * `bash ~/ffmes/ffmes.sh -i DIRECTORY-TO.EDIT` for directory
-    * `bash ~/ffmes/ffmes.sh -i FILE-TO.EDIT` for single video or audio
-2. elif with alias (recommended):
-    * `ffmes` with audio/video in directory
-    * `ffmes -i DIRECTORY-TO.EDIT` for directory
-    * `ffmes -i FILE-TO.EDIT` for single video or audio
-    * `ffmes -vv -i FILE-TO.EDIT` for single video or audio, with ffmpeg in log level as debug
-    * `ffmes -s 1 -i FILE-TO.EDIT` for single video, select option 1 by-passing the main menu
+* `ffmes` with audio/video in directory
+* `ffmes -i DIRECTORY-TO.EDIT` for directory
+* `ffmes -i FILE-TO.EDIT` for single video or audio
+* `ffmes -vv -i FILE-TO.EDIT` for single video or audio, with ffmpeg in log level as debug
+* `ffmes -s 1 -i FILE-TO.EDIT` for single video, select option 1 by-passing the main menu
 
 ## Test
 ffmes is tested, under Debian stable and unstable almost every day.
 If you encounter problems or have proposals, I am open to discussion.
-
-## Embed binarie
-* opustags - https://github.com/fmang/opustags
 
 --------------------------------------------------------------------------------------------------
 ## Documentations
@@ -82,14 +87,13 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 17, change color of DVD subtitle (idx/sub)
 	* 18, convert DVD subtitle (idx/sub) to srt
 * Audio :
-	* 20, CD rip
-	* 21, CUE splitter to flac
-	* 22, audio to wav (PCM)
-	* 23, audio to flac
-	* 24, audio to wavpack
-	* 25, audio to mp3 (libmp3lame)
-	* 26, audio to ogg (libvorbis)
-	* 27, audio to opus (libopus)
+	* 20, CUE splitter to flac
+	* 21, audio to wav (PCM)
+	* 22, audio to flac
+	* 23, audio to wavpack
+	* 24, audio to mp3 (libmp3lame)
+	* 25, audio to ogg (libvorbis)
+	* 26, audio to opus (libopus)
 * Audio tools :
 	* 30, tag editor
 	* 31, view detailed audio file informations
@@ -160,7 +164,7 @@ Tesseract engine available:
 * By recognizing character patterns, fast but not reliable
 * By neural net (LSTM), slow but reliable (default)
 
-### Option 22 details - PCM encoding
+### Option 21 details - PCM encoding
 * Encoding options:
 	* Quality :
 		* signed 16-bit little-endian
@@ -174,7 +178,7 @@ Tesseract engine available:
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 23 details - FLAC encoding
+### Option 22 details - FLAC encoding
 * Encoding options:
 	* Quality :
 		* Sample rate: 44kHz, 48kHz, or auto
@@ -186,7 +190,7 @@ Tesseract engine available:
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 24 details - WavPack encoding
+### Option 23 details - WavPack encoding
 * Encoding options:
 	* Quality :
 		* Sample rate: 44kHz, 48kHz, or auto
@@ -198,7 +202,7 @@ Tesseract engine available:
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 25 details - opus encoding
+### Option 26 details - opus encoding
 * Encoding options:
 	* Bitrate
 		* vbr, 64kb to 510kb (selectable options).

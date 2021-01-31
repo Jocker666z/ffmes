@@ -1,6 +1,6 @@
 #!/bin/bash
 # ffmes - ffmpeg media encode script
-# Bash tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg. Batch or single file.
+# Bash tool handling media files and DVD. Mainly with ffmpeg. Batch or single file.
 #
 # Author : Romain Barbarot
 # https://github.com/Jocker666z/ffmes/
@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.67
+VERSION=v0.68
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -18,15 +18,13 @@ FFMES_CACHE_MAP="/home/$USER/.cache/ffmes/map-$(date +%Y%m%s%N).info"						# map
 FFMES_CACHE_TAG="/home/$USER/.cache/ffmes/tag-$(date +%Y%m%s%N).info"						# tag-DATE.info, audio tag file
 FFMES_CACHE_CONCAT="/home/$USER/.cache/ffmes/contat-$(date +%Y%m%s%N).info"					# contat-DATE.info, concatenate list file
 LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdvd cache
-ABCDE_EXTRACT="/home/$USER/Music"															# abcde extract directory
-ABCDE_CONF="$FFMES_PATH/conf/abcde-ffmes.conf"												# abcde configuration file
-OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# CD/DVD player drives names
+OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# DVD player drives names
 
 # General variables
 NPROC=$(nproc --all)																		# Set number of processor
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg ffprobe abcde sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk tesseract subp2tiff subptools wget)
+COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk tesseract subp2tiff subptools wget opustags)
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# ffmpeg log
 
 # Video variables
@@ -50,23 +48,17 @@ PeakNormDB="0"																				# Peak db normalization option, this value is 
 MESS_SEPARATOR=" --------------------------------------------------------------"
 MESS_ZERO_VIDEO_FILE_AUTH="   -/!\- No video file to process. Restart ffmes by selecting a file or in a directory containing it."
 MESS_ZERO_AUDIO_FILE_AUTH="   -/!\- No audio file to process. Restart ffmes by selecting a file or in a directory containing it."
-MESS_ZERO_VGM_FILE_AUTH="   -/!\- No VGM file to process. Restart ffmes by selecting a file or in a directory containing it."
 MESS_INVALID_ANSWER="   -/!\- Invalid answer, please try again."
 MESS_ONE_VIDEO_FILE_AUTH="   -/!\- Only one video file at a time. Restart ffmes to select one video or in a directory containing one."
 MESS_ONE_AUDIO_FILE_AUTH="   -/!\- Only one audio file at a time. Restart ffmes to select one audio or in a directory containing one."
 MESS_BATCH_FILE_AUTH="   -/!\- Only more than one file file at a time. Restart ffmes in a directory containing several files."
 MESS_EXT_FILE_AUTH="   -/!\- Only one extention type at a time."
 
-## EMBEDS BINARIE SECTION
-opustags() {					# https://github.com/fmang/opustags
-"$FFMES_PATH"/bin/opustags "$@"
-}
-
 ## VARIABLES GEN, TOOLS, DISPLAY & MENU SECTION
 Usage() {
 cat <<- EOF
 ffmes $VERSION - GNU GPL-2.0 Copyright - <https://github.com/Jocker666z/ffmes>
-Bash tool handling media files, DVD, audio CD, and VGM. Mainly with ffmpeg.
+Bash tool handling media files and DVD. Mainly with ffmpeg.
 In batch or single file.
 
 Usage: ffmes [options]
@@ -244,14 +236,13 @@ echo "  16 - split mkv by chapter                           |"
 echo "  17 - change color of DVD subtitle (idx/sub)         |"
 echo "  18 - convert DVD subtitle (idx/sub) to srt          |"
 echo "  -----------------------------------------------------"
-echo "  20 - CD rip                                         |"
-echo "  21 - CUE splitter to flac                           |-Audio"
-echo "  22 - audio to wav (PCM)                             |"
-echo "  23 - audio to flac                                  |"
-echo "  24 - audio to wavpack                               |"
-echo "  25 - audio to mp3 (libmp3lame)                      |"
-echo "  26 - audio to ogg (libvorbis)                       |"
-echo "  27 - audio to opus (libopus)                        |"
+echo "  20 - CUE splitter to flac                           |"
+echo "  21 - audio to wav (PCM)                             |-Audio"
+echo "  22 - audio to flac                                  |"
+echo "  23 - audio to wavpack                               |"
+echo "  24 - audio to mp3 (libmp3lame)                      |"
+echo "  25 - audio to ogg (libvorbis)                       |"
+echo "  26 - audio to opus (libopus)                        |"
 echo "  -----------------------------------------------------"
 echo "  30 - tag editor                                     |"
 echo "  31 - view detailed audio file informations          |"
@@ -318,15 +309,8 @@ if [[ -z "$VERBOSE" ]]; then
 	unset _sp_pid
 fi
 }
-ffmesUpdate() {					# Option 99  	- ffmes ugly update to last version (hidden option)
-mkdir "$FFMES_PATH"/update-temp
-cd "$FFMES_PATH"/update-temp
-wget https://github.com/Jocker666z/ffmes/archive/master.zip
-unzip master.zip && mv ffmes-master ffmes
-rm "$FFMES_PATH"/update-temp/master.zip
-rm -R "$FFMES_PATH"/bin
-cp -R -- "$FFMES_PATH"/update-temp/ffmes/* "$FFMES_PATH"/
-rm -R "$FFMES_PATH"/update-temp
+ffmesUpdate() {					# Option 99  	- ffmes update to last version (hidden option)
+curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes
 }
 ProgressBar() {					# Audio encoding progress bar
 	let _progress=(${1}*100/${2}*100)/100
@@ -1196,9 +1180,9 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 					;;
 
 				# Other Stream
-				*)
-					stream+=("-map 0:${VINDEX[i]}")
-					;;
+				# *)
+				# 	stream+=("-map 0:${VINDEX[i]}")
+				#	;;
 				esac
 		done
 		stream="${stream[@]}"
@@ -2465,66 +2449,6 @@ SplitCUE() {					# Option 22 	- CUE Splitter to flac
 	echo
 	
 	fi
-}
-CDRip() {						# Option 20 	- Audio CD Rip with abcde
-if command -v abcde &>/dev/null; then						# If abcde installed
-	clear
-	echo
-    echo " Audio CD rip"
-    echo " Notes: * abcde is used for rip audio CD"
-    echo "        * if you have more than one drive, insert only one CDROM."
-    echo "        * temporary & finals files extracted in \"$ABCDE_EXTRACT\" directory"
-    echo
-    echo "$MESS_SEPARATOR"
-    echo " Choose desired option:"
-    echo
-    echo "        | codec |  quality |"
-    echo "        |-------|----------|"
-    echo " *[1] > |  flac | lossless |"
-    echo "  [2] > |   ogg |    500kb |"
-    echo "  [3] > |  opus |    256kb |"
-    echo "  [4] > |   mp3 |    320kb |"
-    echo "  [q] > |  quit"
-    echo
-		while :
-		do
-		read -e -p "-> " rpripcd
-		case $rpripcd in
-			"1"|"")
-				cdripcodec="flac"
-				break
-			;;
-			"2")
-				cdripcodec="ogg:-q 10"
-				break
-			;;
-			"3")
-				cdripcodec="opus:--vbr --bitrate 256"
-				break
-			;;
-			"4")
-				cdripcodec="mp3:-b 320"
-				break
-			;;
-			"q"|"Q")
-				Restart
-				break
-			;;
-				*)
-					echo
-					echo "$MESS_INVALID_ANSWER"
-					echo
-				;;
-		esac
-		done
-
-	abcde -o "$cdripcodec" -a default,getalbumart -N -f -d "$DVD_DEVICE" -c "$ABCDE_CONF"
-
-else
-	echo
-	echo "	abcde is not present, install it for audio CD Rip"
-	echo
-fi
 }
 FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
 # Start time counter
@@ -4263,11 +4187,7 @@ case $reps in
 	fi
 	;;
 
- 20 ) # audio ->  CD Rip
-	CDRip										   # quality questions & launch abcde
-	;;
-
- 21 ) # audio -> CUE splitter
+ 20 ) # audio -> CUE splitter
 	if [ "$NBA" -gt "0" ]; then
     SplitCUE
     Clean                                          # clean temp files
@@ -4278,7 +4198,7 @@ case $reps in
 	fi
     ;;
 
- 22 ) # audio -> PCM
+ 21 ) # audio -> PCM
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
     AudioSourceInfo
@@ -4304,7 +4224,7 @@ case $reps in
 	fi
     ;;
 
- 23 ) # audio -> flac lossless
+ 22 ) # audio -> flac lossless
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
     AudioSourceInfo
@@ -4331,7 +4251,7 @@ case $reps in
 	fi
     ;;
 
- 24 ) # audio -> wavpack lossless
+ 23 ) # audio -> wavpack lossless
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
 	AudioSourceInfo
@@ -4358,7 +4278,7 @@ case $reps in
 	fi
     ;;
 
- 25 ) # audio -> mp3 @ vbr190-250kb
+ 24 ) # audio -> mp3 @ vbr190-250kb
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
     AudioSourceInfo
@@ -4385,7 +4305,7 @@ case $reps in
 	fi
     ;;
 
- 26 ) # audio -> ogg
+ 25 ) # audio -> ogg
 	if [ "$NBA" -gt "0" ]; then
 	MultipleAudioExtention
     AudioSourceInfo
@@ -4412,7 +4332,7 @@ case $reps in
 	fi
     ;;
 
- 27 ) # audio -> opus
+ 26 ) # audio -> opus
 	if [ "$NBA" -gt "0" ]; then
 	AudioCodecType="Opus"
 	MultipleAudioExtention

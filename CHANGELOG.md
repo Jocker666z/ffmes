@@ -1,11 +1,22 @@
 # Changelog
+v0.68:
+Video:
+	* fix - double stream creation, when no select any stream
+Audio
+	* remove - audio CD rip, useless option
+Tag:
+	* remove - opustag bin, now manual install by final user needed
+	* add - opustags in COMMAND_NEEDED variable
+Readme:
+	* add - opustags build documentation
+	* chg - ffmes installation method for more simple curl type
+
 v0.67:
 Video
 	* chg - in x264/x265 bitrate option, prevention of typing errors on cbr mode
-	* add - in x264/x265 bitrate option, now you can choose the approximate total size of the video stream by entering a value in mb
+	* add - in x264/x265 bitrate option, now you can choose the approximate total size of the video stream by entering a value in mb (not recommended in batch mode)
 Various:
 	* add - ffprobe in dependencies
-
 
 v0.66:
 * Audio:
