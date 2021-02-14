@@ -4,17 +4,17 @@ Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single 
 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
-* Audio in *.ac3 *.ape *.wma *.m4a *.mp3 *.flac *.ogg *.mpc *.ac3 *.aac *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts
+* Audio in *.aac *.ac3 *.aif *.aiff *.ape *.flac *.wma *.m4a *.mp3 *.ogg *.mka *.mpc *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts
 * Subtitle in *.srt *.ssa *.sub *.sup
 
 **Note**: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
 
 --------------------------------------------------------------------------------------------------
-## Dependencies
-`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc libao bchunk setcd tesseract-ocr tesseract-ocr-all wget opustags`
-
 ## Install & update
 `curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
+
+## Dependencies
+`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc bchunk setcd tesseract-ocr tesseract-ocr-all wget opustags`
 
 ### Nemo action
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
@@ -31,7 +31,7 @@ Extensions=any;
 ```
 
 ### opustags intall
-Required for tag option.
+Required for opus tag.
 
 Build dependencies: `git build-essential cmake`
 
@@ -174,7 +174,7 @@ Tesseract engine available:
 		* unsigned 8-bit
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* 0db peak normalization
+	* -1db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
@@ -186,7 +186,7 @@ Tesseract engine available:
 		* Full command line option
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* 0db peak normalization
+	* -1db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
@@ -198,7 +198,7 @@ Tesseract engine available:
 		* Full command line option
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* 0db peak normalization
+	* -1db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
@@ -209,7 +209,7 @@ Tesseract engine available:
 		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
 	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* 0db peak normalization
+	* -1db peak normalization
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
@@ -246,7 +246,7 @@ Restriction:
 	* Description: action performed after encoding at "Remove source audio?" question
 	* 0=no remove
 	* 1=remove
-* PeakNormDB (default=0)
+* PeakNormDB (default=1)
 	* Description: Peak db normalization option, this value is written as positive but is used in negative (e.g. 4 = -4)
 
 --------------------------------------------------------------------------------------------------

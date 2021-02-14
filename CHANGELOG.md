@@ -1,4 +1,14 @@
 # Changelog
+v0.69:
+Audio:
+	* add - support of aiff (Audio Interchange File Format)
+	* add - support of mka (matroska audio)
+	* chg - default peak db is now -1
+	* fix - sox silence detect/remove command, now don't remove silence in middle of track
+	* fix - WavPack note at launch profile
+Tag:
+	* chg - now stitle & etitle options, do action in parallel
+
 v0.68:
 Video:
 	* fix - double stream creation, when no select any stream

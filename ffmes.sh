@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.68
+VERSION=v0.69
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -37,12 +37,12 @@ NVENC="2"																					# Set number of video encoding in same time, the c
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
-AUDIO_EXT_AVAILABLE="aif|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mp3|flac|ogg|mpc|spx|mod|mpg|wv|dts"
+AUDIO_EXT_AVAILABLE="aif|aiff|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mka|mp3|flac|ogg|mpc|spx|mod|mpg|wv|dts"
 CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
 RemoveM3U="1"																				# Remove m3u playlist, 0=no remove, 1=remove
-PeakNormDB="0"																				# Peak db normalization option, this value is written as positive but is used in negative, e.g. 4 = -4
+PeakNormDB="1"																				# Peak db normalization option, this value is written as positive but is used in negative, e.g. 4 = -4
 
 # Messages
 MESS_SEPARATOR=" --------------------------------------------------------------"
@@ -1526,7 +1526,7 @@ echo " Note: This settings influences size and quality, crf is a better choise i
 echo
 echo "$MESS_SEPARATOR"
 echo " [1200k]     Example of input for cbr desired bitrate in kb"
-echo " [1500m]     Example of input for aproximative total size of video stream in mb"
+echo " [1500m]     Example of input for aproximative total size of video stream in mb (not recommended in batch)"
 echo " [-crf 21]   Example of input for crf desired level"
 echo
 echo "  [1] > for crf 0    ∧ |"
@@ -2502,7 +2502,7 @@ for files in "${LSTAUDIO[@]}"; do
 		if [[ "${files##*.}" = "wav" || "${files##*.}" = "flac" ]]; then
 			TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${files%.*}"."${files##*.}")
 			if [[ "$TEST_DURATION" -gt 10000 ]] ; then
-				sox "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence -l 1 0.1 0.01% -1 2.0 0.01%
+				sox "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.1 1% reverse silence 1 0.1 1% reverse
 				rm "${files%.*}"."${files##*.}" &>/dev/null
 				mv temp-out."${files##*.}" "${files%.*}"."${files##*.}" &>/dev/null
 			fi
@@ -2924,7 +2924,7 @@ else
     cat "$FFMES_CACHE_STAT"
 fi
     echo " Choose WavPack desired configuration:"
-    echo " Notes: * libFLAC uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
+    echo " Notes: * WavPack uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
 	echo "          The value 4 allows a very good compression without having a huge encoding time."
 	echo "        * Option tagued [auto], same value of source file."
     echo
@@ -3837,6 +3837,7 @@ case $rpstag in
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
+			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
@@ -3848,7 +3849,12 @@ case $rpstag in
 				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 			fi
 			StopLoading $?
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
 		done
+		wait
 		AudioTagEditor
 	;;
 	etitle?[0-9])
@@ -3857,6 +3863,7 @@ case $rpstag in
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
+			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
@@ -3868,7 +3875,12 @@ case $rpstag in
 				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 			fi
 			StopLoading $?
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
 		done
+		wait
 		AudioTagEditor
 	;;
 	"r"|"R")
