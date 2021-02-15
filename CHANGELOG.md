@@ -1,4 +1,14 @@
 # Changelog
+v0.70:
+Audio:
+	* add - support of shn (Shorten)
+	* add - support of mlp (Meridian Lossless Packing)
+	* add - support of rmvb (RealMedia Variable Bitrate)
+	* add - option 35, audio file integrity check
+Video:
+	* add - now display stream configuration in "Summary of configuration"
+	* fix - not correct selection of stream
+	
 v0.69:
 Audio:
 	* add - support of aiff (Audio Interchange File Format)

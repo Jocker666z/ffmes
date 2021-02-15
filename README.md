@@ -4,7 +4,7 @@ Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single 
 
 Source media files, supported extension:
 * Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
-* Audio in *.aac *.ac3 *.aif *.aiff *.ape *.flac *.wma *.m4a *.mp3 *.ogg *.mka *.mpc *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts
+* Audio in *.aac *.ac3 *.aif *.aiff *.ape *.flac *.wma *.m4a *.mp3 *.ogg *.mka *.mlp *.mpc *.shn *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts *.rmvb
 * Subtitle in *.srt *.ssa *.sub *.sup
 
 **Note**: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
@@ -100,6 +100,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 32, generate png image of audio spectrum
 	* 33, concatenate audio files 
 	* 34, cut audio file
+	* 35, audio file integrity check
 
 ### Option 0 details - DVD rip (vob, ISO, or disc)
 * Rip DVD, include ISO and VIDEO_TS VOB

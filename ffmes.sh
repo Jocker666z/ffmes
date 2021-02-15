@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.69
+VERSION=v0.70
 
 # Paths
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
@@ -17,11 +17,12 @@ FFMES_CACHE_STAT="/home/$USER/.cache/ffmes/stat-$(date +%Y%m%s%N).info"						# s
 FFMES_CACHE_MAP="/home/$USER/.cache/ffmes/map-$(date +%Y%m%s%N).info"						# map-DATE.info, map file
 FFMES_CACHE_TAG="/home/$USER/.cache/ffmes/tag-$(date +%Y%m%s%N).info"						# tag-DATE.info, audio tag file
 FFMES_CACHE_CONCAT="/home/$USER/.cache/ffmes/contat-$(date +%Y%m%s%N).info"					# contat-DATE.info, concatenate list file
+FFMES_CACHE_INTEGRITY="/home/$USER/.cache/ffmes/interity-$(date +%Y%m%s%N).info"			# integrity-DATE.info, list of file fail interity check
 LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdvd cache
 OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# DVD player drives names
 
 # General variables
-NPROC=$(nproc --all)																		# Set number of processor
+NPROC=$(nproc --all)																		# Set number of process
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
 COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk tesseract subp2tiff subptools wget opustags)
@@ -37,7 +38,7 @@ NVENC="2"																					# Set number of video encoding in same time, the c
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
-AUDIO_EXT_AVAILABLE="aif|aiff|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mka|mp3|flac|ogg|mpc|spx|mod|mpg|wv|dts"
+AUDIO_EXT_AVAILABLE="aif|aiff|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mka|mlp|mp3|flac|ogg|mpc|rmvb|shn|spx|mod|mpg|wv|dts"
 CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
@@ -156,6 +157,7 @@ find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;			# consider if fi
 rm "$FFMES_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_MAP" &>/dev/null
 rm "$FFMES_CACHE_CONCAT" &>/dev/null
+rm "$FFMES_CACHE_INTEGRITY" &>/dev/null
 rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 }
@@ -249,6 +251,7 @@ echo "  31 - view detailed audio file informations          |"
 echo "  32 - generate png image of audio spectrum           |-Audio Tools"
 echo "  33 - concatenate audio files                        |"
 echo "  34 - cut audio file                                 |"
+echo "  35 - audio file integrity check                     |"
 echo "  -----------------------------------------------------"
 CheckFiles
 echo "  -----------------------------------------------------"
@@ -703,6 +706,7 @@ CustomInfoChoice() {			# Option 1  	- Summary of configuration
 		echo "   * Channels: $rpchannel"
 	fi
 	echo "  Container: $extcont"
+	echo "  Streams: $stream"
 	echo "--------------------------------------------------------------------------------------------------"
 	echo
 	}
@@ -1145,7 +1149,7 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 		case "$rpstreamch_parsed" in
 			"all")
 				mapfile -t VINDEX < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
-				mapfile -t VCODECTYPE < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+				mapfile -t VCODECTYPE < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
 				;;
 			"q"|"Q")
 				Restart
@@ -1153,7 +1157,7 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 			*)
 				VINDEX=( $rpstreamch )
 				# Keep codec used
-				mapfile -t VCODECTYPE1 < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+				mapfile -t VCODECTYPE1 < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
 				VCODECNAME=()
 				for i in "${VINDEX[@]}"; do
 					VCODECTYPE+=("${VCODECTYPE1[$i]}")
@@ -1177,6 +1181,13 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 				# Subtitle Stream
 				subtitle)
 					stream+=("-map 0:${VINDEX[i]}")
+					if test -z "$subtitleconf"; then
+						if [ "$extcont" = mkv ]; then
+							subtitleconf="-c:s copy"										# mkv subtitle variable
+						elif [ "$extcont" = mp4 ]; then
+							subtitleconf="-c:s mov_text"									# mp4 subtitle variable
+						fi
+					fi
 					;;
 
 				# Other Stream
@@ -1185,12 +1196,8 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 				#	;;
 				esac
 		done
+
 		stream="${stream[@]}"
-		if [ "$extcont" = mkv ]; then
-			subtitleconf="-c:s copy"									# mkv subtitle variable
-		elif [ "$extcont" = mp4 ]; then
-			subtitleconf="-c:s mov_text"								# mp4 subtitle variable
-		fi
 
 	else																	# If $nbstream <= 2
 		if [ "$reps" -le 1 ]; then											# Refresh summary $nbstream <= 2
@@ -1211,7 +1218,7 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
     if test -z "$videoformat"; then
         videoformat=$filevcodec.$fileacodec
     fi
-    
+
 	# Reset display (last question before encoding)
 	if [ "$reps" -le 1 ]; then											# Refresh summary $nbstream <= 2
 			CustomInfoChoice
@@ -2560,7 +2567,9 @@ for files in "${LSTAUDIO[@]}"; do
 
 	#Encoding
 	(
-	if [[ -z "$VERBOSE" ]]; then
+	if [[ -n "$Integrity" ]]; then
+		ffmpeg -v error -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+	elif [[ -z "$VERBOSE" ]]; then
 		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
 	else
 		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont
@@ -2583,32 +2592,34 @@ stty -igncr									# Enable the enter key
 # End time counter
 END=$(date +%s)
 
-# Check Target if valid (size test) and clean
-extcont="$ExtContSource"	# Reset $extcont
-filesPass=()				# Files pass
-filesReject=()				# Files fail
-filesSourcePass=()			# Source files pass
-for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
-	if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
-		if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".new.$extcont 2>/dev/null) -gt 30720 ]]; then		# If file>30 KBytes accepted
-			mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back.$extcont 2>/dev/null
-			mv "${filesInLoop[i]%.*}".new.$extcont "${filesInLoop[i]}" 2>/dev/null
-			filesPass+=("${filesInLoop[i]}")
-			filesSourcePass+=("${filesInLoop[i]%.*}".back.$extcont)
-		else																								# If file<30 KBytes rejected
-			filesReject+=("${filesInLoop[i]%.*}".new.$extcont)
-			rm "${filesInLoop[i]%.*}".new."$extcont" 2>/dev/null
+if [[ -z "$Integrity" ]]; then
+	# Check Target if valid (size test) and clean
+	extcont="$ExtContSource"	# Reset $extcont
+	filesPass=()				# Files pass
+	filesReject=()				# Files fail
+	filesSourcePass=()			# Source files pass
+	for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
+		if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
+			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".new.$extcont 2>/dev/null) -gt 30720 ]]; then		# If file>30 KBytes accepted
+				mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back.$extcont 2>/dev/null
+				mv "${filesInLoop[i]%.*}".new.$extcont "${filesInLoop[i]}" 2>/dev/null
+				filesPass+=("${filesInLoop[i]}")
+				filesSourcePass+=("${filesInLoop[i]%.*}".back.$extcont)
+			else																								# If file<30 KBytes rejected
+				filesReject+=("${filesInLoop[i]%.*}".new.$extcont)
+				rm "${filesInLoop[i]%.*}".new."$extcont" 2>/dev/null
+			fi
+		else																									# If no file overwrite
+			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".$extcont 2>/dev/null) -gt 30720 ]]; then			# If file>30 KBytes accepted
+				filesPass+=("${filesInLoop[i]%.*}".$extcont)
+				filesSourcePass+=("${filesInLoop[i]}")
+			else																								# If file<30 KBytes rejected
+				filesReject+=("${filesInLoop[i]%.*}".$extcont)
+				rm "${filesInLoop[i]%.*}".$extcont 2>/dev/null
+			fi
 		fi
-	else																									# If no file overwrite
-		if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".$extcont 2>/dev/null) -gt 30720 ]]; then			# If file>30 KBytes accepted
-			filesPass+=("${filesInLoop[i]%.*}".$extcont)
-			filesSourcePass+=("${filesInLoop[i]}")
-		else																								# If file<30 KBytes rejected
-			filesReject+=("${filesInLoop[i]%.*}".$extcont)
-			rm "${filesInLoop[i]%.*}".$extcont 2>/dev/null
-		fi
-	fi
-done
+	done
+fi
 
 # Make statistics of processed files
 DIFFS=$(($END-$START))
@@ -2625,20 +2636,30 @@ fi
 
 # End encoding messages
 ProgressBarClean
-if test -n "$filesPass"; then
-	echo " File(s) created:"
-	printf '  %s\n' "${filesPass[@]}"
+if [[ -z "$Integrity" ]]; then
+	if test -n "$filesPass"; then
+		echo " File(s) created:"
+		printf '  %s\n' "${filesPass[@]}"
+	fi
+	if test -n "$filesReject"; then
+		echo " File(s) in error:"
+		printf '  %s\n' "${filesReject[@]}"
+	fi
+	echo "$MESS_SEPARATOR"
+	echo " $NBAO/$NBA file(s) have been processed."
+	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
+	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
+	echo "$MESS_SEPARATOR"
+	echo
+else
+	if test -f "$FFMES_CACHE_INTEGRITY"; then
+		echo " File(s) in error:"
+		cat "$FFMES_CACHE_INTEGRITY"
+	else
+		echo " No file(s) in error."
+	fi
+	echo
 fi
-if test -n "$filesReject"; then
-	echo " File(s) in error:"
-	printf '  %s\n' "${filesReject[@]}"
-fi
-echo "$MESS_SEPARATOR"
-echo " $NBAO/$NBA file(s) have been processed."
-echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
-echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
-echo "$MESS_SEPARATOR"
-echo
 }
 ConfChannels() {				#
 if [ "$reps" -le 1 ]; then          # if profile 0 or 1 display
@@ -4435,6 +4456,21 @@ case $reps in
 	AudioSourceInfo
     CutAudio
 	Clean                                          # clean temp files
+	else
+        echo
+        echo "$MESS_ONE_AUDIO_FILE_AUTH"
+        echo
+	fi
+	;;
+
+ 35 ) # Integrity check
+	if [[ "$NBA" -ge "1" ]]; then
+	Integrity="1"
+	NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
+    FFmpeg_audio_cmd
+	Clean											# clean temp files
+	NPROC=$(nproc --all)							# Reset number of process
+	unset Integrity
 	else
         echo
         echo "$MESS_ONE_AUDIO_FILE_AUTH"
