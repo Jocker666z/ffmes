@@ -14,7 +14,7 @@ Source media files, supported extension:
 `curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
 
 ## Dependencies
-`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc bchunk setcd tesseract-ocr tesseract-ocr-all wget opustags`
+`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc tesseract-ocr tesseract-ocr-all wget opustags`
 
 ### Nemo action
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
@@ -95,7 +95,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 25, audio to ogg (libvorbis)
 	* 26, audio to opus (libopus)
 * Audio tools :
-	* 30, tag editor
+	* 30, audio tag editor
 	* 31, view detailed audio file informations
 	* 32, generate png image of audio spectrum
 	* 33, concatenate audio files 
@@ -225,8 +225,9 @@ Options:
 * Change or add tag date
 * Change tag title for filename
 * Change tag title for untitled
-* Remove N character at begin of tag title (9 characters at once).
-* Remove N character at end of tag title (9 characters at once).
+* Remove N character at begin in tag title (9 characters at once).
+* Remove N character at end in tag title (9 characters at once).
+* Remove text pattern in tag title.
 Restriction:
 * Max depth directory 1
 * Asian character not supported (display in degrading mode)

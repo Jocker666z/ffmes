@@ -8,10 +8,11 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.70
+VERSION=v0.71
 
 # Paths
-FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# set ffmes.sh path for restart from any directory
+FFMES_BIN=$(basename "${0}")																# Set script name for prevent error when rename script
+FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# Set ffmes path for restart from any directory
 FFMES_CACHE="/home/$USER/.cache/ffmes"														# cache directory
 FFMES_CACHE_STAT="/home/$USER/.cache/ffmes/stat-$(date +%Y%m%s%N).info"						# stat-DATE.info, stats of source file
 FFMES_CACHE_MAP="/home/$USER/.cache/ffmes/map-$(date +%Y%m%s%N).info"						# map-DATE.info, map file
@@ -19,13 +20,13 @@ FFMES_CACHE_TAG="/home/$USER/.cache/ffmes/tag-$(date +%Y%m%s%N).info"						# tag
 FFMES_CACHE_CONCAT="/home/$USER/.cache/ffmes/contat-$(date +%Y%m%s%N).info"					# contat-DATE.info, concatenate list file
 FFMES_CACHE_INTEGRITY="/home/$USER/.cache/ffmes/interity-$(date +%Y%m%s%N).info"			# integrity-DATE.info, list of file fail interity check
 LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdvd cache
-OPTICAL_DEVICE=(/dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)										# DVD player drives names
+OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD player drives names
 
 # General variables
 NPROC=$(nproc --all)																		# Set number of process
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
-COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap setcd mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk bchunk tesseract subp2tiff subptools wget opustags)
+COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk tesseract subp2tiff subptools wget opustags)
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# ffmpeg log
 
 # Video variables
@@ -76,15 +77,15 @@ Usage: ffmes [options]
 
 EOF
 }
-DetectCDDVD() {					# CD/DVD detection
+DetectDVD() {					# DVD detection
 for DEVICE in "${OPTICAL_DEVICE[@]}"; do
-    DeviceTest=$(setcd -i "$DEVICE" 2>/dev/null)
-    case "$DeviceTest" in
-        *'Disc found'*)
-			DVD_DEVICE="$DEVICE"
-            break
-            ;;
-    esac
+	lsdvd "$DEVICE" &>/dev/null
+	local lsdvd_result=$?
+	if [ "$lsdvd_result" -eq 0 ]; then
+		DVD_DEVICE="$DEVICE"
+		DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD_DEVICE" -I 2>/dev/null | grep "DVD with title" | tail -1 | awk -F'"' '{print $2}')
+		break
+	fi
 done
 }
 SetGlobalVariables() {			# Construct variables with files accepted
@@ -135,9 +136,9 @@ NBM3U="${#LSTM3U[@]}"
 Restart() {						# Restart script & for keep argument
 Clean
 if [ -n "$ARGUMENT" ]; then									# If target is file
-	bash "$FFMES_PATH"/ffmes.sh -i "$ARGUMENT" && exit
+	bash "$FFMES_PATH"/"$FFMES_BIN" -i "$ARGUMENT" && exit
 else
-	bash "$FFMES_PATH"/ffmes.sh && exit
+	bash "$FFMES_PATH"/"$FFMES_BIN" && exit
 fi
 }
 TrapStop() {					# Ctrl+z Trap for loop exit
@@ -176,27 +177,27 @@ fi
 }
 CheckFiles() {					# Promp a message to user with number of video, audio, sub to edit, and command not found
 # Video
-if  [[ $TESTARGUMENT == *"Video"* ]]; then
+if  [[ "$TESTARGUMENT" == *"Video"* ]]; then
 	echo "  * Video to edit: ${LSTVIDEO[0]##*/}" | DisplayTruncate
-elif  [[ $TESTARGUMENT != *"Video"* ]] && [ "$NBV" -eq "1" ]; then
+elif  [[ "$TESTARGUMENT" != *"Video"* ]] && [ "$NBV" -eq "1" ]; then
 	echo "  * Video to edit: ${LSTVIDEO[0]##*/}" | DisplayTruncate
-elif [ "$NBV" -gt "1" ]; then                 # If no arg + 1> videos
-	echo -e "  * Video to edit: $NBV files"
+elif [ "$NBV" -gt "1" ]; then											# If no arg + 1> videos
+	echo "  * Video to edit: $NBV files"
 fi
 
 # Audio
-if  [[ $TESTARGUMENT == *"Audio"* ]]; then
+if  [[ "$TESTARGUMENT" == *"Audio"* ]]; then
 	echo "  * Audio to edit: ${LSTAUDIO[0]##*/}" | DisplayTruncate
-elif [[ $TESTARGUMENT != *"Audio"* ]] && [ "$NBA" -eq "1" ]; then
+elif [[ "$TESTARGUMENT" != *"Audio"* ]] && [ "$NBA" -eq "1" ]; then
 	echo "  * Audio to edit: ${LSTAUDIO[0]##*/}" | DisplayTruncate
-elif test -z "$ARGUMENT" && [ "$NBA" -gt "1" ]; then                 # If no arg + 1> videos
-	echo -e "  * Audio to edit: $NBA files"
+elif [ "$NBA" -gt "1" ]; then											# If no arg + 1> videos
+	echo "  * Audio to edit: $NBA files"
 fi
 
 # ISO
-if  [[ $TESTARGUMENT == *"ISO"* ]]; then
+if  [[ "$TESTARGUMENT" == *"ISO"* ]]; then
 	echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
-elif [[ $TESTARGUMENT != *"ISO"* ]] && [ "$NBISO" -eq "1" ]; then
+elif [[ "$TESTARGUMENT" != *"ISO"* ]] && [ "$NBISO" -eq "1" ]; then
 	echo "  * ISO to edit: ${LSTISO[0]}" | DisplayTruncate
 fi
 
@@ -205,6 +206,16 @@ if [ "$NBSUB" -eq "1" ]; then
 	echo "  * Subtitle to edit: ${LSTSUB[0]}" | DisplayTruncate
 elif [ "$NBSUB" -gt "1" ]; then
 	echo "  * Subtitle to edit: $NBSUB"
+fi
+
+# DVD
+if test -n "$DVD_DEVICE"; then
+	echo "  * DVD ($DVD_DEVICE): $DVDtitle" | DisplayTruncate
+fi
+
+# Nothing
+if [ -z "$TESTARGUMENT" ] && [ -z "$DVD_DEVICE" ] && [ "$NBV" -eq "0" ] && [ "$NBA" -eq "0" ] && [ "$NBISO" -eq "0" ] && [ "$NBSUB" -eq "0" ]; then
+	echo "  -/!\- No file to process"
 fi
 
 # Command needed info
@@ -246,7 +257,7 @@ echo "  24 - audio to mp3 (libmp3lame)                      |"
 echo "  25 - audio to ogg (libvorbis)                       |"
 echo "  26 - audio to opus (libopus)                        |"
 echo "  -----------------------------------------------------"
-echo "  30 - tag editor                                     |"
+echo "  30 - audio tag editor                               |"
 echo "  31 - view detailed audio file informations          |"
 echo "  32 - generate png image of audio spectrum           |-Audio Tools"
 echo "  33 - concatenate audio files                        |"
@@ -314,16 +325,17 @@ fi
 }
 ffmesUpdate() {					# Option 99  	- ffmes update to last version (hidden option)
 curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes
+restart
 }
 ProgressBar() {					# Audio encoding progress bar
-	let _progress=(${1}*100/${2}*100)/100
-	let _done=(${_progress}*4)/10
-	let _left=40-$_done
-	_done=$(printf "%${_done}s")
-	_left=$(printf "%${_left}s")
+let _progress=(${1}*100/${2}*100)/100
+let _done=(${_progress}*4)/10
+let _left=40-$_done
+_done=$(printf "%${_done}s")
+_left=$(printf "%${_left}s")
 
-    echo -e "\r\e[0K File(s) in processing: [${3}]"
-    echo -e "\r\e[0K Progress: [${_done// /#}${_left// /-}] ${_progress}%"
+echo -e "\r\e[0K File(s) in processing: [${3}]"
+echo -e "\r\e[0K Progress: [${_done// /#}${_left// /-}] ${_progress}%"
 
 if [[ "$_progress" = "100" ]]; then
 	printf "\033[0A"
@@ -540,7 +552,7 @@ DVDRip() {						# Option 0  	- DVD Rip
 
 	# Grep stat
 	lsdvd -a -s "$DVD" 2>/dev/null | awk -F', AP:' '{print $1}' | awk -F', Subpictures' '{print $1}' | awk ' {gsub("Quantization: drc, ","");print}' | sed 's/^/    /' > "$LSDVD_CACHE"
-	DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "DVD with title" | tail -1 | awk '{print $NF}' | sed "s/\"//g")
+	DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "DVD with title" | tail -1 | awk -F'"' '{print $2}')
 	mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | grep Title | awk '{print $2}' |  grep -o '[[:digit:]]*') # Use for extract all title
 
 	# Question
@@ -706,13 +718,13 @@ CustomInfoChoice() {			# Option 1  	- Summary of configuration
 		echo "   * Channels: $rpchannel"
 	fi
 	echo "  Container: $extcont"
-	echo "  Streams: $stream"
+	echo "  Streams map: $stream"
 	echo "--------------------------------------------------------------------------------------------------"
 	echo
 	}
 CustomVideoEncod() {			# Option 1  	- Conf video
     CustomInfoChoice
-    echo " Encoding or copying the video stream:"           # Video stream choice, encoding or copy
+    echo " Encoding or copying the video stream:"			# Video stream choice, encoding or copy
     echo
     echo "  [e] > for encode"
     echo " *[↵] > for copy"
@@ -721,7 +733,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 	if [ "$qv" = "q" ]; then
 		Restart
 
-	elif [ "$qv" = "e" ]; then							# Start edit video
+	elif [ "$qv" = "e" ]; then								# Start edit video
 
 		ENCODV="1"	# Set video encoding
 
@@ -3650,6 +3662,7 @@ echo "  [ftitle]   > | change title by [filename] |                             
 echo "  [utitle]   > | change title by [untitled] |                                                                                   |"
 echo "  [stitle x] > | remove N at begin of title | ex. of input [stitle 3] -> remove 3 first characters at start (limited to 9)      |"
 echo "  [etitle x] > | remove N at end of title   | ex. of input [etitle 1] -> remove 1 first characters at end (limited to 9)        |"
+echo "  [ptitle x] > | remove pattern in title    | ex. of input [ptitle test] -> remove test pattern in title                        |"
 echo "  [r]        > | for restart tag edition"
 echo "  [q]        > | for exit"
 echo
@@ -3659,19 +3672,19 @@ read -e -p "-> " rpstag
 case $rpstag in
 
 	rename)
-		TAG_TRACK_COUNT=()
-		COUNT=()
+		local TAG_TRACK_COUNT=()
+		local COUNT=()
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Rename: ${LSTAUDIO[$i]}"
 			# If no tag track valid
 			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
-				TAG_TRACK_COUNT=$(($COUNT+1))
-				COUNT=$TAG_TRACK_COUNT
-				TAG_TRACK[$i]="$TAG_TRACK_COUNT"
+				local TAG_TRACK_COUNT=$(($COUNT+1))
+				local COUNT=$TAG_TRACK_COUNT
+				local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			if [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
-				TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
+				local TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			# If temp-file exist remove source and rename
@@ -3681,7 +3694,7 @@ case $rpstag in
 			fi
 			# If no tag title
 			if test -z "${TAG_TITLE[$i]}"; then						# if no title
-				TestName=$(echo "${LSTAUDIO[$i]%.*}" | head -c2)
+				local TestName=$(echo "${LSTAUDIO[$i]%.*}" | head -c2)
 				if ! [[ "$TestName" =~ ^[0-9]+$ ]] ; then			# If not integer at start of filename, use filename as title
 					TAG_TITLE[$i]="${LSTAUDIO[$i]%.*}"
 				elif test -n "${TAG_TITLE[$i]}"; then				# If album tag present, use as title
@@ -3691,7 +3704,7 @@ case $rpstag in
 				fi
 			fi
 			# Rename
-			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
 				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
@@ -3700,7 +3713,7 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	disc?[0-9])
-		ParsedDisc=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		local ParsedDisc=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
@@ -3720,14 +3733,14 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	track)
-		TAG_TRACK_COUNT=()
-		COUNT=()
+		local TAG_TRACK_COUNT=()
+		local COUNT=()
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			TAG_TRACK_COUNT=$(($COUNT+1))
-			COUNT=$TAG_TRACK_COUNT
+			local TAG_TRACK_COUNT=$(($COUNT+1))
+			local COUNT=$TAG_TRACK_COUNT
 			if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
-				TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
+				local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
 			fi
 			ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
@@ -3740,7 +3753,7 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	album*)
-		ParsedAlbum=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		local ParsedAlbum=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
@@ -3764,7 +3777,7 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	artist*)
-		ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		local ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			( 
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
@@ -3788,7 +3801,7 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	date*)
-		ParsedDate=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		local ParsedDate=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
@@ -3814,7 +3827,7 @@ case $rpstag in
 	ftitle)
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			ParsedTitle=$(echo "${LSTAUDIO[$i]%.*}")
+			local ParsedTitle=$(echo "${LSTAUDIO[$i]%.*}")
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
@@ -3853,11 +3866,11 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	stitle?[0-9])
-		Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
-		Cut=$( expr $Cut1 + 1 )
+		local Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		local Cut=$( expr $Cut1 + 1 )
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
+			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
@@ -3879,11 +3892,36 @@ case $rpstag in
 		AudioTagEditor
 	;;
 	etitle?[0-9])
-		Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
-		Cut=$( expr $Cut1 + 1 )
+		local Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		local Cut=$( expr $Cut1 + 1 )
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
+			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
+			(
+			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			else
+				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+			fi
+			# If temp-file exist remove source and rename
+			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
+				rm "${LSTAUDIO[$i]}" &>/dev/null
+				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
+			fi
+			StopLoading $?
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
+		done
+		wait
+		AudioTagEditor
+	;;
+	ptitle*)
+		local pattern=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
+			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
+			local ParsedTitle="${TAG_TITLE[$i]//$pattern}"
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
@@ -3996,7 +4034,7 @@ done
 CheckCacheDirectory							# Check if cache directory exist
 StartLoading "Listing of media files to be processed"
 SetGlobalVariables							# Set global variable
-DetectCDDVD									# CD/DVD detection
+DetectDVD									# DVD detection
 TestVAAPI									# VAAPI detection
 StopLoading $?
 trap TrapExit 2 3							# Set Ctrl+c clean trap for exit all script

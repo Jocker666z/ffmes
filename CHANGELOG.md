@@ -1,4 +1,18 @@
 # Changelog
+v0.71:
+DVD:
+	* chg - now use lsdvd for physical DVD detection
+	* add - /dev/dvd in list of potential DVD player
+	* fix - grep DVD title
+	* add - now display in main menu if physical DVD detected
+Tag:
+	* add - option (ptitle) for remove text pattern in tag title
+Various:
+	* remove - setcd from dependencies
+	* remove - bchunk from dependencies
+	* add - script name variable for prevent restart error when rename script
+	* add - now display in main menu if no file to process
+
 v0.70:
 Audio:
 	* add - support of shn (Shorten)
