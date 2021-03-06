@@ -8,9 +8,10 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.71
+VERSION=v0.72
 
 # Paths
+export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal
 FFMES_BIN=$(basename "${0}")																# Set script name for prevent error when rename script
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# Set ffmes path for restart from any directory
 FFMES_CACHE="/home/$USER/.cache/ffmes"														# cache directory
@@ -72,6 +73,9 @@ Usage: ffmes [options]
                           Default: 3
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
+  -pk|--peaknorm <number> Peak db normalization.
+                          Positive input used as negative.
+                          Default: $PeakNormDB (-$PeakNormDB db)
   -v|--verbose            Display ffmpeg log level as info.
   -vv|--fullverbose       Display ffmpeg log level as debug.
 
@@ -2491,14 +2495,14 @@ for files in "${LSTAUDIO[@]}"; do
 	if [ "$PeakNorm" = "1" ]; then
 		TESTDB=$(ffmpeg -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
 		if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
-			if [[ $TESTDB = *"-"* ]]; then
+			if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
 				GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
 				afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo',volume=$GREPVOLUME -mapping_family 1"
 			else
 				afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 			fi
 		else
-			if [[ $TESTDB = *"-"* ]]; then
+			if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
 				GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
 				afilter="-af volume=$GREPVOLUME"
 			else
@@ -3653,17 +3657,19 @@ echo
 echo "               | actions                    | descriptions"
 echo "               |----------------------------|-----------------------------------------------------------------------------------|"
 echo '  [rename]   > | rename files               | rename in "Track - Title" (add track number if not present)                       |'
+echo '  [arename]  > | rename files with artist   | rename in "Track - Artist - Title" (add track number if not present)              |'
 echo "  [disc]     > | change or add disc number  | ex. of input [disc 1]                                                             |"
 echo "  [track]    > | change or add tag track    | alphabetic sorting, to use if no file has this tag                                |"
 echo "  [album x]  > | change or add tag album    | ex. of input [album Conan the Barbarian]                                          |"
 echo "  [artist x] > | change or add tag artist   | ex. of input [artist Basil Poledouris]                                            |"
+echo "  [uartist]  > | change artist by [unknown] |                                                                                   |"
 echo "  [date x]   > | change or add tag date     | ex. of input [date 1982]                                                          |"
 echo "  [ftitle]   > | change title by [filename] |                                                                                   |"
 echo "  [utitle]   > | change title by [untitled] |                                                                                   |"
 echo "  [stitle x] > | remove N at begin of title | ex. of input [stitle 3] -> remove 3 first characters at start (limited to 9)      |"
 echo "  [etitle x] > | remove N at end of title   | ex. of input [etitle 1] -> remove 1 first characters at end (limited to 9)        |"
 echo "  [ptitle x] > | remove pattern in title    | ex. of input [ptitle test] -> remove test pattern in title                        |"
-echo "  [r]        > | for restart tag edition"
+echo "  [r]        > | for restart tag editor"
 echo "  [q]        > | for exit"
 echo
 while :
@@ -3694,19 +3700,51 @@ case $rpstag in
 			fi
 			# If no tag title
 			if test -z "${TAG_TITLE[$i]}"; then						# if no title
-				local TestName=$(echo "${LSTAUDIO[$i]%.*}" | head -c2)
-				if ! [[ "$TestName" =~ ^[0-9]+$ ]] ; then			# If not integer at start of filename, use filename as title
-					TAG_TITLE[$i]="${LSTAUDIO[$i]%.*}"
-				elif test -n "${TAG_TITLE[$i]}"; then				# If album tag present, use as title
-					TAG_TITLE[$i]="${TAG_ALBUM[$i]}"
-				else
-					TAG_TITLE[$i]="[untitled]"						# Otherwise, use "[untitled]"
-				fi
+				TAG_TITLE[$i]="[untitled]"							# use "[untitled]"
 			fi
 			# Rename
 			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
 				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			fi
+			StopLoading $?
+		done
+		AudioTagEditor
+	;;
+	arename)
+		local TAG_TRACK_COUNT=()
+		local COUNT=()
+		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
+			StartLoading "" "Rename: ${LSTAUDIO[$i]}"
+			# If no tag track valid
+			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
+				local TAG_TRACK_COUNT=$(($COUNT+1))
+				local COUNT=$TAG_TRACK_COUNT
+				local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			fi
+			if [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
+				local TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			fi
+			# If temp-file exist remove source and rename
+			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
+				rm "${LSTAUDIO[$i]}" &>/dev/null
+				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
+			fi
+			# If no tag title
+			if test -z "${TAG_TITLE[$i]}"; then						# if no title
+				TAG_TITLE[$i]="[untitled]"							# use "[untitled]"
+			fi
+			# If no tag artist
+			if test -z "${TAG_ARTIST[$i]}"; then					# if no artist
+				TAG_ARTIST[$i]="[unknown]"							# use "[unamed]"
+			fi
+			# Rename
+			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			local ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)			# Replace eventualy "/" in string
+			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
+				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			StopLoading $?
 		done
@@ -3778,6 +3816,30 @@ case $rpstag in
 	;;
 	artist*)
 		local ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
+			( 
+			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
+			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			else
+				opustags "${LSTAUDIO[$i]}" --add ARTIST="$ParsedArtist" --delete ARTIST -o temp-"${LSTAUDIO[$i]}" &>/dev/null
+			fi
+			# If temp-file exist remove source and rename
+			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
+				rm "${LSTAUDIO[$i]}" &>/dev/null
+				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
+			fi
+			StopLoading $?
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
+		done
+		wait
+		AudioTagEditor
+	;;
+	uartist*)
+		local ParsedArtist="[unknown]"
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			( 
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
@@ -3963,6 +4025,10 @@ done
 while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
+    -h|--help)																						# Help
+		Usage
+		exit
+    ;;
     -i|--input)
 		shift
 		InputFileDir="$1"
@@ -3988,12 +4054,12 @@ while [[ $# -gt 0 ]]; do
     ;;
     -j|--videojobs)																					# Select 
 		shift
-		if ! [[ "$1" =~ ^[0-9]+$ ]] ; then															# If not integer
+		if ! [[ "$1" =~ ^[0-9]*$ ]] ; then															# If not integer
 			echo "   -/!\- Video jobs option must be an integer."
 			exit
 		else
 			unset NVENC																				# Unset default NVENC
-			NVENC=$(( $1 - 1 ))																		# Substraction
+			NVENC="$1"																				# Set NVENC
 			if [[ "$NVENC" -lt 0 ]] ; then															# If result inferior than 0
 				echo "   -/!\- Video jobs must be greater than zero."
 				exit
@@ -4007,9 +4073,15 @@ while [[ $# -gt 0 ]]; do
 		shift
 		reps="$1"
     ;;
-    -h|--help)																						# Help
-		Usage
-		exit
+    -pk|--videojobs)																				# Peak db 
+		shift
+		if [[ "$1" =~ ^[0-9]*[.][0-9]*$ ]] || [[ "$1" =~ ^[0-9]*$ ]]; then							# If integer or float
+			unset PeakNormDB																		# Unset default PeakNormDB
+			PeakNormDB="$1"																			# Set PeakNormDB
+		else
+			echo "   -/!\- Peak db normalization option must be a positive number."
+			exit
+		fi
     ;;
     -v|--verbose)
 		VERBOSE="1"																					# Set verbose, for dev/null and loading disable

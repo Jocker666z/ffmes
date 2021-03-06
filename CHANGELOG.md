@@ -1,4 +1,14 @@
 # Changelog
+v0.72:
+Audio:
+	* add - peak db option in command line - "-pk|--videojobs"
+	* fix - change peak db (as negative) when equal to 0
+Tag:
+	* add - option (arename) for rename track in "Track - Artist - Title"
+	* add - option (uartist) for change artist by "unknown"
+Various:
+	* add - "export PATH=$PATH:/home/$USER/.local/bin" for case of launch script outside a terminal and some bin are in home user
+
 v0.71:
 DVD:
 	* chg - now use lsdvd for physical DVD detection

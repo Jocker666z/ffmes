@@ -3,9 +3,9 @@
 Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single file.
 
 Source media files, supported extension:
-* Video in *.mkv *.m4v *.m2ts *.avi *.ts *.mts *.mpg *.flv *.mp4 *.mov *.wmv *.3gp *.vob *.mpeg *.vp9 *.webm *.ogv *.bik
-* Audio in *.aac *.ac3 *.aif *.aiff *.ape *.flac *.wma *.m4a *.mp3 *.ogg *.mka *.mlp *.mpc *.shn *.spx *.wav *.dsf *.aud *.tta *.opus *.mod *.mpg *.wv *.dts *.rmvb
-* Subtitle in *.srt *.ssa *.sub *.sup
+* Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, ts, vob, vp9, webm, wmv
+* Audio in aac, ac3, aif, aiff, ape, aud, dsf, dts, flac, m4a, mka, mlp, mod, mp3, mpc, mpg, ogg, opus, rmvb, shn, spx, tta, wav, wma, wv
+* Subtitle in idx/sub, srt, ssa, sup
 
 **Note**: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
 
@@ -53,6 +53,9 @@ Usage: ffmes options
                           Default: 3
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
+  -pk|--peaknorm <number> Peak db normalization.
+                          Positive input used as negative.
+                          Default: $PeakNormDB (-$PeakNormDB db)
   -v|--verbose            Display ffmpeg log level as info.
   -vv|--fullverbose       Display ffmpeg log level as debug
 ```
@@ -218,13 +221,15 @@ Tesseract engine available:
 Options:
 * Change or add tag disc number
 * Rename files in "Track - Title" (add track number if not present)
+* Rename files in "Track - Artist - Title" (add track number if not present)
 * Change or add tag track, by alphabetic sorting, to use if no file has this tag
 * Change or add tag album
 * Change or add tag disc number
 * Change or add tag artist
+* Change tag artist by "unknown"
 * Change or add tag date
 * Change tag title for filename
-* Change tag title for untitled
+* Change tag title for "untitled"
 * Remove N character at begin in tag title (9 characters at once).
 * Remove N character at end in tag title (9 characters at once).
 * Remove text pattern in tag title.
