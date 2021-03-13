@@ -1,4 +1,9 @@
 # Changelog
+v0.73a:
+Tag:
+	* fix - fix regression when rename track
+
+
 v0.73:
 Video:
 	* fix - stream option now reject entry is not an integer 

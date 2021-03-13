@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.73
+VERSION=v0.73a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal
@@ -37,7 +37,7 @@ VIDEO_EXT_AVAILABLE="mkv|vp9|m4v|m2ts|avi|ts|mts|mpg|flv|mp4|mov|wmv|3gp|vob|mpe
 SUBTI_EXT_AVAILABLE="srt|ssa|idx|sup"
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
-NVENC="2"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
+NVENC="1"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
@@ -71,7 +71,7 @@ Usage: ffmes [options]
   -i|--input <directory>  Treat in batch a specific directory.
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
-                          Default: 3
+                          Default: 2
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
@@ -3696,11 +3696,14 @@ case $rpstag in
 			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
 				local TAG_TRACK_COUNT=$(($COUNT+1))
 				local COUNT=$TAG_TRACK_COUNT
-				local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				#local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
+				local ParsedTrack="$TAG_TRACK_COUNT"
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
 				local ParsedTrack="0${TAG_TRACK[$i]}"
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			else
+				ParsedTrack="${TAG_TRACK[$i]}"
 			fi
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
@@ -3718,7 +3721,6 @@ case $rpstag in
 			fi
 			StopLoading $?
 		done
-		printf '  %s\n' "${TAG_TRACK[@]}"
 		AudioTagEditor
 	;;
 	arename)
