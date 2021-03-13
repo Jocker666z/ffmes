@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.72
+VERSION=v0.73
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal
@@ -19,7 +19,8 @@ FFMES_CACHE_STAT="/home/$USER/.cache/ffmes/stat-$(date +%Y%m%s%N).info"						# s
 FFMES_CACHE_MAP="/home/$USER/.cache/ffmes/map-$(date +%Y%m%s%N).info"						# map-DATE.info, map file
 FFMES_CACHE_TAG="/home/$USER/.cache/ffmes/tag-$(date +%Y%m%s%N).info"						# tag-DATE.info, audio tag file
 FFMES_CACHE_CONCAT="/home/$USER/.cache/ffmes/contat-$(date +%Y%m%s%N).info"					# contat-DATE.info, concatenate list file
-FFMES_CACHE_INTEGRITY="/home/$USER/.cache/ffmes/interity-$(date +%Y%m%s%N).info"			# integrity-DATE.info, list of file fail interity check
+FFMES_CACHE_INTEGRITY="/home/$USER/.cache/ffmes/interity-$(date +%Y%m%s%N).info"			# integrity-DATE.info, list of files fail interity check
+FFMES_CACHE_UNTAGGED="/home/$USER/.cache/ffmes/untagged-$(date +%Y%m%s%N).info"				# integrity-DATE.info, list of files untagged
 LSDVD_CACHE="/home/$USER/.cache/ffmes/lsdvd-$(date +%Y%m%s%N).info"							# lsdvd cache
 OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD player drives names
 
@@ -163,6 +164,7 @@ rm "$FFMES_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_MAP" &>/dev/null
 rm "$FFMES_CACHE_CONCAT" &>/dev/null
 rm "$FFMES_CACHE_INTEGRITY" &>/dev/null
+rm "$FFMES_CACHE_UNTAGGED" &>/dev/null
 rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 }
@@ -267,6 +269,7 @@ echo "  32 - generate png image of audio spectrum           |-Audio Tools"
 echo "  33 - concatenate audio files                        |"
 echo "  34 - cut audio file                                 |"
 echo "  35 - audio file integrity check                     |"
+echo "  36 - find untagged audio files                      |"
 echo "  -----------------------------------------------------"
 CheckFiles
 echo "  -----------------------------------------------------"
@@ -1154,21 +1157,24 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 		echo "  [0 3 1]     > Example of input format for select stream"
 		echo " *[enter]     > for no change"
 		echo "  [q]         > for exit"
-		read -e -p "-> " rpstreamch
-		if [ -z "$rpstreamch" ]; then					# If -map 0
-			rpstreamch_parsed="all"
-		else
-			rpstreamch_parsed=$(echo "${rpstreamch// /}")
-		fi
+		while true; do
+			read -e -p "-> " rpstreamch
+			rpstreamch_parsed=$(echo "${rpstreamch// /}")			# For test
+			if [ -z "$rpstreamch" ]; then							# If -map 0
+				rpstreamch_parsed="all"
+				break
+			elif [[ "$rpstreamch_parsed" == "q" ]]; then			# Quit
+				Restart
+			elif ! [[ "$rpstreamch_parsed" =~ ^-?[0-9]+$ ]]; then	# Not integer retry
+				echo "   -/!\- Map option must be an integer."
+			fi
+		done
 
 		# Get stream info
 		case "$rpstreamch_parsed" in
 			"all")
 				mapfile -t VINDEX < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
 				mapfile -t VCODECTYPE < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
-				;;
-			"q"|"Q")
-				Restart
 				;;
 			*)
 				VINDEX=( $rpstreamch )
@@ -1205,14 +1211,8 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 						fi
 					fi
 					;;
-
-				# Other Stream
-				# *)
-				# 	stream+=("-map 0:${VINDEX[i]}")
-				#	;;
-				esac
+			esac
 		done
-
 		stream="${stream[@]}"
 
 	else																	# If $nbstream <= 2
@@ -2585,6 +2585,9 @@ for files in "${LSTAUDIO[@]}"; do
 	(
 	if [[ -n "$Integrity" ]]; then
 		ffmpeg -v error -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+	elif [[ -n "$Untagged" ]]; then
+		ffprobe -hide_banner -loglevel panic -select_streams a -show_streams -show_format "$files" \
+			| grep -i "$untagged_type" 1>/dev/null || echo "  $files" >> "$FFMES_CACHE_UNTAGGED"
 	elif [[ -z "$VERBOSE" ]]; then
 		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
 	else
@@ -2608,7 +2611,7 @@ stty -igncr									# Enable the enter key
 # End time counter
 END=$(date +%s)
 
-if [[ -z "$Integrity" ]]; then
+if [[ -z "$Integrity" ]] && [[ -z "$Untagged" ]]; then
 	# Check Target if valid (size test) and clean
 	extcont="$ExtContSource"	# Reset $extcont
 	filesPass=()				# Files pass
@@ -2652,7 +2655,7 @@ fi
 
 # End encoding messages
 ProgressBarClean
-if [[ -z "$Integrity" ]]; then
+if [[ -z "$Integrity" ]] && [[ -z "$Untagged" ]]; then
 	if test -n "$filesPass"; then
 		echo " File(s) created:"
 		printf '  %s\n' "${filesPass[@]}"
@@ -2667,12 +2670,19 @@ if [[ -z "$Integrity" ]]; then
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 	echo "$MESS_SEPARATOR"
 	echo
-else
-	if test -f "$FFMES_CACHE_INTEGRITY"; then
+elif [[ -n "$Integrity" ]]; then
+	if [ -s "$FFMES_CACHE_INTEGRITY" ]; then
 		echo " File(s) in error:"
 		cat "$FFMES_CACHE_INTEGRITY"
 	else
-		echo " No file(s) in error."
+		echo " No file in error."
+	fi
+elif [[ -n "$Untagged" ]]; then
+	if [ -s "$FFMES_CACHE_UNTAGGED" ]; then
+		echo " File(s) without tag $untagged_label:"
+		cat "$FFMES_CACHE_UNTAGGED"
+	else
+		echo " No file untagged."
 	fi
 	echo
 fi
@@ -3688,10 +3698,9 @@ case $rpstag in
 				local COUNT=$TAG_TRACK_COUNT
 				local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			fi
-			if [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
-				local TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
+				local ParsedTrack="0${TAG_TRACK[$i]}"
+				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
@@ -3705,10 +3714,11 @@ case $rpstag in
 			# Rename
 			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
-				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			StopLoading $?
 		done
+		printf '  %s\n' "${TAG_TRACK[@]}"
 		AudioTagEditor
 	;;
 	arename)
@@ -4019,6 +4029,43 @@ case $rpstag in
 		;;
 esac
 done
+}
+SearchUntagged() {				# Option 36 	- Untagged find
+clear
+echo
+echo " Find untagged audio files"
+echo " Note: The search can be long."
+echo
+echo " *[album]  > find files without album tag"
+echo "  [artist] > find files without title tag"
+echo "  [title]  > find files without title tag"
+echo "  [date]   > find files without date tag"
+echo "  [q] > for exit"
+read -e -p "-> " untagged_q
+case $untagged_q in
+	"album"|"ALBUM")
+		untagged_type="TAG:album="
+		untagged_label="album"
+	;;
+	"artist"|"ARTIST")
+		untagged_type="TAG:artist="
+		untagged_label="artist"
+	;;
+	"title"|"TITLE")
+		untagged_type="TAG:track="
+		untagged_label="title"
+	;;
+	"date"|"DATE")
+		untagged_type="TAG:date="
+		untagged_label="date"
+	;;
+	"q"|"Q")
+		Restart
+	;;
+	*)
+		untagged_type="album"
+	;;
+esac
 }
 
 # Arguments variables
@@ -4577,6 +4624,22 @@ case $reps in
 	if [[ "$NBA" -ge "1" ]]; then
 	Integrity="1"
 	NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
+    FFmpeg_audio_cmd
+	Clean											# clean temp files
+	NPROC=$(nproc --all)							# Reset number of process
+	unset Integrity
+	else
+        echo
+        echo "$MESS_ONE_AUDIO_FILE_AUTH"
+        echo
+	fi
+	;;
+
+ 36 ) # Untagged search
+	if [[ "$NBA" -ge "1" ]]; then
+	Untagged="1"
+	NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
+	SearchUntagged
     FFmpeg_audio_cmd
 	Clean											# clean temp files
 	NPROC=$(nproc --all)							# Reset number of process

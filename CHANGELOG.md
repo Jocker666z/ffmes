@@ -1,7 +1,14 @@
 # Changelog
+v0.73:
+Video:
+	* fix - stream option now reject entry is not an integer 
+Tag:
+	* add - option 36 - find untagged audio files.
+	* fix - case when rename stuck (without lead zero in array)
+
 v0.72:
 Audio:
-	* add - peak db option in command line - "-pk|--videojobs"
+	* add - peak db option in command line - "-pk|--peaknorm"
 	* fix - change peak db (as negative) when equal to 0
 Tag:
 	* add - option (arename) for rename track in "Track - Artist - Title"

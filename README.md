@@ -104,6 +104,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 33, concatenate audio files 
 	* 34, cut audio file
 	* 35, audio file integrity check
+	* 36, find untagged audio files
 
 ### Option 0 details - DVD rip (vob, ISO, or disc)
 * Rip DVD, include ISO and VIDEO_TS VOB
