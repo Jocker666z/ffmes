@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.73a
+VERSION=v0.74
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal
@@ -1129,7 +1129,7 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 		esac
 
 		fileacodec=$chacodec
-		soundconf="$afilter -acodec $codeca $akb $confchan"
+		soundconf="$afilter -acodec $codeca $akb $asamplerate $confchan"
 
 	else
 
@@ -2378,7 +2378,7 @@ RemoveVideoSource() {			# Clean video source
 ## AUDIO SECTION
 AudioSourceInfo() {				# Audio source stats
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
+	ffprobe -analyzeduration 20M -probesize 20M -i "${LSTAUDIO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Stream > "$FFMES_CACHE_STAT"
@@ -2434,13 +2434,15 @@ SplitCUE() {					# Option 22 	- CUE Splitter to flac
 		shntool split "${LSTAUDIO[0]}" -t "%n - %t" -f "${LSTCUE[0]}" -o flac
 
 		# Clean
-		rm 00*.flac 2> /dev/null
-		cuetag "${LSTCUE[0]}" *.flac 2> /dev/null
-		if [ ! -d BACK/ ]; then
-			mkdir BACK 2> /dev/null
+		if test $? -eq 0; then
+			rm 00*.flac 2> /dev/null
+			cuetag "${LSTCUE[0]}" *.flac 2> /dev/null
+			if [ ! -d BACK/ ]; then
+				mkdir BACK 2> /dev/null
+			fi
+			mv "${LSTAUDIO[0]}" BACK/ 2> /dev/null
+			mv "${LSTCUE[0]}" BACK/ 2> /dev/null
 		fi
-		mv "${LSTAUDIO[0]}" BACK/ 2> /dev/null
-		mv "${LSTCUE[0]}" BACK/ 2> /dev/null
 
 		# End time counter
 		END=$(date +%s)
@@ -2470,7 +2472,7 @@ SplitCUE() {					# Option 22 	- CUE Splitter to flac
 		echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
 		echo "$MESS_SEPARATOR"
 	echo
-	
+
 	fi
 }
 FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
@@ -2557,7 +2559,17 @@ for files in "${LSTAUDIO[@]}"; do
 		else
 			akb="-b:a 320K"
 		fi
-		soundconf="$acodec $akb"
+	fi
+	# Flac & WavPack sampling rate limitation
+	if [[ -z "$asamplerate" ]]; then
+		if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
+			TestSamplingRate=$(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_rate -print_format csv=p=0 "$files")
+			if [[ "$TestSamplingRate" -gt "384000" ]]; then
+					asamplerate="-ar 384000"
+			else
+					asamplerate="-ar $TestSamplingRate"
+			fi
+		fi
 	fi
 	# Stream set & cover extract
 	if [ "$ExtractCover" = "0" ] && [ ! -f cover.* ]; then
@@ -2570,7 +2582,6 @@ for files in "${LSTAUDIO[@]}"; do
 	else
 		stream="-map 0:a"
 	fi
-
 	# Stock files pass in loop
 	filesInLoop+=("$files")					# Populate array
 	# If source extention same as target
@@ -2589,9 +2600,9 @@ for files in "${LSTAUDIO[@]}"; do
 		ffprobe -hide_banner -loglevel panic -select_streams a -show_streams -show_format "$files" \
 			| grep -i "$untagged_type" 1>/dev/null || echo "  $files" >> "$FFMES_CACHE_UNTAGGED"
 	elif [[ -z "$VERBOSE" ]]; then
-		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont &>/dev/null
+		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $asamplerate $confchan "${files%.*}".$extcont &>/dev/null
 	else
-		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $confchan $soundconf "${files%.*}".$extcont
+		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $asamplerate $confchan "${files%.*}".$extcont
 	fi
 	) &
 	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
@@ -2849,52 +2860,52 @@ if [ "$rpakb" = "q" ]; then
 	Restart
 elif [ "$rpakb" = "1" ]; then
 	acodec="-acodec u8"
-	akb="-ar 44100"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "2" ]; then
 	acodec="-acodec s8"
-	akb="-ar 44100"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "3" ]; then
 	acodec="-acodec pcm_s16le"
-	akb="-ar 44100"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "4" ]; then
 	acodec="-acodec pcm_s24le"
-	akb="-ar 44100"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "5" ]; then
 	acodec="-acodec pcm_s32le"
-	akb="-ar 44100"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "6" ]; then
 	acodec="-acodec u8"
-	akb="-ar 48000"
+	asamplerate="-ar 48000"
 elif [ "$rpakb" = "7" ]; then
 	acodec="-acodec s8"
-	akb="-ar 48000"
+	asamplerate="-ar 48000"
 elif [ "$rpakb" = "8" ]; then
 	acodec="-acodec pcm_s16le"
-	akb="-ar 48000"
+	asamplerate="-ar 48000"
 elif [ "$rpakb" = "9" ]; then
 	acodec="-acodec pcm_s24le"
-	akb="-ar 48000"
+	akasamplerateb="-ar 48000"
 elif [ "$rpakb" = "10" ]; then
 	acodec="-acodec pcm_s32le"
-	akb="-ar 48000"
+	asamplerate="-ar 48000"
 elif [ "$rpakb" = "11" ]; then
 	acodec="-acodec u8"
-	akb=""
+	asamplerate=""
 elif [ "$rpakb" = "12" ]; then
 	acodec="-acodec s8"
-	akb=""
+	asamplerate=""
 elif [ "$rpakb" = "13" ]; then
 	acodec="-acodec pcm_s16le"
-	akb=""
+	asamplerate=""
 elif [ "$rpakb" = "14" ]; then
 	acodec="-acodec pcm_s24le"
-	akb=""
+	asamplerate=""
 elif [ "$rpakb" = "15" ]; then
 	acodec="-acodec pcm_s32le"
-	akb=""
+	asamplerate=""
 else
 	acodec="-acodec pcm_s16le"
-	akb=""
+	asamplerate=""
 fi
 }
 ConfFLAC() {					# Option 1,24 	- Conf audio/video flac, audio to flac
@@ -2940,25 +2951,35 @@ fi
 	elif echo $rpakb | grep -q 'c' ; then
 		akb="$rpakb"
 	elif [ "$rpakb" = "1" ]; then
-		akb="-compression_level 12 -sample_fmt s16 -ar 44100"
+		akb="-compression_level 12 -sample_fmt s16"
+		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "2" ]; then
-		akb="-compression_level 12 -sample_fmt s32 -ar 44100"
+		akb="-compression_level 12 -sample_fmt s32"
+		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "3" ]; then
-		akb="-compression_level 12 -ar 44100"
+		akb="-compression_level 12"
+		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "4" ]; then
-		akb="-compression_level 12 -sample_fmt s16 -ar 48000"
+		akb="-compression_level 12 -sample_fmt s16"
+		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "5" ]; then
-		akb="-compression_level 12 -sample_fmt s32 -ar 48000"
+		akb="-compression_level 12 -sample_fmt s32"
+		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "6" ]; then
-		akb="-compression_level 12 -ar 48000"
+		akb="-compression_level 12"
+		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "7" ]; then
 		akb="-compression_level 12 -sample_fmt s16"
+		asamplerate=""
 	elif [ "$rpakb" = "8" ]; then
 		akb="-compression_level 12 -sample_fmt s32"
+		asamplerate=""
 	elif [ "$rpakb" = "9" ]; then
 		akb="-compression_level 12"
+		asamplerate=""
 	else
-		akb="-compression_level 12 -ar 44100"
+		akb="-compression_level 12"
+		asamplerate="-ar 44100"
 	fi
 	}
 ConfWavPack() {					# Option 25 	- audio to wavpack
@@ -3004,25 +3025,44 @@ fi
 	elif echo $rpakb | grep -q 'c' ; then
 		akb="$rpakb"
 	elif [ "$rpakb" = "1" ]; then
-		akb="-compression_level 4 -sample_fmt s16p -ar 44100"
-	elif [ "$rpakb" = "2" ]; then
-		akb="-compression_level 4 -sample_fmt s32p -ar 44100"
-	elif [ "$rpakb" = "3" ]; then
-		akb="-compression_level 4 -ar 44100"
-	elif [ "$rpakb" = "4" ]; then
-		akb="-compression_level 4 -sample_fmt s16p -ar 48000"
-	elif [ "$rpakb" = "5" ]; then
-		akb="-compression_level 4 -sample_fmt s32p -ar 48000"
-	elif [ "$rpakb" = "6" ]; then
-		akb="-compression_level 4 -ar 48000"
-	elif [ "$rpakb" = "7" ]; then
 		akb="-compression_level 4 -sample_fmt s16p"
-	elif [ "$rpakb" = "8" ]; then
+		asamplerate="-ar 44100"
+	elif [ "$rpakb" = "2" ]; then
 		akb="-compression_level 4 -sample_fmt s32p"
-	elif [ "$rpakb" = "9" ]; then
+		asamplerate="-ar 44100"
+	elif [ "$rpakb" = "3" ]; then
 		akb="-compression_level 4"
+		asamplerate="-ar 44100"
+	elif [ "$rpakb" = "4" ]; then
+		akb="-compression_level 2"
+		asamplerate="-ar 44100"
+	elif [ "$rpakb" = "5" ]; then
+		akb="-compression_level 4 -sample_fmt s16p"
+		asamplerate="-ar 48000"
+	elif [ "$rpakb" = "6" ]; then
+		akb="-compression_level 4 -sample_fmt s32p"
+		asamplerate="-ar 48000"
+	elif [ "$rpakb" = "7" ]; then
+		akb="-compression_level 4"
+		asamplerate="-ar 48000"
+	elif [ "$rpakb" = "8" ]; then
+		akb="-compression_level 2"
+		asamplerate="-ar 48000"
+	elif [ "$rpakb" = "9" ]; then
+		akb="-compression_level 4  -sample_fmt s16p"
+		asamplerate=""
+	elif [ "$rpakb" = "10" ]; then
+		akb="-compression_level 4 -sample_fmt s32p"
+		asamplerate=""
+	elif [ "$rpakb" = "11" ]; then
+		akb="-compression_level 4"
+		asamplerate=""
+	elif [ "$rpakb" = "12" ]; then
+		akb="-compression_level 4"
+		asamplerate=""
 	else
 		akb="-compression_level 4 -ar 44100"
+		asamplerate=""
 	fi
 	}
 ConfOPUS() {					# Option 1,28 	- Conf audio/video opus, audio to opus (libopus)
@@ -3146,26 +3186,37 @@ if [ "$rpakb" = "q" ]; then
 	Restart
 elif echo $rpakb | grep -q 'k' ; then
 	akb="-b:a $rpakb"
+	asamplerate=""
 elif [ "$rpakb" = "1" ]; then
-	akb="-q 2 -cutoff 14000 -ar 44100"
+	akb="-q 2"
+	asamplerate="-cutoff 14000 -ar 44100"
 elif [ "$rpakb" = "2" ]; then
-	akb="-q 3 -cutoff 15000 -ar 44100"
+	akb="-q 3"
+	asamplerate="-cutoff 15000 -ar 44100"
 elif [ "$rpakb" = "3" ]; then
-	akb="-q 4 -cutoff 15000 -ar 44100"
+	akb="-q 4"
+	asamplerate="-cutoff 15000 -ar 44100"
 elif [ "$rpakb" = "4" ]; then
-	akb="-q 5 -cutoff 16000 -ar 44100"
+	akb="-q 5"
+	asamplerate="-cutoff 16000 -ar 44100"
 elif [ "$rpakb" = "5" ]; then
-	akb="-q 6 -cutoff 17000 -ar 44100"
+	akb="-q 6"
+	asamplerate="-cutoff 17000 -ar 44100"
 elif [ "$rpakb" = "6" ]; then
-	akb="-q 7 -cutoff 18000 -ar 44100"
+	akb="-q 7"
+	asamplerate="-cutoff 18000 -ar 44100"
 elif [ "$rpakb" = "7" ]; then
-	akb="-q 8 -cutoff 19000 -ar 44100"
+	akb="-q 8 "
+	asamplerate="-cutoff 19000 -ar 44100"
 elif [ "$rpakb" = "8" ]; then
-	akb="-q 9 -cutoff 20000 -ar 44100"
+	akb="-q 9"
+	asamplerate="-cutoff 20000 -ar 44100"
 elif [ "$rpakb" = "9" ]; then
-	akb="-q 10 -cutoff 22050 -ar 44100"
+	akb="-q 10"
+	asamplerate="-cutoff 22050 -ar 44100"
 elif [ "$rpakb" = "10" ]; then
 	akb="-q 10"
+	asamplerate=""
 else
 	akb="-q 10 -cutoff 22050 -ar 44100"
 fi
@@ -3696,10 +3747,13 @@ case $rpstag in
 			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
 				local TAG_TRACK_COUNT=$(($COUNT+1))
 				local COUNT=$TAG_TRACK_COUNT
-				#local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
-				local ParsedTrack="$TAG_TRACK_COUNT"
+				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then		# if integer in one digit
+					local ParsedTrack="0$TAG_TRACK_COUNT"
+				else
+					local ParsedTrack="$TAG_TRACK_COUNT"
+				fi
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
+			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
 				local ParsedTrack="0${TAG_TRACK[$i]}"
 				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
@@ -4400,8 +4454,6 @@ case $reps in
     ConfTestFalseStereo
     ConfSilenceDetect
     # CONF_START ////////////////////////////////////////////////////////////////////////////
-    # AUDIO ---------------------------------------------------------------------------------
-    soundconf="$acodec $akb"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="wav"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
@@ -4428,7 +4480,6 @@ case $reps in
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec flac"
-    soundconf="$acodec $akb"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="flac"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
@@ -4455,7 +4506,6 @@ case $reps in
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec wavpack"
-    soundconf="$acodec $akb"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="wv"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
@@ -4482,7 +4532,6 @@ case $reps in
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec libmp3lame"
     confchan="-ac 2"
-    soundconf="$acodec $akb"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="mp3"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
@@ -4509,7 +4558,6 @@ case $reps in
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec libvorbis"
-    soundconf="$acodec $akb"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="ogg"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
@@ -4537,7 +4585,6 @@ case $reps in
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec libopus"
-    soundconf="$acodec $akb"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="opus"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////

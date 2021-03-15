@@ -1,8 +1,16 @@
 # Changelog
+v0.74:
+Audio:
+	* chg - split soundconf variable for better maintainability
+	* fix - wavpack and flac, now max sample rate value is 384kHz (rather useful for dsd/dsf file conversion)
+	* fix - wavpack multiple errors and missing options
+	* fix - SplitCUE don't move file if shntool return an error 
+Tag:
+	* fix - regression (another) when rename track
+
 v0.73a:
 Tag:
-	* fix - fix regression when rename track
-
+	* fix - regression when rename track
 
 v0.73:
 Video:

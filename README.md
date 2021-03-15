@@ -50,7 +50,7 @@ Usage: ffmes options
   -i|--input <directory>  Treat in batch a specific directory.
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
-                          Default: 3
+                          Default: 2
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
