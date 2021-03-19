@@ -8,10 +8,10 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.74
+VERSION=v0.75
 
 # Paths
-export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal
+export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
 FFMES_BIN=$(basename "${0}")																# Set script name for prevent error when rename script
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# Set ffmes path for restart from any directory
 FFMES_CACHE="/home/$USER/.cache/ffmes"														# cache directory
@@ -41,7 +41,7 @@ NVENC="1"																					# Set number of video encoding in same time, the c
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Audio variables
-AUDIO_EXT_AVAILABLE="aif|aiff|wma|opus|aud|dsf|wav|ac3|aac|ape|m4a|mka|mlp|mp3|flac|ogg|mpc|rmvb|shn|spx|mod|mpg|wv|dts"
+AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aud|caf|dff|dsf|dts|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|ogg|opus|rmvb|shn|spx|w64|wav|wma|wv"
 CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
@@ -481,7 +481,7 @@ VideoSourceInfo() {				# Video source stats
 	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
 	SourceDurationSecond=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${LSTVIDEO[0]}")
 }
-VideoAudioSourceInfo() {		# Video source stats / Audio only with stream order (for audio night normalization)
+VideoAudio_Source_Info() {		# Video source stats / Audio only with stream order (for audio night normalization)
 	# Add all stats in temp.stat.info
 	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
@@ -1096,26 +1096,26 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 			"opus")
 				codeca="libopus"
 				chacodec="OPUS"
-				ConfOPUS
-				ConfChannels
+				Audio_Opus_Config
+				Audio_Channels_Config
 			;;
 			"vorbis")
 				codeca="libvorbis"
 				chacodec="OGG"
-				ConfOGG
-				ConfChannels
+				Audio_OGG_Config
+				Audio_Channels_Config
 			;;
 			"ac3")
 				codeca="ac3"
 				chacodec="AC3"
-				ConfAC3
-				ConfChannels
+				Audio_AC3_Config
+				Audio_Channels_Config
 			;;
 			"flac")
 				codeca="flac"
 				chacodec="FLAC"
-				ConfFLAC
-				ConfChannels
+				Audio_FLAC_Config
+				Audio_Channels_Config
 			;;
 			"q"|"Q")
 				Restart
@@ -1123,8 +1123,8 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 			*)
 				codeca="libopus"
 				chacodec="OPUS"
-				ConfOPUS
-				ConfChannels
+				Audio_Opus_Config
+				Audio_Channels_Config
 			;;
 		esac
 
@@ -2376,7 +2376,7 @@ RemoveVideoSource() {			# Clean video source
 	fi
 }
 ## AUDIO SECTION
-AudioSourceInfo() {				# Audio source stats
+Audio_Source_Info() {					# Audio source stats
 	# Add all stats in temp.stat.info
 	ffprobe -analyzeduration 20M -probesize 20M -i "${LSTAUDIO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
@@ -2411,71 +2411,7 @@ AudioSourceInfo() {				# Audio source stats
 	# Clean temp file
 	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
 }
-SplitCUE() {					# Option 22 	- CUE Splitter to flac
-	if [ "$NBCUE" -eq "0" ]; then                                         # If 0 cue
-		echo "  No CUE file in the working directory"
-		echo
-	elif [ "$NBCUE" -gt "1" ]; then                                       # If more than 1 cue
-		echo "  More than one CUE file in working directory"
-		echo
-	elif [ "$NBCUE" -eq "1" ] & [ "$NBA" -eq "1" ]; then                  # One cue and audio file supported
-		
-		# Start time counter
-		START=$(date +%s)
-		
-		CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2> /dev/null)
-		if [ "$CHARSET_DETECT" != "UTF-8" ]; then
-			iconv -f $CHARSET_DETECT -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
-			mkdir BACK 2> /dev/null
-			mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
-			mv -f utf-8.cue "${LSTCUE[0]}"
-		fi
-
-		shntool split "${LSTAUDIO[0]}" -t "%n - %t" -f "${LSTCUE[0]}" -o flac
-
-		# Clean
-		if test $? -eq 0; then
-			rm 00*.flac 2> /dev/null
-			cuetag "${LSTCUE[0]}" *.flac 2> /dev/null
-			if [ ! -d BACK/ ]; then
-				mkdir BACK 2> /dev/null
-			fi
-			mv "${LSTAUDIO[0]}" BACK/ 2> /dev/null
-			mv "${LSTCUE[0]}" BACK/ 2> /dev/null
-		fi
-
-		# End time counter
-		END=$(date +%s)
-		
-		# Check Target
-		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
-
-		# Make statistics of processed files
-		DIFFS=$(($END-$START))
-		NBAO="${#LSTAUDIO[@]}"
-		if [ "$NBAO" -eq 0 ] ; then
-			TSSIZE="0"
-		else
-			TSSIZE=$(du -chsm "${LSTAUDIO[@]}" | tail -n1 | awk '{print $1;}')		# Target(s) size
-		fi
-
-		# End encoding messages
-		echo
-		echo "$MESS_SEPARATOR"
-		echo " $NBAO file(s) have been processed."
-		if test -n "$LSTAUDIO"; then
-			echo " File(s) created:"
-			printf '  %s\n' "${LSTAUDIO[@]}"
-		fi
-		echo "$MESS_SEPARATOR"
-		echo " Created file(s) size: $TSSIZE MB."
-		echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
-		echo "$MESS_SEPARATOR"
-	echo
-
-	fi
-}
-FFmpeg_audio_cmd() {			# FFmpeg audio encoding command
+Audio_FFmpeg_cmd() {					# FFmpeg audio encoding loop
 # Start time counter
 START=$(date +%s)
 
@@ -2494,94 +2430,19 @@ for files in "${LSTAUDIO[@]}"; do
 	# Reset $extcont
 	extcont="$ExtContSource"
 	# Test Volume and set normalization variable
-	if [ "$PeakNorm" = "1" ]; then
-		TESTDB=$(ffmpeg -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
-		if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
-			if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
-				GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
-				afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo',volume=$GREPVOLUME -mapping_family 1"
-			else
-				afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
-			fi
-		else
-			if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
-				GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
-				afilter="-af volume=$GREPVOLUME"
-			else
-				afilter=""
-			fi
-		fi
-	fi
+	Audio_Peak_Normalization_Action
 	# Channel test mono or stereo
-	if [ "$TestFalseStereo" = "1" ]; then
-		TESTLEFT=$(ffmpeg -i "$files" -map_channel 0.0.0 -f md5 - 2>/dev/null)
-		TESTRIGHT=$(ffmpeg -i "$files" -map_channel 0.0.1 -f md5 - 2>/dev/null)
-		if [ "$TESTLEFT" = "$TESTRIGHT" ]; then
-			confchan="-channel_layout mono"
-		else
-			confchan=""
-		fi
-	fi
+	Audio_False_Stereo_Action
 	# Silence detect & remove, at start & end (only for wav and flac source files)
-	if [ "$SilenceDetect" = "1" ]; then
-		if [[ "${files##*.}" = "wav" || "${files##*.}" = "flac" ]]; then
-			TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${files%.*}"."${files##*.}")
-			if [[ "$TEST_DURATION" -gt 10000 ]] ; then
-				sox "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.1 1% reverse silence 1 0.1 1% reverse
-				rm "${files%.*}"."${files##*.}" &>/dev/null
-				mv temp-out."${files##*.}" "${files%.*}"."${files##*.}" &>/dev/null
-			fi
-		fi
-	fi
+	Audio_Silent_Detection_Action
 	# Opus auto adapted bitrate
-	if [ "$AdaptedBitrate" = "1" ]; then
-		TestBitrate=$(mediainfo --Output="General;%OverallBitRate%" "$files")
-		if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]] ; then		# If not integer = file not valid
-			akb=""
-		elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
-			akb="-b:a 64K"
-		elif [ "$TestBitrate" -ge 96001 ] && [ "$TestBitrate" -le 128000 ]; then
-			akb="-b:a 96K"
-		elif [ "$TestBitrate" -ge 129000 ] && [ "$TestBitrate" -le 160000 ]; then
-			akb="-b:a 128K"
-		elif [ "$TestBitrate" -ge 161000 ] && [ "$TestBitrate" -le 192000 ]; then
-			akb="-b:a 160K"
-		elif [ "$TestBitrate" -ge 193000 ] && [ "$TestBitrate" -le 256000 ]; then
-			akb="-b:a 192K"
-		elif [ "$TestBitrate" -ge 257000 ] && [ "$TestBitrate" -le 280000 ]; then
-			akb="-b:a 220K"
-		elif [ "$TestBitrate" -ge 281000 ] && [ "$TestBitrate" -le 320000 ]; then
-			akb="-b:a 256K"
-		elif [ "$TestBitrate" -ge 321000 ] && [ "$TestBitrate" -le 400000 ]; then
-			akb="-b:a 280K"
-		elif [ "$TestBitrate" -ge 400001 ]; then
-			akb="-b:a 320K"
-		else
-			akb="-b:a 320K"
-		fi
-	fi
+	Audio_Opus_Auto_Bitrate
 	# Flac & WavPack sampling rate limitation
-	if [[ -z "$asamplerate" ]]; then
-		if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
-			TestSamplingRate=$(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_rate -print_format csv=p=0 "$files")
-			if [[ "$TestSamplingRate" -gt "384000" ]]; then
-					asamplerate="-ar 384000"
-			else
-					asamplerate="-ar $TestSamplingRate"
-			fi
-		fi
-	fi
+	Audio_Sample_Rate_Limitation
+	# Flac & WavPack bit depht source detection (if not set)
+	Audio_Bit_Depth_Detection
 	# Stream set & cover extract
-	if [ "$ExtractCover" = "0" ] && [ ! -f cover.* ]; then
-		ffmpeg -n -i "$files" "${files%.*}".jpg 2> /dev/null
-		mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
-		mv "${files%.*}".jpg cover.jpg 2>/dev/null
-		stream="-map 0:a"
-	elif [ "$ExtractCover" = "1" ] && [ "$AudioCodecType" != "Opus" ]; then
-		stream="-map 0"
-	else
-		stream="-map 0:a"
-	fi
+	Audio_Cover_Process
 	# Stock files pass in loop
 	filesInLoop+=("$files")					# Populate array
 	# If source extention same as target
@@ -2592,7 +2453,7 @@ for files in "${LSTAUDIO[@]}"; do
 		filesOverwrite+=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')		# Populate array with random strimg
 	fi
 
-	#Encoding
+	# Encoding / Test integrity / Untagged test
 	(
 	if [[ -n "$Integrity" ]]; then
 		ffmpeg -v error -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
@@ -2600,9 +2461,9 @@ for files in "${LSTAUDIO[@]}"; do
 		ffprobe -hide_banner -loglevel panic -select_streams a -show_streams -show_format "$files" \
 			| grep -i "$untagged_type" 1>/dev/null || echo "  $files" >> "$FFMES_CACHE_UNTAGGED"
 	elif [[ -z "$VERBOSE" ]]; then
-		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $asamplerate $confchan "${files%.*}".$extcont &>/dev/null
+		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $abitdeph $asamplerate $confchan "${files%.*}".$extcont &>/dev/null
 	else
-		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $asamplerate $confchan "${files%.*}".$extcont
+		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $abitdeph $asamplerate $confchan "${files%.*}".$extcont
 	fi
 	) &
 	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
@@ -2698,7 +2559,134 @@ elif [[ -n "$Untagged" ]]; then
 	echo
 fi
 }
-ConfChannels() {				#
+Audio_Peak_Normalization_Action() {		# Part of Audio_FFmpeg_cmd loop
+if [ "$PeakNorm" = "1" ]; then
+	TESTDB=$(ffmpeg -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
+	if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
+		if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
+			GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
+			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo',volume=$GREPVOLUME -mapping_family 1"
+		else
+			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
+		fi
+	else
+		if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
+			GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
+			afilter="-af volume=$GREPVOLUME"
+		else
+			afilter=""
+		fi
+	fi
+fi
+}
+Audio_False_Stereo_Action() {			# Part of Audio_FFmpeg_cmd loop
+if [ "$TestFalseStereo" = "1" ]; then
+	local TESTLEFT=$(ffmpeg -i "$files" -map_channel 0.0.0 -f md5 - 2>/dev/null)
+	local TESTRIGHT=$(ffmpeg -i "$files" -map_channel 0.0.1 -f md5 - 2>/dev/null)
+	if [ "$TESTLEFT" = "$TESTRIGHT" ]; then
+		confchan="-channel_layout mono"
+	else
+		confchan=""
+	fi
+fi
+}
+Audio_Silent_Detection_Action() {		# Part of Audio_FFmpeg_cmd loop
+if [ "$SilenceDetect" = "1" ]; then
+	if [[ "${files##*.}" = "wav" || "${files##*.}" = "flac" ]]; then
+		local TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${files%.*}"."${files##*.}")
+		if [[ "$TEST_DURATION" -gt 10000 ]] ; then
+			sox "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.1 1% reverse silence 1 0.1 1% reverse
+			rm "${files%.*}"."${files##*.}" &>/dev/null
+			mv temp-out."${files##*.}" "${files%.*}"."${files##*.}" &>/dev/null
+		fi
+	fi
+fi
+}
+Audio_Opus_Auto_Bitrate() {				# Part of Audio_FFmpeg_cmd loop
+if [ "$AdaptedBitrate" = "1" ]; then
+	local TestBitrate=$(mediainfo --Output="General;%OverallBitRate%" "$files")
+	if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]] ; then		# If not integer = file not valid
+		akb=""
+	elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
+		akb="-b:a 64K"
+	elif [ "$TestBitrate" -ge 96001 ] && [ "$TestBitrate" -le 128000 ]; then
+		akb="-b:a 96K"
+	elif [ "$TestBitrate" -ge 129000 ] && [ "$TestBitrate" -le 160000 ]; then
+		akb="-b:a 128K"
+	elif [ "$TestBitrate" -ge 161000 ] && [ "$TestBitrate" -le 192000 ]; then
+		akb="-b:a 160K"
+	elif [ "$TestBitrate" -ge 193000 ] && [ "$TestBitrate" -le 256000 ]; then
+		akb="-b:a 192K"
+	elif [ "$TestBitrate" -ge 257000 ] && [ "$TestBitrate" -le 280000 ]; then
+		akb="-b:a 220K"
+	elif [ "$TestBitrate" -ge 281000 ] && [ "$TestBitrate" -le 320000 ]; then
+		akb="-b:a 256K"
+	elif [ "$TestBitrate" -ge 321000 ] && [ "$TestBitrate" -le 400000 ]; then
+		akb="-b:a 280K"
+	elif [ "$TestBitrate" -ge 400001 ]; then
+		akb="-b:a 320K"
+	else
+		akb="-b:a 320K"
+	fi
+fi
+}
+Audio_Sample_Rate_Limitation() {		# Part of Audio_FFmpeg_cmd loop
+if [[ -z "$asamplerate" ]]; then
+	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
+		local TestSamplingRate=$(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_rate -print_format csv=p=0 "$files")
+		if [[ "$TestSamplingRate" -gt "384000" ]]; then
+				asamplerate="-ar 384000"
+		else
+				asamplerate="-ar $TestSamplingRate"
+		fi
+	fi
+fi
+}
+Audio_Bit_Depth_Detection() {			# Part of Audio_FFmpeg_cmd loop
+if ! [[ "$akb" == *"sample_fmt"* ]]; then
+	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
+		local TestBitDepth=$(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_fmt -print_format csv=p=0 "$files")
+		if [[ "$TestBitDepth" == "u8"* ]]; then			# 8 bits
+			if [[ "$extcont" = "flac" ]]; then
+				abitdeph="-sample_fmt s16"
+			elif [[ "$extcont" = "wv" ]]; then
+				abitdeph="-sample_fmt u8p"
+			fi
+		elif [[ "$TestBitDepth" == "s16"* ]]; then		# 16 bits
+			if [[ "$extcont" = "flac" ]]; then
+				abitdeph="-sample_fmt s16"
+			elif [[ "$extcont" = "wv" ]]; then
+				abitdeph="-sample_fmt s16p"
+			fi
+		elif [[ "$TestBitDepth" == "s32"* ]] || [[ "$TestBitDepth" = "fltp" ]]; then	# 32 bits
+			if [[ "$extcont" = "flac" ]]; then
+				abitdeph="-sample_fmt s32"
+			elif [[ "$extcont" = "wv" ]]; then
+				abitdeph="-sample_fmt s32p"
+			fi
+		elif [[ "$TestBitDepth" == "s64"* ]] || [[ "$TestBitDepth" = "dblp" ]]; then	# 64 bits
+			if [[ "$extcont" = "flac" ]]; then
+				abitdeph="-sample_fmt s32"
+			elif [[ "$extcont" = "wv" ]]; then
+				abitdeph="-sample_fmt s32p"
+			fi
+		fi
+	fi
+fi
+}
+Audio_Cover_Process() {					# Part of Audio_FFmpeg_cmd loop
+if [ "$ExtractCover" = "0" ] && [ ! -f cover.* ]; then
+	ffmpeg -n -i "$files" "${files%.*}".jpg 2> /dev/null
+	mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
+	mv "${files%.*}".jpg cover.jpg 2>/dev/null
+	stream="-map 0:a"
+elif [ "$ExtractCover" = "1" ] && [ "$AudioCodecType" != "Opus" ]; then
+	stream="-map 0"
+else
+	stream="-map 0:a"
+fi
+}
+Audio_Channels_Config() {				#
 if [ "$reps" -le 1 ]; then          # if profile 0 or 1 display
     CustomInfoChoice
 fi
@@ -2785,47 +2773,7 @@ else
 	fi
 fi
 }
-ConfPeakNorm() {				# 
-echo
-read -p " Apply a -"$PeakNormDB"db peak normalization? (1st file DB peak:$TestDBPeak) [y/N]:" qarm
-case $qarm in
-	"Y"|"y")
-		PeakNorm="1"
-	;;
-	*)
-		return
-	;;
-esac
-}
-ConfTestFalseStereo() {			#
-if [[ -z "$confchan" ]]; then				# if number of channel forced, no display option
-	read -p " Detect and convert false stereo files in mono? [y/N]:" qarm
-	case $qarm in
-		"Y"|"y")
-			TestFalseStereo="1"
-		;;
-		*)
-			return
-		;;
-	esac
-fi
-}
-ConfSilenceDetect() {			# 
-TESTWAV=$(echo "${LSTAUDIOEXT[@]}" | grep wav )
-TESTFLAC=$(echo "${LSTAUDIOEXT[@]}" | grep flac)
-if [[ -n "$TESTWAV" || -n "$TESTFLAC" ]]; then
-	read -p " Detect and remove silence at start and end of files (flac & wav source only)? [y/N]:" qarm
-	case $qarm in
-		"Y"|"y")
-			SilenceDetect="1"
-		;;
-		*)
-			return
-		;;
-	esac
-fi
-	}
-ConfPCM() {						# Option 23 	- Audio to wav (PCM)
+Audio_PCM_Config() {					# Option 23 	- Audio to wav (PCM)
 if [ "$reps" -eq 1 ]; then		# If in video encoding
     CustomInfoChoice
 else							# If not in video encoding
@@ -2908,7 +2856,7 @@ else
 	asamplerate=""
 fi
 }
-ConfFLAC() {					# Option 1,24 	- Conf audio/video flac, audio to flac
+Audio_FLAC_Config() {					# Option 1,24 	- Conf audio/video flac, audio to flac
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -2924,10 +2872,7 @@ fi
 	echo "          the decoding process is always quite fast and not dependent on the level of compression."
 	echo "        * If you choose and audio bit depth superior of source file, the encoding will fail."
 	echo "        * Option tagued [auto], same value of source file."
-    echo
-	echo "$MESS_SEPARATOR"
-    echo " For complete control of configuration:"
-    echo " [-compression_level 12 -cutoff 24000 -sample_fmt s16 -ar 48000] -> Example of input format"
+	echo "        * Max value of sample rate is 384kHz."
     echo
 	echo "$MESS_SEPARATOR"
     echo " Otherwise choose a number:"
@@ -2982,7 +2927,7 @@ fi
 		asamplerate="-ar 44100"
 	fi
 	}
-ConfWavPack() {					# Option 25 	- audio to wavpack
+Audio_WavPack_Config() {				# Option 25 	- audio to wavpack
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -2995,10 +2940,7 @@ fi
     echo " Notes: * WavPack uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
 	echo "          The value 4 allows a very good compression without having a huge encoding time."
 	echo "        * Option tagued [auto], same value of source file."
-    echo
-	echo "$MESS_SEPARATOR"
-    echo " For complete control of configuration:"
-    echo " [-compression_level 2 -cutoff 24000 -sample_fmt s16 -ar 48000] -> Example of input format"
+	echo "        * Max value of sample rate is 384kHz."
     echo
 	echo "$MESS_SEPARATOR"
     echo " Otherwise choose a number:"
@@ -3061,11 +3003,11 @@ fi
 		akb="-compression_level 4"
 		asamplerate=""
 	else
-		akb="-compression_level 4 -ar 44100"
-		asamplerate=""
+		akb="-compression_level 4"
+		asamplerate="-ar 44100"
 	fi
 	}
-ConfOPUS() {					# Option 1,28 	- Conf audio/video opus, audio to opus (libopus)
+Audio_Opus_Config() {					# Option 1,28 	- Conf audio/video opus, audio to opus (libopus)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -3144,7 +3086,7 @@ else
 	fi
 fi
 }
-ConfOGG() {						# Option 1,27 	- Conf audio/video libvorbis, audio to ogg (libvorbis)
+Audio_OGG_Config() {					# Option 1,27 	- Conf audio/video libvorbis, audio to ogg (libvorbis)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -3218,10 +3160,11 @@ elif [ "$rpakb" = "10" ]; then
 	akb="-q 10"
 	asamplerate=""
 else
-	akb="-q 10 -cutoff 22050 -ar 44100"
+	akb="-q 10"
+	asamplerate="-cutoff 22050 -ar 44100"
 fi
 }
-ConfMP3() {						# Option 26 	- Audio to mp3 (libmp3lame)
+Audio_MP3_Config() {					# Option 26 	- Audio to mp3 (libmp3lame)
 if [ "$reps" -eq 1 ]; then
     CustomInfoChoice
 else
@@ -3269,7 +3212,7 @@ else
 	akb="-b:a 320k"
 fi
 }
-ConfAC3() {						# Option 1  	- Conf audio/video AC3
+Audio_AC3_Config() {					# Option 1  	- Conf audio/video AC3
 echo " Choose AC3 desired configuration:"
 echo
 echo "$MESS_SEPARATOR"
@@ -3308,7 +3251,47 @@ else
 	akb="-b:a 640k"
 fi
 }
-RemoveAudioSource() {			# Clean audio source
+Audio_Peak_Normalization_Question() {	#
+echo
+read -p " Apply a -"$PeakNormDB"db peak normalization (1st file DB peak:$TestDBPeak)? [y/N]" qarm
+case $qarm in
+	"Y"|"y")
+		PeakNorm="1"
+	;;
+	*)
+		return
+	;;
+esac
+}
+Audio_False_Stereo_Question() {			#
+if [[ -z "$confchan" ]]; then				# if number of channel forced, no display option
+	read -p " Detect and convert false stereo files in mono? [y/N]" qarm
+	case $qarm in
+		"Y"|"y")
+			TestFalseStereo="1"
+		;;
+		*)
+			return
+		;;
+	esac
+fi
+}
+Audio_Silent_Detection_Question() {		# 
+TESTWAV=$(echo "${LSTAUDIOEXT[@]}" | grep wav )
+TESTFLAC=$(echo "${LSTAUDIOEXT[@]}" | grep flac)
+if [[ -n "$TESTWAV" || -n "$TESTFLAC" ]]; then
+	read -p " Detect and remove silence at start and end of files (flac & wav source only)? [y/N]" qarm
+	case $qarm in
+		"Y"|"y")
+			SilenceDetect="1"
+		;;
+		*)
+			return
+		;;
+	esac
+fi
+}
+Audio_Remove_File_Source() {			# Clean audio source
 	if [ "$NBAO" -gt 0 ] ; then
 		read -p " Remove source audio? [y/N]:" qarm
 		case $qarm in
@@ -3330,7 +3313,7 @@ RemoveAudioSource() {			# Clean audio source
 		esac
 	fi
 }
-RemoveAudioTarget() {			# Clean audio target
+Audio_Remove_File_Target() {			# Clean audio target
 if [ "$SourceNotRemoved" = "1" ] ; then
 	read -p " Remove target audio? [y/N]:" qarm
 	case $qarm in
@@ -3352,7 +3335,7 @@ if [ "$SourceNotRemoved" = "1" ] ; then
 	esac
 fi
 }
-MultipleAudioExtention() {		# Sources audio multiple extention question
+Audio_Multiple_Extention_Check() {		# Sources audio multiple extention question
 if [ "$NBAEXT" -gt "1" ]; then
 	echo
 	echo " Different source audio file extensions have been found, would you like to select one or more?"
@@ -3378,7 +3361,7 @@ if [ "$NBAEXT" -gt "1" ]; then
 	fi
 fi
 }
-AudioSpectrum() {				# Option 32 	- PNG of audio spectrum
+Audio_Generate_Spectrum_Img() {			# Option 32 	- PNG of audio spectrum
 clear
 echo
 cat "$FFMES_CACHE_STAT"
@@ -3459,7 +3442,7 @@ echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((
 echo "$MESS_SEPARATOR"
 echo
 }
-ConcatenateAudio() {			# Option 33 	- Concatenate audio files
+Audio_Concatenate_Files() {				# Option 33 	- Concatenate audio files
 echo
 echo " Concatenate audio files:"
 echo " Note: * Before you start, make sure that the files all have the same codec and bitrate."
@@ -3542,7 +3525,7 @@ else
 
 fi
 }
-CutAudio() {					# Option 34 	- Cut audio file
+Audio_Cut_File() {						# Option 34 	- Cut audio file
 clear
 echo
 cat "$FFMES_CACHE_STAT"
@@ -3650,8 +3633,72 @@ echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((
 echo "$MESS_SEPARATOR"
 echo
 }
+Audio_CUE_Split() {						# Option 22 	- CUE Splitter to flac
+	if [ "$NBCUE" -eq "0" ]; then                                         # If 0 cue
+		echo "  No CUE file in the working directory"
+		echo
+	elif [ "$NBCUE" -gt "1" ]; then                                       # If more than 1 cue
+		echo "  More than one CUE file in working directory"
+		echo
+	elif [ "$NBCUE" -eq "1" ] & [ "$NBA" -eq "1" ]; then                  # One cue and audio file supported
+		
+		# Start time counter
+		START=$(date +%s)
+		
+		CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2> /dev/null)
+		if [ "$CHARSET_DETECT" != "UTF-8" ]; then
+			iconv -f $CHARSET_DETECT -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
+			mkdir BACK 2> /dev/null
+			mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
+			mv -f utf-8.cue "${LSTCUE[0]}"
+		fi
+
+		shntool split "${LSTAUDIO[0]}" -t "%n - %t" -f "${LSTCUE[0]}" -o flac
+
+		# Clean
+		if test $? -eq 0; then
+			rm 00*.flac 2> /dev/null
+			cuetag "${LSTCUE[0]}" *.flac 2> /dev/null
+			if [ ! -d BACK/ ]; then
+				mkdir BACK 2> /dev/null
+			fi
+			mv "${LSTAUDIO[0]}" BACK/ 2> /dev/null
+			mv "${LSTCUE[0]}" BACK/ 2> /dev/null
+		fi
+
+		# End time counter
+		END=$(date +%s)
+		
+		# Check Target
+		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
+
+		# Make statistics of processed files
+		DIFFS=$(($END-$START))
+		NBAO="${#LSTAUDIO[@]}"
+		if [ "$NBAO" -eq 0 ] ; then
+			TSSIZE="0"
+		else
+			TSSIZE=$(du -chsm "${LSTAUDIO[@]}" | tail -n1 | awk '{print $1;}')		# Target(s) size
+		fi
+
+		# End encoding messages
+		echo
+		echo "$MESS_SEPARATOR"
+		echo " $NBAO file(s) have been processed."
+		if test -n "$LSTAUDIO"; then
+			echo " File(s) created:"
+			printf '  %s\n' "${LSTAUDIO[@]}"
+		fi
+		echo "$MESS_SEPARATOR"
+		echo " Created file(s) size: $TSSIZE MB."
+		echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: $((DIFFS/3600))h$((DIFFS%3600/60))m$((DIFFS%60))s."
+		echo "$MESS_SEPARATOR"
+	echo
+
+	fi
+}
 ## AUDIO TAG SECTION
-AudioTagEditor() {				# Option 30 	- Tag editor
+Audio_Tag_Editor() {					# Option 30 	- Tag editor
 StartLoading "Grab current tags" ""
 
 # Limit to current directory
@@ -3775,7 +3822,7 @@ case $rpstag in
 			fi
 			StopLoading $?
 		done
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	arename)
 		local TAG_TRACK_COUNT=()
@@ -3814,7 +3861,7 @@ case $rpstag in
 			fi
 			StopLoading $?
 		done
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	disc?[0-9])
 		local ParsedDisc=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -3834,7 +3881,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	track)
 		local TAG_TRACK_COUNT=()
@@ -3854,7 +3901,7 @@ case $rpstag in
 			fi
 			StopLoading $?
 		done
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	album*)
 		local ParsedAlbum=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -3878,7 +3925,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	artist*)
 		local ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -3902,7 +3949,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	uartist*)
 		local ParsedArtist="[unknown]"
@@ -3926,7 +3973,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	date*)
 		local ParsedDate=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -3950,7 +3997,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	ftitle)
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
@@ -3968,7 +4015,7 @@ case $rpstag in
 			fi
 			StopLoading $?
 		done
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	utitle)
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
@@ -3991,7 +4038,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	stitle?[0-9])
 		local Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -4017,7 +4064,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	etitle?[0-9])
 		local Cut1=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -4043,7 +4090,7 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	ptitle*)
 		local pattern=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
@@ -4068,10 +4115,10 @@ case $rpstag in
 			fi
 		done
 		wait
-		AudioTagEditor
+		Audio_Tag_Editor
 	;;
 	"r"|"R")
-		AudioTagEditor
+		Audio_Tag_Editor
 		break
 	;;
 	"q"|"Q")
@@ -4086,7 +4133,7 @@ case $rpstag in
 esac
 done
 }
-SearchUntagged() {				# Option 36 	- Untagged find
+Audio_Tag_Search_Untagged() {			# Option 36 	- Untagged find
 clear
 echo
 echo " Find untagged audio files"
@@ -4098,7 +4145,7 @@ echo "  [title]  > find files without title tag"
 echo "  [date]   > find files without date tag"
 echo "  [q] > for exit"
 read -e -p "-> " untagged_q
-case $untagged_q in
+case "$untagged_q" in
 	"album"|"ALBUM")
 		untagged_type="TAG:album="
 		untagged_label="album"
@@ -4386,7 +4433,7 @@ case $reps in
  15 ) # Audio night normalization
 	if [[ "$NBV" -eq "1" ]]; then
     StartLoading "Analysis of: ${LSTVIDEO[0]}"
-	VideoAudioSourceInfo
+	VideoAudio_Source_Info
 	StopLoading $?
     AddAudioNightNorm
 	Clean                                          # clean temp files
@@ -4435,7 +4482,7 @@ case $reps in
 
  20 ) # audio -> CUE splitter
 	if [ "$NBA" -gt "0" ]; then
-    SplitCUE
+    Audio_CUE_Split
     Clean                                          # clean temp files
     else
         echo
@@ -4446,20 +4493,20 @@ case $reps in
 
  21 ) # audio -> PCM
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
-    AudioSourceInfo
-    ConfPCM
-    ConfChannels
-    ConfPeakNorm
-    ConfTestFalseStereo
-    ConfSilenceDetect
+	Audio_Multiple_Extention_Check
+    Audio_Source_Info
+    Audio_PCM_Config
+    Audio_Channels_Config
+    Audio_Peak_Normalization_Question
+    Audio_False_Stereo_Question
+    Audio_Silent_Detection_Question
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # CONTAINER -----------------------------------------------------------------------------
     extcont="wav"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    FFmpeg_audio_cmd                               # encoding
-    RemoveAudioSource
-    RemoveAudioTarget
+    Audio_FFmpeg_cmd                               # encoding
+    Audio_Remove_File_Source
+    Audio_Remove_File_Target
     Clean                                          # clean temp files
     else
         echo
@@ -4470,22 +4517,22 @@ case $reps in
 
  22 ) # audio -> flac lossless
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
-    AudioSourceInfo
-    ConfFLAC
-    ConfChannels
-    ConfPeakNorm
-    ConfTestFalseStereo
-    ConfSilenceDetect
+	Audio_Multiple_Extention_Check
+    Audio_Source_Info
+    Audio_FLAC_Config
+    Audio_Channels_Config
+    Audio_Peak_Normalization_Question
+    Audio_False_Stereo_Question
+    Audio_Silent_Detection_Question
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec flac"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="flac"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    FFmpeg_audio_cmd                               # encoding
-    RemoveAudioSource
-    RemoveAudioTarget
+    Audio_FFmpeg_cmd                               # encoding
+    Audio_Remove_File_Source
+    Audio_Remove_File_Target
     Clean                                          # clean temp files
     else
         echo
@@ -4496,22 +4543,22 @@ case $reps in
 
  23 ) # audio -> wavpack lossless
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
-	AudioSourceInfo
-	ConfWavPack
-	ConfChannels
-	ConfPeakNorm
-	ConfTestFalseStereo
-	ConfSilenceDetect
+	Audio_Multiple_Extention_Check
+	Audio_Source_Info
+	Audio_WavPack_Config
+	Audio_Channels_Config
+	Audio_Peak_Normalization_Question
+	Audio_False_Stereo_Question
+	Audio_Silent_Detection_Question
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec wavpack"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="wv"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    FFmpeg_audio_cmd                               # encoding
-    RemoveAudioSource
-    RemoveAudioTarget
+    Audio_FFmpeg_cmd                               # encoding
+    Audio_Remove_File_Source
+    Audio_Remove_File_Target
     Clean                                          # clean temp files
     else
         echo
@@ -4522,12 +4569,12 @@ case $reps in
 
  24 ) # audio -> mp3 @ vbr190-250kb
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
-    AudioSourceInfo
-    ConfMP3
-    ConfPeakNorm
-    ConfTestFalseStereo
-    ConfSilenceDetect
+	Audio_Multiple_Extention_Check
+    Audio_Source_Info
+    Audio_MP3_Config
+    Audio_Peak_Normalization_Question
+    Audio_False_Stereo_Question
+    Audio_Silent_Detection_Question
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec libmp3lame"
@@ -4535,9 +4582,9 @@ case $reps in
     # CONTAINER -----------------------------------------------------------------------------
     extcont="mp3"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    FFmpeg_audio_cmd                               # encoding
-    RemoveAudioSource
-    RemoveAudioTarget
+    Audio_FFmpeg_cmd                               # encoding
+    Audio_Remove_File_Source
+    Audio_Remove_File_Target
     Clean                                          # clean temp files
     else
         echo
@@ -4548,22 +4595,22 @@ case $reps in
 
  25 ) # audio -> ogg
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
-    AudioSourceInfo
-    ConfOGG
-    ConfChannels
-    ConfPeakNorm
-    ConfTestFalseStereo
-    ConfSilenceDetect
+	Audio_Multiple_Extention_Check
+    Audio_Source_Info
+    Audio_OGG_Config
+    Audio_Channels_Config
+    Audio_Peak_Normalization_Question
+    Audio_False_Stereo_Question
+    Audio_Silent_Detection_Question
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec libvorbis"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="ogg"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    FFmpeg_audio_cmd                               # encoding
-    RemoveAudioSource
-    RemoveAudioTarget
+    Audio_FFmpeg_cmd                               # encoding
+    Audio_Remove_File_Source
+    Audio_Remove_File_Target
     Clean                                          # clean temp files
     else
         echo
@@ -4575,22 +4622,22 @@ case $reps in
  26 ) # audio -> opus
 	if [ "$NBA" -gt "0" ]; then
 	AudioCodecType="Opus"
-	MultipleAudioExtention
-    AudioSourceInfo
-    ConfOPUS
-    ConfChannels
-    ConfPeakNorm
-    ConfTestFalseStereo
-    ConfSilenceDetect
+	Audio_Multiple_Extention_Check
+    Audio_Source_Info
+    Audio_Opus_Config
+    Audio_Channels_Config
+    Audio_Peak_Normalization_Question
+    Audio_False_Stereo_Question
+    Audio_Silent_Detection_Question
     # CONF_START ////////////////////////////////////////////////////////////////////////////
     # AUDIO ---------------------------------------------------------------------------------
     acodec="-acodec libopus"
     # CONTAINER -----------------------------------------------------------------------------
     extcont="opus"
     #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    FFmpeg_audio_cmd                               # encoding
-    RemoveAudioSource
-    RemoveAudioTarget
+    Audio_FFmpeg_cmd                               # encoding
+    Audio_Remove_File_Source
+    Audio_Remove_File_Target
     Clean                                          # clean temp files
     else
         echo
@@ -4601,7 +4648,7 @@ case $reps in
 
  30 ) # tools -> audio tag
 	if [ "$NBA" -gt "0" ] && [[ ! "${LSTAUDIO[*]}" =~ ".ape" ]]; then
-	AudioTagEditor
+	Audio_Tag_Editor
 	else
 		if [ "$NBA" -eq "0" ]; then
 			echo
@@ -4617,7 +4664,7 @@ case $reps in
 
  31 ) # tools -> view stats
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
+	Audio_Multiple_Extention_Check
 	echo
 	mediainfo "${LSTAUDIO[0]}"
 	else
@@ -4629,9 +4676,9 @@ case $reps in
 
  32 ) # audio -> generate png of audio spectrum
 	if [ "$NBA" -gt "0" ]; then
-	MultipleAudioExtention
-    AudioSourceInfo
-    AudioSpectrum
+	Audio_Multiple_Extention_Check
+    Audio_Source_Info
+    Audio_Generate_Spectrum_Img
     Clean
     else
         echo
@@ -4642,8 +4689,8 @@ case $reps in
 
  33 ) # Concatenate audio
 	if [ "$NBA" -gt "1" ] && [ "$NBAEXT" -eq "1" ]; then
-	ConcatenateAudio
-	RemoveAudioSource
+	Audio_Concatenate_Files
+	Audio_Remove_File_Source
 	Clean                                          # clean temp files
 	else
         echo
@@ -4659,8 +4706,8 @@ case $reps in
 
  34 ) # Cut audio
 	if [[ "$NBA" -eq "1" ]]; then
-	AudioSourceInfo
-    CutAudio
+	Audio_Source_Info
+    Audio_Cut_File
 	Clean                                          # clean temp files
 	else
         echo
@@ -4673,7 +4720,7 @@ case $reps in
 	if [[ "$NBA" -ge "1" ]]; then
 	Integrity="1"
 	NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
-    FFmpeg_audio_cmd
+    Audio_FFmpeg_cmd
 	Clean											# clean temp files
 	NPROC=$(nproc --all)							# Reset number of process
 	unset Integrity
@@ -4688,8 +4735,8 @@ case $reps in
 	if [[ "$NBA" -ge "1" ]]; then
 	Untagged="1"
 	NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
-	SearchUntagged
-    FFmpeg_audio_cmd
+	Audio_Tag_Search_Untagged
+    Audio_FFmpeg_cmd
 	Clean											# clean temp files
 	NPROC=$(nproc --all)							# Reset number of process
 	unset Integrity

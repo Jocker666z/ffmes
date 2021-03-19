@@ -1,4 +1,20 @@
 # Changelog
+v0.75:
+Audio:
+	* add - support of w64 (Sony Wave64)
+	* add - support of caf (Apple Core Audio Format)
+	* add - support of dff (Direct Stream Digital Interchange File Format)
+	* add - support of 8svx (8-Bit Sampled Voice)
+	* add - support of amb (Ambisonic data exchange formats)
+	* add - support of mp2 (MPEG-1 Audio Layer II)
+	* add - support of mqa (Master Quality Authenticated), codec normally in a flac container, addition in case of bad file naming.
+	* fix - if bit deph is set to auto, normalization of the peak on 16 bits files does not create 32 bits files anymore
+	* fix - wavpack default option sample
+	* fix - ogg vorbis default option sample rate
+	* chg - clean function naming
+	* chg - split ffmpeg function for better maintainability
+	* remove - for wavpack & flac, remove complete configuration by command line
+
 v0.74:
 Audio:
 	* chg - split soundconf variable for better maintainability

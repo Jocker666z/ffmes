@@ -4,7 +4,7 @@ Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single 
 
 Source media files, supported extension:
 * Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, ts, vob, vp9, webm, wmv
-* Audio in aac, ac3, aif, aiff, ape, aud, dsf, dts, flac, m4a, mka, mlp, mod, mp3, mpc, mpg, ogg, opus, rmvb, shn, spx, tta, wav, wma, wv
+* Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aud, caf, dff, dsf, dts, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, opus, rmvb, shn, spx, tta, w64, wav, wma, wv
 * Subtitle in idx/sub, srt, ssa, sup
 
 **Note**: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
@@ -186,9 +186,8 @@ Tesseract engine available:
 ### Option 22 details - FLAC encoding
 * Encoding options:
 	* Quality :
-		* Sample rate: 44kHz, 48kHz, or auto
-		* 24 bits support
-		* Full command line option
+		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
+		* Bit depth: 16, 24 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization
@@ -198,9 +197,8 @@ Tesseract engine available:
 ### Option 23 details - WavPack encoding
 * Encoding options:
 	* Quality :
-		* Sample rate: 44kHz, 48kHz, or auto
-		* 24/32 bits support
-		* Full command line option
+		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
+		* Bit depth: 16, 24/32 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization
