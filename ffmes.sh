@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.75
+VERSION=v0.76
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -29,7 +29,12 @@ NPROC=$(nproc --all)																		# Set number of process
 KERNEL_TYPE=$(uname -sm)																	# Grep type of kernel, use for limit usage of VGM rip to Linux x86_64
 TERM_WIDTH=$(stty size | awk '{print $2}' | awk '{ print $1 - 10 }')						# Get terminal width, and truncate
 COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk tesseract subp2tiff subptools wget opustags)
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# ffmpeg log
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# FFmpeg log
+
+# Custom binary location
+FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
+FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, if variable empty use system bin
+SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
 
 # Video variables
 X265_LOG_LVL="log-level=error:"																# Hide x265 codec log
@@ -81,6 +86,23 @@ Usage: ffmes [options]
   -vv|--fullverbose       Display ffmpeg log level as debug.
 
 EOF
+}
+TestCustomBin() {
+if [[ -f "$FFMPEG_CUSTOM_BIN" ]]; then
+	ffmpeg_bin="$FFMPEG_CUSTOM_BIN"
+else
+	ffmpeg_bin=$(which ffmpeg)
+fi
+if [[ -f "$FFPROBE_CUSTOM_BIN" ]]; then
+	ffprobe_bin="$FFPROBE_CUSTOM_BIN"
+else
+	ffprobe_bin=$(which ffprobe)
+fi
+if [[ -f "$SOX_CUSTOM_BIN" ]]; then
+	sox_bin="$SOX_CUSTOM_BIN"
+else
+	sox_bin=$(which sox)
+fi
 }
 DetectDVD() {					# DVD detection
 for DEVICE in "${OPTICAL_DEVICE[@]}"; do
@@ -365,7 +387,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 		if [ "$ENCODV" != "1" ]; then
 			StartLoading "Test timestamp of: ${files##*/}"
-			TimestampTest=$(ffprobe -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$files" | awk -F',' '/K/ {print $1}' | tail -1)
+			TimestampTest=$("$ffprobe_bin" -loglevel error -select_streams v:0 -show_entries packet=pts_time,flags -of csv=print_section=0 "$files" | awk -F',' '/K/ {print $1}' | tail -1)
 			shopt -s nocasematch
 			if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
 				TimestampRegen="-fflags +genpts"
@@ -376,7 +398,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 
 		echo "FFmpeg processing: ${files##*/}"
 		(
-		ffmpeg $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -metadata title="${TagTitle%.*}" -max_muxing_queue_size 4096 -f $container "${files%.*}".$videoformat.$extcont
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL $TimestampRegen -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "$files" -threads 0 $stream $videoconf $soundconf $subtitleconf -metadata title="${TagTitle%.*}" -max_muxing_queue_size 4096 -f $container "${files%.*}".$videoformat.$extcont
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 			wait -n
@@ -439,7 +461,7 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 }
 VideoSourceInfo() {				# Video source stats
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
+	"$ffprobe_bin" -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Stream > "$FFMES_CACHE_STAT"
@@ -479,11 +501,11 @@ VideoSourceInfo() {				# Video source stats
 	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "${LSTVIDEO[0]}")
 	SWIDTH=$(mediainfo --Inform="Video;%Width%" "${LSTVIDEO[0]}")
 	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
-	SourceDurationSecond=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${LSTVIDEO[0]}")
+	SourceDurationSecond=$("$ffprobe_bin" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${LSTVIDEO[0]}")
 }
 VideoAudio_Source_Info() {		# Video source stats / Audio only with stream order (for audio night normalization)
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
+	"$ffprobe_bin" -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Audio > "$FFMES_CACHE_STAT"
@@ -645,12 +667,12 @@ DVDRip() {						# Option 0  	- DVD Rip
 		# Remove data stream, fix DAR, add chapters, and change container
 		StartLoading "Make clean mkv - $DVDtitle - title $title"
 		# Fix pcm_dvd is present
-		PCM=$(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB | grep pcm_dvd)
+		PCM=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB | grep pcm_dvd)
 		if test -n "$PCM"; then			# pcm_dvd audio track trick
 			pcm_dvd="-c:a pcm_s16le"
 		fi
 		# FFmpeg - clean mkv
-		ffmpeg $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB -map 0:v -map 0:a? -map 0:s? -c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv 2>/dev/null
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB -map 0:v -map 0:a? -map 0:s? -c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv 2>/dev/null
 		# mkvmerge - add chapters
 		mkvmerge "$RipFileName".mkv --chapters "$RipFileName".chapters -o "$RipFileName"-chapters.mkv >/dev/null 2>&1
 		StopLoading $?
@@ -757,7 +779,7 @@ CustomVideoEncod() {			# Option 1  	- Conf video
 		case $yn in
 			"y"|"Y")
 				StartLoading "Crop auto detection in progress"
-				cropresult=$(ffmpeg -i "${LSTVIDEO[0]}" -ss 00:03:30 -t 00:04:30 -vf cropdetect -f null - 2>&1 | awk '/crop/ { print $NF }' | tail -1 2> /dev/null)  # grep auto crop with ffmpeg
+				cropresult=$("$ffmpeg_bin" -i "${LSTVIDEO[0]}" -ss 00:03:30 -t 00:04:30 -vf cropdetect -f null - 2>&1 | awk '/crop/ { print $NF }' | tail -1 2> /dev/null)  # grep auto crop with ffmpeg
 				StopLoading $?
 				vfilter="-vf $cropresult"
 				nbvfilter=$((nbvfilter+1))
@@ -1064,7 +1086,7 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 	echo
 	echo "  [e] > for encode stream(s)"
 	echo " *[c] > for copy stream(s)"
-	echo "  [r] > for no or remove stream(s)"
+	echo "  [r] > for remove stream(s)"
 	echo "  [q] > for exit"
 	read -e -p "-> " qa
 	if [ "$qa" = "q" ]; then
@@ -1127,15 +1149,18 @@ CustomAudioEncod() {			# Option 1  	- Conf audio
 				Audio_Channels_Config
 			;;
 		esac
-
 		fileacodec=$chacodec
 		soundconf="$afilter -acodec $codeca $akb $asamplerate $confchan"
 
-	else
+	elif [ "$qa" = "r" ]; then
+		chsoundstream="Remove"							# Remove audio stream
+		fileacodec="AREMOVE"
+		soundconf=""
 
-        chsoundstream="Copy"                              # No audio change
-        fileacodec="ACOPY"
-        soundconf="-acodec copy"
+	else
+		chsoundstream="Copy"							# No audio change
+		fileacodec="ACOPY"
+		soundconf="-acodec copy"
 	fi
 	}
 CustomVideoStream() {			# Option 1,2	- Conf stream selection
@@ -1167,68 +1192,70 @@ CustomVideoStream() {			# Option 1,2	- Conf stream selection
 				Restart
 			elif ! [[ "$rpstreamch_parsed" =~ ^-?[0-9]+$ ]]; then	# Not integer retry
 				echo "   -/!\- Map option must be an integer."
+			elif [[ "$rpstreamch_parsed" =~ ^-?[0-9]+$ ]]; then		# If valid integer continue
+				break
 			fi
 		done
-
-		# Get stream info
-		case "$rpstreamch_parsed" in
-			"all")
-				mapfile -t VINDEX < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
-				mapfile -t VCODECTYPE < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
-				;;
-			*)
-				VINDEX=( $rpstreamch )
-				# Keep codec used
-				mapfile -t VCODECTYPE1 < <(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
-				VCODECNAME=()
-				for i in "${VINDEX[@]}"; do
-					VCODECTYPE+=("${VCODECTYPE1[$i]}")
-				done
-				;;
-		esac
-
-		# Get -map arguments
-		for i in ${!VINDEX[*]}; do
-			case "${VCODECTYPE[i]}" in
-				# Video Stream
-				video)
-					stream+=("-map 0:${VINDEX[i]}")
-					;;
-				
-				# Audio Stream
-				audio)
-					stream+=("-map 0:${VINDEX[i]}")
-					;;
-
-				# Subtitle Stream
-				subtitle)
-					stream+=("-map 0:${VINDEX[i]}")
-					if test -z "$subtitleconf"; then
-						if [ "$extcont" = mkv ]; then
-							subtitleconf="-c:s copy"										# mkv subtitle variable
-						elif [ "$extcont" = mp4 ]; then
-							subtitleconf="-c:s mov_text"									# mp4 subtitle variable
-						fi
-					fi
-					;;
-			esac
-		done
-		stream="${stream[@]}"
-
-	else																	# If $nbstream <= 2
-		if [ "$reps" -le 1 ]; then											# Refresh summary $nbstream <= 2
+	else															# If $nbstream <= 2
+		rpstreamch_parsed="all"
+		if [ "$reps" -le 1 ]; then									# Refresh summary $nbstream <= 2
 				CustomInfoChoice
 		fi
 		if [ "$extcont" = mkv ]; then
-			stream="-map 0"													# if mkv keep all stream
-			subtitleconf="-codec:s copy"									# mkv subtitle variable
+			subtitleconf="-codec:s copy"							# mkv subtitle variable
 		elif [ "$extcont" = mp4 ]; then
-			stream="-map 0"													# if mkv keep all stream
-			subtitleconf="-codec:s mov_text"								# mp4 subtitle variable
+			subtitleconf="-codec:s mov_text"						# mp4 subtitle variable
 		else
 			stream=""
 		fi
 	fi
+
+	# Get stream info
+	case "$rpstreamch_parsed" in
+		"all")
+			mapfile -t VINDEX < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VCODECTYPE < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
+			;;
+		*)
+			VINDEX=( $rpstreamch )
+			# Keep codec used
+			mapfile -t VCODECTYPE1 < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
+			VCODECNAME=()
+			for i in "${VINDEX[@]}"; do
+				VCODECTYPE+=("${VCODECTYPE1[$i]}")
+			done
+			;;
+	esac
+
+	# Get -map arguments
+	for i in ${!VINDEX[*]}; do
+		case "${VCODECTYPE[i]}" in
+			# Video Stream
+			video)
+				stream+=("-map 0:${VINDEX[i]}")
+				;;
+			
+			# Audio Stream
+			audio)
+				if ! [[ "$chsoundstream" = "Remove" ]]; then
+					stream+=("-map 0:${VINDEX[i]}")
+				fi
+				;;
+
+			# Subtitle Stream
+			subtitle)
+				stream+=("-map 0:${VINDEX[i]}")
+				if test -z "$subtitleconf"; then
+					if [ "$extcont" = mkv ]; then
+						subtitleconf="-c:s copy"										# mkv subtitle variable
+					elif [ "$extcont" = mp4 ]; then
+						subtitleconf="-c:s mov_text"									# mp4 subtitle variable
+					fi
+				fi
+				;;
+		esac
+	done
+	stream="${stream[@]}"
 
 	# Set file name if $videoformat variable empty
     if test -z "$videoformat"; then
@@ -1713,7 +1740,7 @@ ConcatenateVideo() {			# Option 12 	- Concatenate video
 		done
 
 		# Concatenate
-		ffmpeg $FFMPEG_LOG_LVL -fflags +genpts -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -fflags +genpts -y -f concat -safe 0 -i "$FFMES_CACHE_CONCAT" -map 0 -c copy Concatenate-Output."${LSTVIDEO[0]##*.}"
 
 		# Clean
 		rm "$FFMES_CACHE_CONCAT"
@@ -1790,8 +1817,8 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 	rpstreamch_parsed=$(echo "${rpstreamch// /}")
 	case "$rpstreamch_parsed" in
 		"all")
-			mapfile -t VINDEX < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
-			mapfile -t VCODECNAME < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VINDEX < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VCODECNAME < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
 			break
 			;;
 		"q"|"Q")
@@ -1801,7 +1828,7 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 		*)
 			VINDEX=( $rpstreamch )
 			# Keep codec used
-			mapfile -t VCODECNAME1 < <(ffprobe -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VCODECNAME1 < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
 			VCODECNAME=()
 			for i in "${VINDEX[@]}"; do
 				VCODECNAME+=("${VCODECNAME1[$i]}")
@@ -1858,11 +1885,11 @@ ExtractPartVideo() {			# Option 13 	- Extract stream
 				if [ "$MKVEXTRACT" = "1" ]; then
 					mkvextract "$files" tracks "${VINDEX[i]}":"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				elif [ "$MPEG2EXTRACT" = "1" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
+					"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				elif [ "$DVDPCMEXTRACT" = "1" ]; then
-					ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -map 0:"${VINDEX[i]}" -acodec pcm_s16le -ar 48000 "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
+					"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" -map 0:"${VINDEX[i]}" -acodec pcm_s16le -ar 48000 "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				else
-					ffmpeg $FFMPEG_LOG_LVL -y -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
+					"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" -c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 				fi
 				#StopLoading $?
 
@@ -1969,7 +1996,7 @@ CutVideo() {					# Option 14 	- Cut video
 	# Cut
 	echo
 	echo "FFmpeg processing: ${LSTVIDEO[0]%.*}.cut.${LSTVIDEO[0]##*.}"
-	ffmpeg $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}"
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}"
 
 	# End time counter
 	END=$(date +%s)
@@ -2055,7 +2082,7 @@ AddAudioNightNorm() {			# Option 15 	- Add audio stream with night normalization
 
 			echo "FFmpeg processing: ${files%.*}-NightNorm.mkv"
 			# Encoding new track
-			ffmpeg  $FFMPEG_LOG_LVL -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -map 0:a:${VINDEX[i]}? -c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus  -b:a:${VINDEX[i]} 320K -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm "${files%.*}"-NightNorm.mkv
+			"$ffmpeg_bin"  $FFMPEG_LOG_LVL -y -i "$files" -map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -map 0:a:${VINDEX[i]}? -c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus  -b:a:${VINDEX[i]} 320K -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm "${files%.*}"-NightNorm.mkv
 			# fix statistic of new track
 			mkvpropedit --add-track-statistics-tags "${files%.*}"-NightNorm.mkv >/dev/null 2>&1
 
@@ -2378,7 +2405,7 @@ RemoveVideoSource() {			# Clean video source
 ## AUDIO SECTION
 Audio_Source_Info() {					# Audio source stats
 	# Add all stats in temp.stat.info
-	ffprobe -analyzeduration 20M -probesize 20M -i "${LSTAUDIO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
+	"$ffprobe_bin" -analyzeduration 20M -probesize 20M -i "${LSTAUDIO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
 	# Grep stream in stat.info
 	< "$FFMES_CACHE"/temp.stat.info grep Stream > "$FFMES_CACHE_STAT"
@@ -2400,7 +2427,7 @@ Audio_Source_Info() {					# Audio source stats
 
 	# Grep audio db peak & add
 	LineDBPeak=$(cat "$FFMES_CACHE_STAT" | grep -nE -- ".*Stream.*.*Audio.*" | cut -c1)
-	TestDBPeak=$(ffmpeg -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')dB
+	TestDBPeak=$("$ffmpeg_bin" -analyzeduration 100M -probesize 100M -i "${LSTAUDIO[0]}" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')dB
 	sed -i "${LineDBPeak}s/.*/&, DB peak: $TestDBPeak/" "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
@@ -2456,14 +2483,14 @@ for files in "${LSTAUDIO[@]}"; do
 	# Encoding / Test integrity / Untagged test
 	(
 	if [[ -n "$Integrity" ]]; then
-		ffmpeg -v error -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+		"$ffmpeg_bin" -v error -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
 	elif [[ -n "$Untagged" ]]; then
-		ffprobe -hide_banner -loglevel panic -select_streams a -show_streams -show_format "$files" \
+		"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format "$files" \
 			| grep -i "$untagged_type" 1>/dev/null || echo "  $files" >> "$FFMES_CACHE_UNTAGGED"
 	elif [[ -z "$VERBOSE" ]]; then
-		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $abitdeph $asamplerate $confchan "${files%.*}".$extcont &>/dev/null
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $abitdeph $asamplerate $confchan "${files%.*}".$extcont &>/dev/null
 	else
-		ffmpeg $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $abitdeph $asamplerate $confchan "${files%.*}".$extcont
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" $afilter $stream $acodec $akb $abitdeph $asamplerate $confchan "${files%.*}".$extcont
 	fi
 	) &
 	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
@@ -2561,7 +2588,7 @@ fi
 }
 Audio_Peak_Normalization_Action() {		# Part of Audio_FFmpeg_cmd loop
 if [ "$PeakNorm" = "1" ]; then
-	TESTDB=$(ffmpeg -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
+	TESTDB=$("$ffmpeg_bin" -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
 	if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
 		if [[ "$TESTDB" = *"-"* ]] || [[ "$TESTDB" = "0.0" ]]; then
 			GREPVOLUME=$(echo "$TESTDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
@@ -2581,8 +2608,8 @@ fi
 }
 Audio_False_Stereo_Action() {			# Part of Audio_FFmpeg_cmd loop
 if [ "$TestFalseStereo" = "1" ]; then
-	local TESTLEFT=$(ffmpeg -i "$files" -map_channel 0.0.0 -f md5 - 2>/dev/null)
-	local TESTRIGHT=$(ffmpeg -i "$files" -map_channel 0.0.1 -f md5 - 2>/dev/null)
+	local TESTLEFT=$("$ffmpeg_bin" -i "$files" -map_channel 0.0.0 -f md5 - 2>/dev/null)
+	local TESTRIGHT=$("$ffmpeg_bin" -i "$files" -map_channel 0.0.1 -f md5 - 2>/dev/null)
 	if [ "$TESTLEFT" = "$TESTRIGHT" ]; then
 		confchan="-channel_layout mono"
 	else
@@ -2595,7 +2622,7 @@ if [ "$SilenceDetect" = "1" ]; then
 	if [[ "${files##*.}" = "wav" || "${files##*.}" = "flac" ]]; then
 		local TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${files%.*}"."${files##*.}")
 		if [[ "$TEST_DURATION" -gt 10000 ]] ; then
-			sox "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.1 1% reverse silence 1 0.1 1% reverse
+			"$sox_bin" "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.1 1% reverse silence 1 0.1 1% reverse
 			rm "${files%.*}"."${files##*.}" &>/dev/null
 			mv temp-out."${files##*.}" "${files%.*}"."${files##*.}" &>/dev/null
 		fi
@@ -2633,7 +2660,7 @@ fi
 Audio_Sample_Rate_Limitation() {		# Part of Audio_FFmpeg_cmd loop
 if [[ -z "$asamplerate" ]]; then
 	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
-		local TestSamplingRate=$(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_rate -print_format csv=p=0 "$files")
+		local TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_rate -print_format csv=p=0 "$files")
 		if [[ "$TestSamplingRate" -gt "384000" ]]; then
 				asamplerate="-ar 384000"
 		else
@@ -2645,7 +2672,7 @@ fi
 Audio_Bit_Depth_Detection() {			# Part of Audio_FFmpeg_cmd loop
 if ! [[ "$akb" == *"sample_fmt"* ]]; then
 	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
-		local TestBitDepth=$(ffprobe -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_fmt -print_format csv=p=0 "$files")
+		local TestBitDepth=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_fmt -print_format csv=p=0 "$files")
 		if [[ "$TestBitDepth" == "u8"* ]]; then			# 8 bits
 			if [[ "$extcont" = "flac" ]]; then
 				abitdeph="-sample_fmt s16"
@@ -2676,7 +2703,7 @@ fi
 }
 Audio_Cover_Process() {					# Part of Audio_FFmpeg_cmd loop
 if [ "$ExtractCover" = "0" ] && [ ! -f cover.* ]; then
-	ffmpeg -n -i "$files" "${files%.*}".jpg 2> /dev/null
+	"$ffmpeg_bin" -n -i "$files" "${files%.*}".jpg 2> /dev/null
 	mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
 	mv "${files%.*}".jpg cover.jpg 2>/dev/null
 	stream="-map 0:a"
@@ -2938,7 +2965,7 @@ else
 fi
     echo " Choose WavPack desired configuration:"
     echo " Notes: * WavPack uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
-	echo "          The value 4 allows a very good compression without having a huge encoding time."
+	echo "          The value 3 allows a very good compression without having a huge encoding time."
 	echo "        * Option tagued [auto], same value of source file."
 	echo "        * Max value of sample rate is 384kHz."
     echo
@@ -2948,18 +2975,18 @@ fi
     echo "         | comp. | sample |   bit |"
     echo "         | level |   rate | depth |"
     echo "         |-------|--------|-------|"
-    echo "  [1]  > |    4  |  44kHz |    16 |"
-    echo "  [2]  > |    4  |  44kHz | 24/32 |"
-    echo " *[3]  > |    4  |  44kHz |  auto |"
-    echo "  [4]  > |    2  |  44kHz |  auto |"
-    echo "  [5]  > |    4  |  48kHz |    16 |"
-    echo "  [6]  > |    4  |  48kHz | 24/32 |"
-    echo "  [7]  > |    4  |  48kHz |  auto |"
-    echo "  [8]  > |    2  |  48kHz |  auto |"
-    echo "  [9]  > |    4  |   auto |    16 |"
-    echo "  [10] > |    4  |   auto | 24/32 |"
-    echo "  [11] > |    4  |   auto |  auto |"
-    echo "  [12] > |    2  |   auto |  auto |"
+    echo "  [1]  > |    3  |  44kHz |    16 |"
+    echo "  [2]  > |    3  |  44kHz | 24/32 |"
+    echo " *[3]  > |    3  |  44kHz |  auto |"
+    echo "  [4]  > |    1  |  44kHz |  auto |"
+    echo "  [5]  > |    3  |  48kHz |    16 |"
+    echo "  [6]  > |    3  |  48kHz | 24/32 |"
+    echo "  [7]  > |    3  |  48kHz |  auto |"
+    echo "  [8]  > |    1  |  48kHz |  auto |"
+    echo "  [9]  > |    3  |   auto |    16 |"
+    echo "  [10] > |    3  |   auto | 24/32 |"
+    echo "  [11] > |    3  |   auto |  auto |"
+    echo "  [12] > |    1  |   auto |  auto |"
 	echo "  [q] >  | for exit"
 	read -e -p "-> " rpakb
 	if [ "$rpakb" = "q" ]; then
@@ -2967,43 +2994,43 @@ fi
 	elif echo $rpakb | grep -q 'c' ; then
 		akb="$rpakb"
 	elif [ "$rpakb" = "1" ]; then
-		akb="-compression_level 4 -sample_fmt s16p"
+		akb="-compression_level 3 -sample_fmt s16p"
 		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "2" ]; then
-		akb="-compression_level 4 -sample_fmt s32p"
+		akb="-compression_level 3 -sample_fmt s32p"
 		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "3" ]; then
-		akb="-compression_level 4"
+		akb="-compression_level 3"
 		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "4" ]; then
-		akb="-compression_level 2"
+		akb="-compression_level 1"
 		asamplerate="-ar 44100"
 	elif [ "$rpakb" = "5" ]; then
-		akb="-compression_level 4 -sample_fmt s16p"
+		akb="-compression_level 3 -sample_fmt s16p"
 		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "6" ]; then
-		akb="-compression_level 4 -sample_fmt s32p"
+		akb="-compression_level 3 -sample_fmt s32p"
 		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "7" ]; then
-		akb="-compression_level 4"
+		akb="-compression_level 3"
 		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "8" ]; then
-		akb="-compression_level 2"
+		akb="-compression_level 1"
 		asamplerate="-ar 48000"
 	elif [ "$rpakb" = "9" ]; then
-		akb="-compression_level 4  -sample_fmt s16p"
+		akb="-compression_level 3  -sample_fmt s16p"
 		asamplerate=""
 	elif [ "$rpakb" = "10" ]; then
-		akb="-compression_level 4 -sample_fmt s32p"
+		akb="-compression_level 3 -sample_fmt s32p"
 		asamplerate=""
 	elif [ "$rpakb" = "11" ]; then
-		akb="-compression_level 4"
+		akb="-compression_level 3"
 		asamplerate=""
 	elif [ "$rpakb" = "12" ]; then
-		akb="-compression_level 4"
+		akb="-compression_level 1"
 		asamplerate=""
 	else
-		akb="-compression_level 4"
+		akb="-compression_level 3"
 		asamplerate="-ar 44100"
 	fi
 	}
@@ -3396,7 +3423,7 @@ fi
 START=$(date +%s)               # Start time counter
 
 for files in "${LSTAUDIO[@]}"; do
-	( ffmpeg -y -i "$files" -lavfi showspectrumpic=s=$spekres:mode=separate:gain=1.4:color=2 "${files%.*}".png 2>/dev/null &&
+	( "$ffmpeg_bin" -y -i "$files" -lavfi showspectrumpic=s=$spekres:mode=separate:gain=1.4:color=2 "${files%.*}".png 2>/dev/null &&
 	echo "  $files ... Processed"
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
@@ -3471,7 +3498,7 @@ else
 	if [ "${LSTAUDIO[0]##*.}" = "flac" ]; then
 		shntool join *.flac -o flac -a Concatenate-Output
 	else
-		ffmpeg -f concat -safe 0 -i concat-list.info -c copy Concatenate-Output."${LSTAUDIO[0]##*.}"
+		"$ffmpeg_bin" -f concat -safe 0 -i concat-list.info -c copy Concatenate-Output."${LSTAUDIO[0]##*.}"
 	fi
 
 	# Clean
@@ -3586,9 +3613,9 @@ START=$(date +%s)
 
 # Cut
 if  [[ "${LSTAUDIO[0]##*.}" == *"flac" ]] || [[ "${LSTAUDIO[0]##*.}" == *"FLAC" ]]; then			# Flac exception for reconstruc duration
-	ffmpeg -i "${LSTAUDIO[0]}" -ss "$CutStart" -to "$CutEnd" -map_metadata 0 "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}"
+	"$ffmpeg_bin" -i "${LSTAUDIO[0]}" -ss "$CutStart" -to "$CutEnd" -map_metadata 0 "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}"
 else
-	ffmpeg -i "${LSTAUDIO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map_metadata 0 "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}"
+	"$ffmpeg_bin" -i "${LSTAUDIO[0]}" -ss "$CutStart" -to "$CutEnd" -c copy -map_metadata 0 "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}"
 fi
 
 # End time counter
@@ -3715,7 +3742,7 @@ TAG_DATE=()
 PrtSep=()
 for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 	(
-	ffprobe -hide_banner -loglevel panic -select_streams a -show_streams -show_format "${LSTAUDIO[$i]}" > "$FFMES_CACHE_TAG-[$i]"
+	"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format "${LSTAUDIO[$i]}" > "$FFMES_CACHE_TAG-[$i]"
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 		wait -n
@@ -3799,10 +3826,10 @@ case $rpstag in
 				else
 					local ParsedTrack="$TAG_TRACK_COUNT"
 				fi
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
 				local ParsedTrack="0${TAG_TRACK[$i]}"
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				ParsedTrack="${TAG_TRACK[$i]}"
 			fi
@@ -3834,11 +3861,11 @@ case $rpstag in
 				local TAG_TRACK_COUNT=$(($COUNT+1))
 				local COUNT=$TAG_TRACK_COUNT
 				local TAG_TRACK[$i]="$TAG_TRACK_COUNT"
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			if [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
 				local TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
@@ -3868,7 +3895,7 @@ case $rpstag in
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DISCNUMBER="$ParsedDisc" -metadata DISC="$ParsedDisc" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DISCNUMBER="$ParsedDisc" -metadata DISC="$ParsedDisc" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -3893,7 +3920,7 @@ case $rpstag in
 			if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
 				local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
 			fi
-			ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -3909,7 +3936,7 @@ case $rpstag in
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ALBUM="$ParsedAlbum" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ALBUM="$ParsedAlbum" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add ALBUM="$ParsedAlbum" --delete ALBUM -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -3933,7 +3960,7 @@ case $rpstag in
 			( 
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add ARTIST="$ParsedArtist" --delete ARTIST -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -3957,7 +3984,7 @@ case $rpstag in
 			( 
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add ARTIST="$ParsedArtist" --delete ARTIST -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -3981,7 +4008,7 @@ case $rpstag in
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DATE="$ParsedDate" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DATE="$ParsedDate" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add DATE="$ParsedDate" --delete DATE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -4004,7 +4031,7 @@ case $rpstag in
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			local ParsedTitle=$(echo "${LSTAUDIO[$i]%.*}")
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -4022,7 +4049,7 @@ case $rpstag in
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="[untitled]" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="[untitled]" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add TITLE="[untitled]" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -4048,7 +4075,7 @@ case $rpstag in
 			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -4074,7 +4101,7 @@ case $rpstag in
 			local ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -4099,7 +4126,7 @@ case $rpstag in
 			local ParsedTitle="${TAG_TITLE[$i]//$pattern}"
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				ffmpeg $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			else
 				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
 			fi
@@ -4254,6 +4281,7 @@ shift
 done
 
 CheckCacheDirectory							# Check if cache directory exist
+TestCustomBin
 StartLoading "Listing of media files to be processed"
 SetGlobalVariables							# Set global variable
 DetectDVD									# DVD detection

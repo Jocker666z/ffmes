@@ -1,4 +1,13 @@
 # Changelog
+v0.76:
+Video:
+	* fix - stream choice option (v0.73 regression)
+	* fix - removal of all audio streams works again
+Audio:
+	* chg - change some value of compression 4 to 3 and 2 to 1, after test compression 3 shows a huge advantage in encoding time for a minimal loss in size (https://notes.lepouf.duckdns.org/doku.php?id=gnu-linux:benchmark:ffmpeg_wavpack)
+Various:
+	* add - in script variable for change some defaults bin (useful for tests): FFMPEG_CUSTOM_BIN, FFPROBE_CUSTOM_BIN, SOX_CUSTOM_BIN
+
 v0.75:
 Audio:
 	* add - support of w64 (Sony Wave64)
@@ -7,9 +16,9 @@ Audio:
 	* add - support of 8svx (8-Bit Sampled Voice)
 	* add - support of amb (Ambisonic data exchange formats)
 	* add - support of mp2 (MPEG-1 Audio Layer II)
-	* add - support of mqa (Master Quality Authenticated), codec normally in a flac container, addition in case of bad file naming.
+	* add - support of mqa (Master Quality Authenticated), codec normally in a flac container, addition in case of bad file naming
 	* fix - if bit deph is set to auto, normalization of the peak on 16 bits files does not create 32 bits files anymore
-	* fix - wavpack default option sample
+	* fix - wavpack default option sample rate
 	* fix - ogg vorbis default option sample rate
 	* chg - clean function naming
 	* chg - split ffmpeg function for better maintainability

@@ -239,6 +239,10 @@ Restriction:
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
+### Various
+* FFMPEG_CUSTOM_BIN: change default ffmpeg system bin for other location
+* FFPROBE_CUSTOM_BIN: change default ffprobe system bin for other location
+* SOX_CUSTOM_BIN: change default sox system bin for other location
 ### Video
 * NVENC (default=1)
 	* Description: Number of video encoding in same time, the countdown starts at 0 (0=1;1=2...)
