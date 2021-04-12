@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.76
+VERSION=v0.77
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -460,6 +460,14 @@ FFmpeg_video_cmd() {			# FFmpeg video encoding command
 	echo
 }
 VideoSourceInfo() {				# Video source stats
+	# Grep info for in script use
+	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "${LSTVIDEO[0]}")
+	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "${LSTVIDEO[0]}")
+	SWIDTH=$(mediainfo --Inform="Video;%Width%" "${LSTVIDEO[0]}")
+	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
+	SourceDurationSecond=$("$ffprobe_bin" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${LSTVIDEO[0]}")
+	VideoStreamSize=$(mediainfo --Inform="Video;%StreamSize%" "${LSTVIDEO[0]}" | awk '{ foo = $1 / 1024 / 1024 ; print foo " MB" }')
+
 	# Add all stats in temp.stat.info
 	"$ffprobe_bin" -analyzeduration 1G -probesize 1G -i "${LSTVIDEO[0]}" 2> "$FFMES_CACHE"/temp.stat.info
 
@@ -469,24 +477,24 @@ VideoSourceInfo() {				# Video source stats
 	# Remove line with "Guessed Channel" (not used)
 	sed -i '/Guessed Channel/d' "$FFMES_CACHE_STAT"
 
-	# Probe audio stream (use in custom audio)
-	probeaudio=$(< "$FFMES_CACHE_STAT" grep audio)
-
 	# Count line = number of streams, and set variable associate
 	nbstream=$(wc -l "$FFMES_CACHE_STAT" | awk '{print $1;}')
 
-	# Add fps unit
+	# Add fps unit & video stream size
 	sed -i '1s/fps.*//' "$FFMES_CACHE_STAT"
-	sed -i '1s/$/fps/' "$FFMES_CACHE_STAT"
+	sed -i '1s/$/fps, '"$VideoStreamSize"'/' "$FFMES_CACHE_STAT"
 
 	# Grep & add source duration
-	SourceDuration=$(< $FFMES_CACHE/temp.stat.info grep Duration)
+	SourceDuration=$(< "$FFMES_CACHE"/temp.stat.info grep Duration)
 	sed -i '1 i\  '"$SourceDuration"'' "$FFMES_CACHE_STAT"
 
 	# Grep source size, chapter number && add file name, size, chapter number
-	ChapterNumber=$(< $FFMES_CACHE/temp.stat.info grep Chapter | tail -1 | awk '{print $4, "chapters"}')
+	local testChapter=$(cat "$FFMES_CACHE"/temp.stat.info | grep "Chapter" | wc -l)
+	if [[ "$testChapter" -gt 1 ]]; then
+		ChapterNumber=$(echo "$testChapter" | awk '{ print $1 - 1 }' | awk '{print $1, "chapters"}' | sed 's/^/, /')
+	fi
 	SourceSize=$(wc -c "${LSTVIDEO[0]}" | awk '{print $1;}' | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
-	sed -i '1 i\    '"${LSTVIDEO[0]##*/}, size: $SourceSize MB, $ChapterNumber"'' "$FFMES_CACHE_STAT"
+	sed -i '1 i\    '"${LSTVIDEO[0]##*/}, size: $SourceSize MB$ChapterNumber"'' "$FFMES_CACHE_STAT"
 
 	# Add title & complete formatting
 	sed -i '1 i\ Source file stats:' "$FFMES_CACHE_STAT"
@@ -494,14 +502,7 @@ VideoSourceInfo() {				# Video source stats
 	sed -i -e '$a--------------------------------------------------------------------------------------------------' "$FFMES_CACHE_STAT"
 
 	# Clean temp file
-	rm $FFMES_CACHE"/temp.stat.info" &>/dev/null
-
-	# Grep info for in script use
-	INTERLACED=$(mediainfo --Inform="Video;%ScanType/String%" "${LSTVIDEO[0]}")
-	HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "${LSTVIDEO[0]}")
-	SWIDTH=$(mediainfo --Inform="Video;%Width%" "${LSTVIDEO[0]}")
-	SHEIGHT=$(mediainfo --Inform="Video;%Height%" "${LSTVIDEO[0]}")
-	SourceDurationSecond=$("$ffprobe_bin" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${LSTVIDEO[0]}")
+	rm "$FFMES_CACHE"/temp.stat.info &>/dev/null
 }
 VideoAudio_Source_Info() {		# Video source stats / Audio only with stream order (for audio night normalization)
 	# Add all stats in temp.stat.info
@@ -2622,7 +2623,7 @@ if [ "$SilenceDetect" = "1" ]; then
 	if [[ "${files##*.}" = "wav" || "${files##*.}" = "flac" ]]; then
 		local TEST_DURATION=$(mediainfo --Output="General;%Duration%" "${files%.*}"."${files##*.}")
 		if [[ "$TEST_DURATION" -gt 10000 ]] ; then
-			"$sox_bin" "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.1 1% reverse silence 1 0.1 1% reverse
+			"$sox_bin" "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.2 -85d reverse silence 1 0.2 -85d reverse
 			rm "${files%.*}"."${files##*.}" &>/dev/null
 			mv temp-out."${files##*.}" "${files%.*}"."${files##*.}" &>/dev/null
 		fi
@@ -3821,10 +3822,17 @@ case $rpstag in
 			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
 				local TAG_TRACK_COUNT=$(($COUNT+1))
 				local COUNT=$TAG_TRACK_COUNT
-				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then		# if integer in one digit
-					local ParsedTrack="0$TAG_TRACK_COUNT"
-				else
-					local ParsedTrack="$TAG_TRACK_COUNT"
+				# Add lead zero if necessary
+				if [ "${#LSTAUDIO[@]}" -lt "100" ]; then
+					if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
+						local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
+					fi
+				elif [ "${#LSTAUDIO[@]}" -ge "100" ]; then
+					if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
+						local TAG_TRACK_COUNT="00$TAG_TRACK_COUNT"
+					elif [[ "${#TAG_TRACK_COUNT}" -eq "2" ]] ; then				# if integer in two digit
+						local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT"
+					fi
 				fi
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
@@ -3913,14 +3921,28 @@ case $rpstag in
 	track)
 		local TAG_TRACK_COUNT=()
 		local COUNT=()
+
+		# Track record
 		for (( i=0; i<=$(( $NBA -1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			local TAG_TRACK_COUNT=$(($COUNT+1))
 			local COUNT=$TAG_TRACK_COUNT
-			if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
-				local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
+
+			# Add lead zero if necessary
+			if [ "${#LSTAUDIO[@]}" -lt "100" ]; then
+				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
+					local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
+				fi
+			elif [ "${#LSTAUDIO[@]}" -ge "100" ]; then
+				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
+					local TAG_TRACK_COUNT="00$TAG_TRACK_COUNT"
+				elif [[ "${#TAG_TRACK_COUNT}" -eq "2" ]] ; then				# if integer in two digit
+					local TAG_TRACK_COUNT="0$TAG_TRACK_COUNT"
+				fi
 			fi
+
 			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null

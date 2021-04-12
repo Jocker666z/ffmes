@@ -1,4 +1,14 @@
 # Changelog
+v0.77:
+Video:
+	* add - video stream size in file info
+	* fix - remove probeaudio variable, unused
+	* fix - chapters display
+Audio:
+	* chg - increase precision for remove silence at end
+Tag:
+	* chg - track tag now support until 999 tracks with lead zero
+
 v0.76:
 Video:
 	* fix - stream choice option (v0.73 regression)
