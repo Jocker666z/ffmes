@@ -16,6 +16,9 @@ Source media files, supported extension:
 ## Dependencies
 `ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc tesseract-ocr tesseract-ocr-all wget opustags`
 
+## Optional dependencies
+`dr14_tmeter`
+
 ### Nemo action
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
@@ -24,8 +27,6 @@ Active=true
 Name=ffmes %N
 Comment=ffmes %N
 Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
-Quote=double
-EscapeSpaces=true
 Selection=any
 Extensions=any;
 ```
@@ -89,7 +90,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 16, split mkv by chapter
 	* 17, change color of DVD subtitle (idx/sub)
 	* 18, convert DVD subtitle (idx/sub) to srt
-* Audio :
+* Audio:
 	* 20, CUE splitter to flac
 	* 21, audio to wav (PCM)
 	* 22, audio to flac
@@ -97,7 +98,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 24, audio to mp3 (libmp3lame)
 	* 25, audio to ogg (libvorbis)
 	* 26, audio to opus (libopus)
-* Audio tools :
+* Audio tools:
 	* 30, audio tag editor
 	* 31, view detailed audio file informations
 	* 32, generate png image of audio spectrum
@@ -106,13 +107,15 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 35, audio file integrity check
 	* 36, find untagged audio files
 
-### Option 0 details - DVD rip (vob, ISO, or disc)
+--------------------------------------------------------------------------------------------------
+### Video options
+#### Option 0 details - DVD rip (vob, ISO, or disc)
 * Rip DVD, include ISO and VIDEO_TS VOB
 * Chapters integration
 * Fix timestamp and display ratio to mkv file (stream copy)
 * launch option 1 (optional)
     
-### Option 1 details - video encoding, full custom options
+#### Option 1 details - video encoding, full custom options
 * Video:
 	* Stream copy or encoding
 	* Encoding options:
@@ -141,17 +144,17 @@ If you encounter problems or have proposals, I am open to discussion.
 	* mkv & mp4 support
 * Map streams selection
 
-### Option 2 details - copy stream to mkv with map option
+#### Option 2 details - copy stream to mkv with map option
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
-### Option 15 details - add audio stream with night normalization
+#### Option 15 details - add audio stream with night normalization
 From inplace matroska video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
 
-### Option 16 details - split mkv by chapter
+#### Option 16 details - split mkv by chapter
 Cut one matroska video per chapter, mkvtoolnix package must be installed.
 
-### Option 17 details - change color of DVD subtitle (idx/sub)
+#### Option 17 details - change color of DVD subtitle (idx/sub)
 You must run the option in a directory containing one or more pairs of idx/sub files with the same filename.
 
 Colors palette available:
@@ -160,7 +163,7 @@ Colors palette available:
 * yellow font / black border
 * yellow font / white border
 
-### Option 18 details - convert DVD subtitle (idx/sub) to srt
+#### Option 18 details - convert DVD subtitle (idx/sub) to srt
 You must have installed tesseract-ocr with your language support, but also ogmrip package (includes subp2tiff and subptools binaries).
 
 Language supported: english, french, deutsch, spanish, portuguese, italian, japanese, chinese simplified, arabic, korean, russian.
@@ -169,9 +172,12 @@ Tesseract engine available:
 * By recognizing character patterns, fast but not reliable
 * By neural net (LSTM), slow but reliable (default)
 
-### Option 21 details - PCM encoding
+--------------------------------------------------------------------------------------------------
+### Audio options
+
+#### Option 21 details - PCM encoding
 * Encoding options:
-	* Quality :
+	* Quality:
 		* signed 16-bit little-endian
 		* signed 24-bit little-endian
 		* signed 32-bit little-endian
@@ -179,44 +185,44 @@ Tesseract engine available:
 		* unsigned 8-bit
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization
+	* -1db peak normalization (only files that have a value less than)
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 22 details - FLAC encoding
+#### Option 22 details - FLAC encoding
 * Encoding options:
-	* Quality :
+	* Quality:
 		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
 		* Bit depth: 16, 24 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization
+	* -1db peak normalization (only files that have a value less than)
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 23 details - WavPack encoding
+#### Option 23 details - WavPack encoding
 * Encoding options:
-	* Quality :
+	* Quality:
 		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
 		* Bit depth: 16, 24/32 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization
+	* -1db peak normalization (only files that have a value less than)
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 26 details - opus encoding
+#### Option 26 details - opus encoding
 * Encoding options:
 	* Bitrate
 		* vbr, 64kb to 510kb (selectable options).
 		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
 	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization
+	* -1db peak normalization (only files that have a value less than)
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-### Option 30 details - tag editor
+#### Option 30 details - tag editor
 Options:
 * Change or add tag disc number
 * Rename files in "Track - Title" (add track number if not present)
@@ -229,13 +235,21 @@ Options:
 * Change or add tag date
 * Change tag title for filename
 * Change tag title for "untitled"
-* Remove N character at begin in tag title (9 characters at once).
-* Remove N character at end in tag title (9 characters at once).
+* Remove N character at begin in tag title (9 characters at once)
+* Remove N character at end in tag title (9 characters at once)
 * Remove text pattern in tag title.
 Restriction:
 * Max depth directory 1
 * Asian character not supported (display in degrading mode)
 * Monkey's Audio (APE) not supported
+
+#### Audio appendix:
+* dr14_tmeter:
+	* Optional dependency, it will be displayed only if python3 & dr14_tmeter is installed.
+	* The option is launched after the choice of the audio codec, you have the choice to launch it or not.
+	* File supported .dsf, .dff, .wv, .flac, .mp3, .ogg, .opus, .mp4, .m4a, .wav, .ape, .ac3, .wma.
+	* Only my forked version support .dsf, .dff, .wv files -> https://github.com/Jocker666z/dr14_t.meter
+	* Note that it is not recommended to use it on a huge amount of files, the processing is quite long. Keep in mind that the analysis is recursive.
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)

@@ -1,4 +1,17 @@
 # Changelog
+v0.78:
+Video:
+	* add - double check for HDR test, mediainfo + ffprobe, for prevent false negative
+Audio:
+	* add - optional dr14_tmeter test option before encoding for files in .dsf, .dff, .wv, .flac, .mp3, .ogg, .opus, .mp4, .m4a, .wav, .ape, .ac3, .wma. See Audio appendix in doc for more infos.
+	* chg - now the normalization is only applied to files that have a value lower than the default one or enter in argument
+Various:
+	* chg - minor improve of truncate display
+	* chg - minor improve of label
+	* chg - improve of bash code
+	* fix - fix common errors in bash code
+	* remove - dead code
+
 v0.77:
 Video:
 	* add - video stream size in file info
