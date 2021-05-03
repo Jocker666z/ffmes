@@ -16,9 +16,6 @@ Source media files, supported extension:
 ## Dependencies
 `ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc tesseract-ocr tesseract-ocr-all wget opustags`
 
-## Optional dependencies
-`dr14_tmeter`
-
 ### Nemo action
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
@@ -47,6 +44,7 @@ su -c "make install" -m "root"
 ```
 Usage: ffmes options
                           Without option treat current directory.
+  -ca|--compare_audio     Compare current audio files stats.
   -i|--input <file>       Treat one file.
   -i|--input <directory>  Treat in batch a specific directory.
   -h|--help               Display this help.
@@ -100,12 +98,13 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 26, audio to opus (libopus)
 * Audio tools:
 	* 30, audio tag editor
-	* 31, view detailed audio file informations
-	* 32, generate png image of audio spectrum
-	* 33, concatenate audio files 
-	* 34, cut audio file
-	* 35, audio file integrity check
-	* 36, find untagged audio files
+	* 31, view one audio file stats
+	* 32, compare audio files stats
+	* 33, generate png image of audio spectrum
+	* 34, concatenate audio files 
+	* 35, cut audio file
+	* 36, audio file integrity check
+	* 37, find untagged audio files
 
 --------------------------------------------------------------------------------------------------
 ### Video options
@@ -242,14 +241,6 @@ Restriction:
 * Max depth directory 1
 * Asian character not supported (display in degrading mode)
 * Monkey's Audio (APE) not supported
-
-#### Audio appendix:
-* dr14_tmeter:
-	* Optional dependency, it will be displayed only if python3 & dr14_tmeter is installed.
-	* The option is launched after the choice of the audio codec, you have the choice to launch it or not.
-	* File supported .dsf, .dff, .wv, .flac, .mp3, .ogg, .opus, .mp4, .m4a, .wav, .ape, .ac3, .wma.
-	* Only my forked version support .dsf, .dff, .wv files -> https://github.com/Jocker666z/dr14_t.meter
-	* Note that it is not recommended to use it on a huge amount of files, the processing is quite long. Keep in mind that the analysis is recursive.
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)

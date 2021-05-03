@@ -1,4 +1,20 @@
 # Changelog
+v0.79:
+Audio:
+	* chg - replace dr14 by ffmpeg for view all file stats, less precision but better maintainability and more info, default stat view is in table, if term width is too small is in line
+	* add - compare current audio files stats in argument -ca|--compare_audio 
+Tag:
+	* add - if term width is too small, current tag now displayed in line
+	* chg - minor improvement of tags table display
+	* chg - reduce the menu width for little term
+	* fix - no more false positive ape file detection
+Various:
+	* chg - improve of bash code
+	* chg - minor improve of label
+	* chg - improve truncate echo
+	* chg - improve precision of file size (scale 0 -> 1)
+	* chg - reduce scale from percentage calculation (2 -> 1)
+
 v0.78:
 Video:
 	* add - double check for HDR test, mediainfo + ffprobe, for prevent false negative
