@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.80
+VERSION=v0.80a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -4325,8 +4325,8 @@ case $rpstag in
 				TAG_TITLE[$i]="[untitled]"							# use "[untitled]"
 			fi
 			# Rename
-			#ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-			ParsedTitle="${TAG_TITLE[$i]}////-}"								# Replace eventualy "/" in string
+			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			echo "$ParsedTitle"
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
 				mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
@@ -4362,10 +4362,8 @@ case $rpstag in
 				TAG_ARTIST[$i]="[unknown]"							# use "[unamed]"
 			fi
 			# Rename
-			#ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-			ParsedTitle="${TAG_TITLE[$i]}////-}"								# Replace eventualy "/" in string
-			#ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-			ParsedArtist="${TAG_ARTIST[$i]}////-}"								# Replace eventualy "/" in string
+			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
 				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
@@ -4566,8 +4564,7 @@ case $rpstag in
 		Cut=$(( Cut1 + 1 ))
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			#ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-			ParsedTitle="${TAG_TITLE[$i]}////-}"								# Replace eventualy "/" in string
+			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null

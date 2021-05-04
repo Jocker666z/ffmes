@@ -1,4 +1,8 @@
 # Changelog
+v0.80a:
+Tag:
+	* fix - regression in tag rename
+
 v0.80:
 Video:
 	* chg - concat, simplification of bash code
