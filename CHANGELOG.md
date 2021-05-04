@@ -1,4 +1,20 @@
 # Changelog
+v0.80:
+Video:
+	* chg - concat, simplification of bash code
+	* chg - resolution change now use predefined widths, to limit encoding errors
+Audio:
+	* fix - cue split, no more end error message due to a bad test on array
+	* fix - cue split, improve cuetag
+	* chg - concat, simplification of bash code
+Various:
+	* chg - improve of bash code
+	* chg - increase percentage precision, scale returns to 2
+	* chg - add lead 0 to percentage is string start by .
+	* chg - add lead 0 to size is string start by .
+	* chg - improve truncate echo
+	* remove - FFMES_CACHE_CONCAT variable
+
 v0.79:
 Audio:
 	* chg - replace dr14 by ffmpeg for view all file stats, less precision but better maintainability and more info, default stat view is in table, if term width is too small is in line
