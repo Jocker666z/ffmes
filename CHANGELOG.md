@@ -1,4 +1,16 @@
 # Changelog
+v0.81:
+Audio:
+	* chg - audio file tester is now split from the main audio encoding loop
+	* chg - increase speed of audio file tester, now, ffmpeg should just be able to read the file
+	* chg - the validation at the end of the encoding is no longer a sizeable test (particularly bad). It is replaced by an ffmpeg play test.
+Various:
+	* chg - improve truncate (again)
+	* fix - add lead 0 to percentage is string start by -.
+	* fix - percentage equal 0, dispay 0
+Tag:
+	* fix - regression in tag stitle
+
 v0.80a:
 Tag:
 	* fix - regression in tag rename

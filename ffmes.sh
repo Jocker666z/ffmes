@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.80a
+VERSION=v0.81
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -29,6 +29,7 @@ OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD playe
 NPROC=$(nproc --all)																		# Set number of process
 TERM_WIDTH=$(stty size | awk '{print $2}')													# Get terminal width
 TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')					# Get terminal width truncate
+TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')			# Get terminal width truncate
 COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk tesseract subp2tiff subptools wget opustags)
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# FFmpeg log
 
@@ -302,7 +303,7 @@ echo "  32 - compare audio files stats                      |-Audio Tools"
 echo "  33 - generate png image of audio spectrum           |"
 echo "  34 - concatenate audio files                        |"
 echo "  35 - cut audio file                                 |"
-echo "  36 - audio file integrity check                     |"
+echo "  36 - audio file tester                              |"
 echo "  37 - find untagged audio files                      |"
 echo "  -----------------------------------------------------"
 CheckFiles
@@ -317,6 +318,31 @@ label="$*"
 
 if [[ "${#label}" -gt "$TERM_WIDTH_TRUNC" ]]; then
 	echo "$label" | cut -c 1-"$TERM_WIDTH_TRUNC" | awk '{print $0"..."}'
+else
+	echo "$label"
+fi
+}
+Display_List_Truncate() {				# List width truncate
+local line
+local list
+list=("$@")
+
+for line in "${list[@]}"; do
+
+	if [[ "${#line}" -gt "$TERM_WIDTH_TRUNC" ]]; then
+		echo "  $line" | cut -c 1-"$TERM_WIDTH_TRUNC" | awk '{print $0"..."}'
+	else
+		echo "  $line"
+	fi
+
+done
+}
+Display_Line_Progress_Truncate() {		# Line width truncate in progress
+local label
+label="$*"
+
+if [[ "${#label}" -gt "$TERM_WIDTH_PROGRESS_TRUNC" ]]; then
+	echo "$label" | cut -c 1-"$TERM_WIDTH_PROGRESS_TRUNC" | awk '{print $0"..."}'
 else
 	echo "$label"
 fi
@@ -365,13 +391,17 @@ local perc
 value="$1"
 total="$2"
 
-perc=$(bc <<< "scale=4; ($total - $value)/$value * 100" | sed 's!\0*$!!')
-
-# If string start by "." add lead 0
-if [[ "${perc:0:1}" == "." ]]; then
-	echo "0$perc"
+if [[ "$value" = "$total" ]]; then
+	echo "0"
 else
-	echo "$perc"
+	perc=$(bc <<< "scale=4; ($total - $value)/$value * 100" | sed 's!\0*$!!')
+
+	# If string start by "." or "-." add lead 0
+	if [[ "${perc:0:1}" == "." ]] || [[ "${perc:0:2}" == "-." ]]; then
+		echo "0$perc"
+	else
+		echo "$perc"
+	fi
 fi
 }
 Calc_Elapsed_Time() {					# Elapsed time formated
@@ -549,11 +579,11 @@ echo
 echo "$MESS_SEPARATOR"
 if ! [ "${#filesPass[@]}" -eq 0 ]; then
 	echo " File(s) created:"
-	printf '  %s\n' "${filesPass[@]}"
+	Display_List_Truncate "${filesPass[@]}"
 fi
 if ! [ "${#filesReject[@]}" -eq 0 ]; then
 	echo " File(s) in error:"
-	printf '  %s\n' "${filesReject[@]}"
+	Display_List_Truncate "${filesReject[@]}"
 fi
 echo "$MESS_SEPARATOR"
 echo " $NBVO/$NBV file(s) have been processed."
@@ -1872,11 +1902,11 @@ Mkvmerge() {							# Option 11 	- Add audio stream or subtitle in video file
 	echo " $NBVO file(s) have been processed."
 	if ! [ "${#filesPass[@]}" -eq 0 ]; then
 		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
+		Display_List_Truncate "${filesPass[@]}"
 	fi
 	if ! [ "${#filesReject[@]}" -eq 0 ]; then
 		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
+		Display_List_Truncate "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " Created file(s) size: $TSSIZE MB."
@@ -1936,11 +1966,11 @@ ConcatenateVideo() {					# Option 12 	- Concatenate video
 		echo "$MESS_SEPARATOR"
 		if ! [ "${#filesPass[@]}" -eq 0 ]; then
 			echo " File(s) created:"
-			printf '  %s\n' "${filesPass[@]}"
+			Display_List_Truncate "${filesPass[@]}"
 		fi
 		if ! [ "${#filesReject[@]}" -eq 0 ]; then
 			echo " File(s) in error:"
-			printf '  %s\n' "${filesReject[@]}"
+			Display_List_Truncate "${filesReject[@]}"
 		fi
 		echo "$MESS_SEPARATOR"
 		echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
@@ -2085,11 +2115,11 @@ ExtractPartVideo() {					# Option 13 	- Extract stream
 	echo " $NBVO file(s) have been processed."
 	if ! [ "${#filesPass[@]}" -eq 0 ]; then
 		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
+		Display_List_Truncate "${filesPass[@]}"
 	fi
 	if ! [ "${#filesReject[@]}" -eq 0 ]; then
 		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
+		Display_List_Truncate "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " Created file(s) size: $TSSIZE MB."
@@ -2192,11 +2222,11 @@ CutVideo() {							# Option 14 	- Cut video
 	echo "$MESS_SEPARATOR"
 	if ! [ "${#filesPass[@]}" -eq 0 ]; then
 		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
+		Display_List_Truncate "${filesPass[@]}"
 	fi
 	if ! [ "${#filesReject[@]}" -eq 0 ]; then
 		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
+		Display_List_Truncate "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZVIDEO MB)."
@@ -2283,11 +2313,11 @@ AddAudioNightNorm() {					# Option 15 	- Add audio stream with night normalizati
 	echo " $NBVO file(s) have been processed."
 	if ! [ "${#filesPass[@]}" -eq 0 ]; then
 		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
+		Display_List_Truncate "${filesPass[@]}"
 	fi
 	if ! [ "${#filesReject[@]}" -eq 0 ]; then
 		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
+		Display_List_Truncate "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " Created file(s) size: $TSSIZE MB."
@@ -2545,40 +2575,40 @@ for files in "${LSTSUB[@]}"; do
 done
 	}
 MultipleVideoExtention() {				# Sources video multiple extention question
-	if [ "$NBVEXT" -gt "1" ]; then
-		echo
-		echo " Different source video file extensions have been found, would you like to select one or more?"
-		echo " Note: * It is recommended not to batch process different sources, in order to control the result as well as possible."
-		echo
-		echo " Extensions found: ${LSTVIDEOEXT[*]}"
-		echo
-		echo "  [avi]     > Example of input format for select one extension"
-		echo "  [mkv|mp4] > Example of input format for multiple selection"
-		echo " *[↵]       > for no selection"
-		echo "  [q]       > for exit"
-		read -r -e -p "-> " VIDEO_EXT_AVAILABLE
-		if [ "$VIDEO_EXT_AVAILABLE" = "q" ]; then
-			Restart
-		elif test -n "$VIDEO_EXT_AVAILABLE"; then
-			mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
-			NBV="${#LSTVIDEO[@]}"
-		fi
+if [ "$NBVEXT" -gt "1" ]; then
+	echo
+	echo " Different source video file extensions have been found, would you like to select one or more?"
+	echo " Note: * It is recommended not to batch process different sources, in order to control the result as well as possible."
+	echo
+	echo " Extensions found: ${LSTVIDEOEXT[*]}"
+	echo
+	echo "  [avi]     > Example of input format for select one extension"
+	echo "  [mkv|mp4] > Example of input format for multiple selection"
+	echo " *[↵]       > for no selection"
+	echo "  [q]       > for exit"
+	read -r -e -p "-> " VIDEO_EXT_AVAILABLE
+	if [ "$VIDEO_EXT_AVAILABLE" = "q" ]; then
+		Restart
+	elif test -n "$VIDEO_EXT_AVAILABLE"; then
+		mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+		NBV="${#LSTVIDEO[@]}"
 	fi
+fi
 }
 RemoveVideoSource() {					# Clean video source
-	if [ "$NBVO" -gt 0 ] ; then
-		read -r -p " Remove source video? [y/N]:" qarm
-		case $qarm in
-			"Y"|"y")
-				for f in "${filesSourcePass[@]}"; do
-					rm -f "$f" 2> /dev/null
-				done
-			;;
-			*)
-				Restart
-			;;
-		esac
-	fi
+if [ "$NBVO" -gt 0 ] ; then
+	read -r -p " Remove source video? [y/N]:" qarm
+	case $qarm in
+		"Y"|"y")
+			for f in "${filesSourcePass[@]}"; do
+				rm -f "$f" 2> /dev/null
+			done
+		;;
+		*)
+			Restart
+		;;
+	esac
+fi
 }
 ## AUDIO SECTION
 Audio_Source_Info() {					# One audio file source stats (first in loop)
@@ -2796,11 +2826,16 @@ local SSIZAUDIO
 local TSSIZE
 local START
 local END
+local file_test
+local silence_start_test
+local silence_end_test
+local silence_test
+local filesRejectRm
 
 # Start time counter
 START=$(date +%s)
 
- #Message
+# Message
 echo
 echo "$MESS_SEPARATOR"
 
@@ -2842,9 +2877,7 @@ for files in "${LSTAUDIO[@]}"; do
 
 	# Encoding / Test integrity / Untagged test
 	(
-	if [[ -n "$Integrity" ]]; then
-		"$ffmpeg_bin" -v error -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
-	elif [[ -n "$Untagged" ]]; then
+	if [[ -n "$Untagged" ]]; then
 		"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format "$files" \
 			| grep -i "$untagged_type" 1>/dev/null || echo "  $files" >> "$FFMES_CACHE_UNTAGGED"
 	elif [[ -z "$VERBOSE" ]]; then
@@ -2859,7 +2892,7 @@ for files in "${LSTAUDIO[@]}"; do
 
 	# Progress
 	if [[ -z "$VERBOSE" ]]; then
-		filename_trunk=$(Display_Line_Truncate "${files##*/}")
+		filename_trunk=$(Display_Line_Progress_Truncate "${files##*/}")
 		NBAFilesInLoop="${#filesInLoop[@]}"
 		ProgressBar "$NBAFilesInLoop" "$NBA" "$filename_trunk"
 	fi
@@ -2867,43 +2900,59 @@ for files in "${LSTAUDIO[@]}"; do
 done
 wait
 
-# Enable the enter key
-EnterKeyEnable
+# Display
+ProgressBarClean
+Display_Remove_Previous_Line
+echo "✓ File(s) encoding"
+StartLoading "Validation of created file(s)"
 
-# End time counter
-END=$(date +%s)
-
-if [[ -z "$Integrity" ]] && [[ -z "$Untagged" ]]; then
+# Test results
+if [[ -z "$Untagged" ]]; then
 	# Check Target if valid (size test) and clean
 	extcont="$ExtContSource"	# Reset $extcont
 	filesPass=()				# Files pass
 	filesReject=()				# Files fail
 	filesSourcePass=()			# Source files pass
-	for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
+	for (( i=0; i<=$(( ${#filesInLoop[@]} - 1 )); i++ )); do
+
+		# File to test
 		if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
-			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".new.$extcont 2>/dev/null) -gt 30720 ]]; then		# If file>30 KBytes accepted
-				mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back."$extcont" 2>/dev/null
-				mv "${filesInLoop[i]%.*}".new."$extcont" "${filesInLoop[i]}" 2>/dev/null
-				filesPass+=("${filesInLoop[i]}")
-				filesSourcePass+=("${filesInLoop[i]%.*}".back."$extcont")
-			else																								# If file<30 KBytes rejected
-				filesReject+=("${filesInLoop[i]%.*}".new."$extcont")
-				rm "${filesInLoop[i]%.*}".new."$extcont" 2>/dev/null
-			fi
-		else																									# If no file overwrite
-			if [[ $(stat --printf="%s" "${filesInLoop[i]%.*}".$extcont 2>/dev/null) -gt 30720 ]]; then			# If file>30 KBytes accepted
-				filesPass+=("${filesInLoop[i]%.*}"."$extcont")
-				filesSourcePass+=("${filesInLoop[i]}")
-			else																								# If file<30 KBytes rejected
-				filesReject+=("${filesInLoop[i]%.*}"."$extcont")
-				rm "${filesInLoop[i]%.*}"."$extcont" 2>/dev/null
-			fi
+			file_test="${filesInLoop[i]%.*}.new.$extcont"
+		else
+			file_test="${filesInLoop[i]%.*}.$extcont"
 		fi
+
+		# Tests & populate file in arrays
+		# File rejected
+		if ! "$ffmpeg_bin" -v error -t 1 -i "$file_test" -f null - &>/dev/null ; then
+			filesRejectRm="$file_test"
+			filesReject+=("$file_test")
+
+			# File passed
+			else
+
+				if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then								# If file overwrite
+					mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back."$extcont" 2>/dev/null
+					mv "${filesInLoop[i]%.*}".new."$extcont" "${filesInLoop[i]}" 2>/dev/null
+					filesPass+=("${filesInLoop[i]}")
+					filesSourcePass+=("${filesInLoop[i]%.*}".back."$extcont")
+				else
+					filesPass+=("${filesInLoop[i]%.*}"."$extcont")
+					filesSourcePass+=("${filesInLoop[i]}")
+				fi
+
+			#fi
+		fi
+
+		# Remove rejected
+		rm "$filesRejectRm" 2>/dev/null
 	done
+
 fi
 
+StopLoading
+
 # Make statistics of processed files
-Calc_Elapsed_Time "$START" "$END"												# Get elapsed time
 NBAO="${#filesPass[@]}"
 if [ "$NBAO" -eq 0 ] ; then
 	SSIZAUDIO="0"
@@ -2915,18 +2964,23 @@ else
 	PERC=$(Calc_Percent "$SSIZAUDIO" "$TSSIZE")
 fi
 
+# Enable the enter key
+EnterKeyEnable
+
+# End time counter
+END=$(date +%s)
+Calc_Elapsed_Time "$START" "$END"								# Get elapsed time
+
 # End encoding messages
-ProgressBarClean
-Display_Remove_Previous_Line
-if [[ -z "$Integrity" ]] && [[ -z "$Untagged" ]]; then
+if [[ -z "$Untagged" ]]; then
 	echo "$MESS_SEPARATOR"
 	if ! [ "${#filesPass[@]}" -eq 0 ]; then
 		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
+		Display_List_Truncate "${filesPass[@]}"
 	fi
 	if ! [ "${#filesReject[@]}" -eq 0 ]; then
 		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
+		Display_List_Truncate "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " $NBAO/$NBA file(s) have been processed."
@@ -2934,13 +2988,6 @@ if [[ -z "$Integrity" ]] && [[ -z "$Untagged" ]]; then
 	echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: ${Elapsed_Time_formated}."
 	echo "$MESS_SEPARATOR"
 	echo
-elif [[ -n "$Integrity" ]]; then
-	if [ -s "$FFMES_CACHE_INTEGRITY" ]; then
-		echo " File(s) in error:"
-		cat "$FFMES_CACHE_INTEGRITY"
-	else
-		echo " No file in error."
-	fi
 elif [[ -n "$Untagged" ]]; then
 	if [ -s "$FFMES_CACHE_UNTAGGED" ]; then
 		echo " File(s) without tag $untagged_label:"
@@ -2966,14 +3013,14 @@ if [ "$PeakNorm" = "1" ]; then
 	if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
 		# Apply norm. if grep value is negative & greater default value
 		if [[ "$TestDB" = *"-"* ]] && (( $(echo "$PositiveTestDB > $PeakNormDB" | bc -l) )); then
-			GREPVOLUME=$(echo "$TestDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
+			GREPVOLUME="$(echo "$TestDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB"
 			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo',volume=$GREPVOLUME -mapping_family 1"
 		else
 			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 		fi
 	else
 		if [[ "$TestDB" = *"-"* ]] && (( $(echo "$PositiveTestDB > $PeakNormDB" | bc -l) )); then
-			GREPVOLUME=$(echo "$TestDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB
+			GREPVOLUME="$(echo "$TestDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB"
 			afilter="-af volume=$GREPVOLUME"
 		else
 			afilter=""
@@ -3867,11 +3914,11 @@ echo "$MESS_SEPARATOR"
 echo " $NBAO/$NBA file(s) have been processed."
 if ! [ "${#filesPass[@]}" -eq 0 ]; then
 	echo " File(s) created:"
-	printf '  %s\n' "${filesPass[@]}"
+	Display_List_Truncate "${filesPass[@]}"
 fi
 if ! [ "${#filesReject[@]}" -eq 0 ]; then
 	echo " File(s) in error:"
-	printf '  %s\n' "${filesReject[@]}"
+	Display_List_Truncate "${filesReject[@]}"
 fi
 echo "$MESS_SEPARATOR"
 echo " Created file(s) size: $TSSIZE MB."
@@ -3938,11 +3985,11 @@ else
 	echo "$MESS_SEPARATOR"
 	if ! [ "${#filesPass[@]}" -eq 0 ]; then
 		echo " File(s) created:"
-		printf '  %s\n' "${filesPass[@]}"
+		Display_List_Truncate "${filesPass[@]}"
 	fi
 	if ! [ "${#filesReject[@]}" -eq 0 ]; then
 		echo " File(s) in error:"
-		printf '  %s\n' "${filesReject[@]}"
+		Display_List_Truncate "${filesReject[@]}"
 	fi
 	echo "$MESS_SEPARATOR"
 	echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
@@ -4048,11 +4095,11 @@ echo
 echo "$MESS_SEPARATOR"
 if ! [ "${#filesPass[@]}" -eq 0 ]; then
 	echo " File(s) created:"
-	printf '  %s\n' "${filesPass[@]}"
+	Display_List_Truncate "${filesPass[@]}"
 fi
 if ! [ "${#filesReject[@]}" -eq 0 ]; then
 	echo " File(s) in error:"
-	printf '  %s\n' "${filesReject[@]}"
+	Display_List_Truncate "${filesReject[@]}"
 fi
 echo "$MESS_SEPARATOR"
 echo " Created file(s) size: $TSSIZE MB, a difference of $PERC% from the source(s) ($SSIZAUDIO MB)."
@@ -4126,6 +4173,71 @@ elif [ "$NBCUE" -eq "1" ] & [ "$NBA" -eq "1" ]; then                  # One cue 
 	echo
 
 fi
+}
+Audio_File_Tester() {				# Option 36 	- ffmpeg test player
+# Local variables
+local START
+local END
+
+# Start time counter
+START=$(date +%s)
+
+ #Message
+clear
+echo
+echo "$MESS_SEPARATOR"
+echo " Audio file integrity check"
+
+# Copy $extcont for test and reset inside loop
+ExtContSource="$extcont"
+# Set files overwrite array
+filesOverwrite=()
+
+# Disable the enter key
+EnterKeyDisable
+
+# Encoding
+for files in "${LSTAUDIO[@]}"; do
+	# Stock files pass in loop
+	filesInLoop+=("$files")					# Populate array
+
+	# Test integrity
+	(
+	"$ffmpeg_bin" -v error -t 1 -i "$files" -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+	) &
+	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
+		wait -n
+	fi
+
+	# Progress
+	if [[ -z "$VERBOSE" ]]; then
+		filename_trunk=$(Display_Line_Truncate "${files##*/}")
+		NBAFilesInLoop="${#filesInLoop[@]}"
+		ProgressBar "$NBAFilesInLoop" "$NBA" "$filename_trunk"
+	fi
+
+done
+wait
+
+# Enable the enter key
+EnterKeyEnable
+
+# End time counter
+END=$(date +%s)
+
+# Make statistics of processed files
+Calc_Elapsed_Time "$START" "$END"								# Get elapsed time
+
+# End encoding messages
+ProgressBarClean
+echo
+if [ -s "$FFMES_CACHE_INTEGRITY" ]; then
+	echo " File(s) in error:"
+	cat "$FFMES_CACHE_INTEGRITY"
+else
+	echo " No file in error."
+fi
+echo
 }
 ## AUDIO TAG SECTION
 Audio_Tag_Editor() {					# Option 30 	- Tag editor
@@ -4326,7 +4438,6 @@ case $rpstag in
 			fi
 			# Rename
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
-			echo "$ParsedTitle"
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
 				mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
@@ -4564,7 +4675,7 @@ case $rpstag in
 		Cut=$(( Cut1 + 1 ))
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
 			(
 			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
@@ -5257,14 +5368,12 @@ case $reps in
 	fi
 	;;
 
- 36 ) # Integrity check
+ 36 ) # File check
 	if [[ "$NBA" -ge "1" ]]; then
-	Integrity="1"
 	NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
-    Audio_FFmpeg_cmd
+    Audio_File_Tester
 	Clean											# clean temp files
 	NPROC=$(nproc --all)							# Reset number of process
-	unset Integrity
 	else
         echo
         echo "$MESS_ONE_AUDIO_FILE_AUTH"

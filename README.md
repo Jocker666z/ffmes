@@ -103,7 +103,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 33, generate png image of audio spectrum
 	* 34, concatenate audio files 
 	* 35, cut audio file
-	* 36, audio file integrity check
+	* 36, audio file tester
 	* 37, find untagged audio files
 
 --------------------------------------------------------------------------------------------------
