@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.81
+VERSION=v0.82
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -30,7 +30,7 @@ NPROC=$(nproc --all)																		# Set number of process
 TERM_WIDTH=$(stty size | awk '{print $2}')													# Get terminal width
 TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')					# Get terminal width truncate
 TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')			# Get terminal width truncate
-COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk tesseract subp2tiff subptools wget opustags)
+COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo lsdvd dvdxchap mkvmerge mkvpropedit dvdbackup find nproc shntool cuetag uchardet iconv wc bc du awk tesseract subp2tiff subptools wget)
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -stats"										# FFmpeg log
 
 # Custom binary location
@@ -80,6 +80,7 @@ Usage: ffmes [options]
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
                           Default: 2
+  -kc|--keep_cover        Keep embed image in audio files.
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
@@ -294,7 +295,7 @@ echo "  21 - audio to wav (PCM)                             |-Audio"
 echo "  22 - audio to flac                                  |"
 echo "  23 - audio to wavpack                               |"
 echo "  24 - audio to mp3 (libmp3lame)                      |"
-echo "  25 - audio to ogg (libvorbis)                       |"
+echo "  25 - audio to vorbis (libvorbis)                    |"
 echo "  26 - audio to opus (libopus)                        |"
 echo "  -----------------------------------------------------"
 echo "  30 - audio tag editor                               |"
@@ -398,7 +399,13 @@ else
 
 	# If string start by "." or "-." add lead 0
 	if [[ "${perc:0:1}" == "." ]] || [[ "${perc:0:2}" == "-." ]]; then
-		echo "0$perc"
+
+		if [[ "${perc:0:2}" == "-." ]]; then
+			echo "${perc/-./-0.}"
+		else
+			echo "0$perc"
+		fi
+
 	else
 		echo "$perc"
 	fi
@@ -470,7 +477,7 @@ if [[ -z "$VERBOSE" ]]; then
 	unset _sp_pid
 fi
 }
-ffmesUpdate() {							# Option 99  	- ffmes update to last version (hidden option)
+ffmesUpdate() {							# Option 99  	- ffmes update to lastest version (hidden option)
 curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/"$USER"/.local/bin/ffmes && chmod +rx /home/"$USER"/.local/bin/ffmes
 restart
 }
@@ -1378,13 +1385,13 @@ CustomVideoStream() {					# Option 1,2	- Conf stream selection
 	# Get stream info
 	case "$rpstreamch_parsed" in
 		"all")
-			mapfile -t VINDEX < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
-			mapfile -t VCODECTYPE < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VINDEX < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}" | awk 'NF')
+			mapfile -t VCODECTYPE < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}" | awk 'NF')
 			;;
 		*)
 			IFS=" " read -r -a VINDEX <<< "$rpstreamch"
 			# Keep codec used
-			mapfile -t VCODECTYPE1 < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VCODECTYPE1 < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=codec_type -print_format csv=p=0 "${LSTVIDEO[0]}" | awk 'NF')
 			VCODECNAME=()
 			for i in "${VINDEX[@]}"; do
 				VCODECTYPE+=("${VCODECTYPE1[$i]}")
@@ -2008,8 +2015,8 @@ ExtractPartVideo() {					# Option 13 	- Extract stream
 	rpstreamch_parsed="${rpstreamch// /}"
 	case "$rpstreamch_parsed" in
 		"all")
-			mapfile -t VINDEX < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}")
-			mapfile -t VCODECNAME < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VINDEX < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=index -print_format csv=p=0 "${LSTVIDEO[0]}" | awk 'NF')
+			mapfile -t VCODECNAME < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}" | awk 'NF')
 			break
 			;;
 		"q"|"Q")
@@ -2019,7 +2026,7 @@ ExtractPartVideo() {					# Option 13 	- Extract stream
 		*)
 			IFS=" " read -r -a VINDEX <<< "$rpstreamch"
 			# Keep codec used
-			mapfile -t VCODECNAME1 < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}")
+			mapfile -t VCODECNAME1 < <("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "${LSTVIDEO[0]}" | awk 'NF')
 			VCODECNAME=()
 			for i in "${VINDEX[@]}"; do
 				VCODECNAME+=("${VCODECNAME1[$i]}")
@@ -2711,7 +2718,7 @@ wait
 
 # Populate array with stats & clean
 for (( i=0; i<=$(( NBA - 1 )); i++ )); do
-	ffmpeg_Bitrate+=( "$(cat "$FFMES_FFMPEG_CACHE_STAT_DETAILED-[$i]" | grep "bitrate:" | awk '{print $(NF-1)}')" )
+	ffmpeg_Bitrate+=( "$(mediainfo --Output="General;%OverallBitRate/String%" "${LSTAUDIO[$i]}" | awk '{print $1}')" )
 	ffmpeg_meandb+=( "$(cat "$FFMES_FFMPEG_CACHE_STAT_DETAILED-[$i]" | grep "mean_volume:" | awk '{print $5}')" )
 	ffmpeg_peakdb+=( "$(cat "$FFMES_FFMPEG_CACHE_STAT_DETAILED-[$i]" | grep "max_volume:" | awk '{print $5}')" )
 	ffprobe_Channel+=( "$(cat "$FFMES_FFPROBE_CACHE_STAT_DETAILED-[$i]" | grep -i "channels=" | awk -F'=' '{print $NF}' | head -1)" )
@@ -3006,21 +3013,18 @@ local GREPVOLUME
 if [ "$PeakNorm" = "1" ]; then
 
 	TestDB=$("$ffmpeg_bin" -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
-	if [[ "$TestDB" = *"-"* ]]; then
-		PositiveTestDB=$(echo "$TestDB" | cut -c2-)
-	fi
 
-	if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then			# Opus trick for peak normalization
+	if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then			# Opus trick for peak normalization
 		# Apply norm. if grep value is negative & greater default value
-		if [[ "$TestDB" = *"-"* ]] && (( $(echo "$PositiveTestDB > $PeakNormDB" | bc -l) )); then
-			GREPVOLUME="$(echo "$TestDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB"
+		if [[ "$TestDB" = *"-"* ]] && (( $(echo "${TestDB/-/} > $PeakNormDB" | bc -l) )); then
+			GREPVOLUME="$(echo "${TestDB/-/}" | awk -v var="$PeakNormDB" '{print $1-var}')dB"
 			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo',volume=$GREPVOLUME -mapping_family 1"
 		else
 			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 		fi
 	else
-		if [[ "$TestDB" = *"-"* ]] && (( $(echo "$PositiveTestDB > $PeakNormDB" | bc -l) )); then
-			GREPVOLUME="$(echo "$TestDB" | cut -c2- | awk -v var="$PeakNormDB" '{print $1-var}')dB"
+		if [[ "$TestDB" = *"-"* ]] && (( $(echo "${TestDB/-/} > $PeakNormDB" | bc -l) )); then
+			GREPVOLUME="$(echo "${TestDB/-/}" | awk -v var="$PeakNormDB" '{print $1-var}')dB"
 			afilter="-af volume=$GREPVOLUME"
 		else
 			afilter=""
@@ -3100,30 +3104,30 @@ fi
 Audio_Bit_Depth_Detection() {			# Part of Audio_FFmpeg_cmd loop
 local TestBitDepth
 if ! [[ "$akb" == *"sample_fmt"* ]]; then
-	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
+	if [[ "$AudioCodecType" = "flac" ]] || [[ "$AudioCodecType" = "wavpack" ]]; then
 		TestBitDepth=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v panic -show_entries stream=sample_fmt -print_format csv=p=0 "$files")
 		if [[ "$TestBitDepth" == "u8"* ]]; then			# 8 bits
-			if [[ "$extcont" = "flac" ]]; then
+			if [[ "$AudioCodecType" = "flac" ]]; then
 				abitdeph="-sample_fmt s16"
-			elif [[ "$extcont" = "wv" ]]; then
+			elif [[ "$AudioCodecType" = "wavpack" ]]; then
 				abitdeph="-sample_fmt u8p"
 			fi
 		elif [[ "$TestBitDepth" == "s16"* ]]; then		# 16 bits
-			if [[ "$extcont" = "flac" ]]; then
+			if [[ "$AudioCodecType" = "flac" ]]; then
 				abitdeph="-sample_fmt s16"
-			elif [[ "$extcont" = "wv" ]]; then
+			elif [[ "$AudioCodecType" = "wavpack" ]]; then
 				abitdeph="-sample_fmt s16p"
 			fi
 		elif [[ "$TestBitDepth" == "s32"* ]] || [[ "$TestBitDepth" = "fltp" ]]; then	# 32 bits
-			if [[ "$extcont" = "flac" ]]; then
+			if [[ "$AudioCodecType" = "flac" ]]; then
 				abitdeph="-sample_fmt s32"
-			elif [[ "$extcont" = "wv" ]]; then
+			elif [[ "$AudioCodecType" = "wavpack" ]]; then
 				abitdeph="-sample_fmt s32p"
 			fi
 		elif [[ "$TestBitDepth" == "s64"* ]] || [[ "$TestBitDepth" = "dblp" ]]; then	# 64 bits
-			if [[ "$extcont" = "flac" ]]; then
+			if [[ "$AudioCodecType" = "flac" ]]; then
 				abitdeph="-sample_fmt s32"
-			elif [[ "$extcont" = "wv" ]]; then
+			elif [[ "$AudioCodecType" = "wavpack" ]]; then
 				abitdeph="-sample_fmt s32p"
 			fi
 		fi
@@ -3143,7 +3147,7 @@ if [ "$ExtractCover" = "0" ]; then
 	  fi
 	done
 
-elif [ "$ExtractCover" = "1" ] && [ "$AudioCodecType" != "Opus" ]; then
+elif [ "$ExtractCover" = "1" ] && [ "$extcont" != "opus" ]; then
 	astream="-map 0"
 
 else
@@ -3155,7 +3159,7 @@ Audio_Channels_Config() {				#
 if [ "$reps" -le 1 ]; then          # if profile 0 or 1 display
     CustomInfoChoice
 fi
-if [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then
+if [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	echo
 	echo " Choose desired audio channels configuration:"
 	echo " note: * applied to the all audio stream"
@@ -3496,7 +3500,7 @@ echo "  [2]  > |  96k | comparable to mp3 120k  |"
 echo "  [3]  > | 128k | comparable to mp3 160k  |"
 echo "  [4]  > | 160k | comparable to mp3 192k  |"
 echo "  [5]  > | 192k | comparable to mp3 280k  |"
-if [[ "$AudioCodecType" = "Opus" ]]; then
+if [[ "$AudioCodecType" = "libopus" ]]; then
 	echo "  [6]  > | 220k | comparable to mp3 320k  |"
 else
 	echo " *[6]  > | 220k | comparable to mp3 320k  |"
@@ -3505,7 +3509,7 @@ echo "  [7]  > | 256k | 5.1 audio source        |"
 echo "  [8]  > | 320k | 7.1 audio source        |"
 echo "  [9]  > | 450k | 7.1 audio source        |"
 echo "  [10] > | 510k | highest bitrate of opus |"
-if [[ "$AudioCodecType" = "Opus" ]]; then
+if [[ "$AudioCodecType" = "libopus" ]]; then
 	echo "  -----------------------------------------"
 	echo " *[X]  > |    adaptive bitrate     |"
 	echo "         |-------------------------|"
@@ -3545,10 +3549,10 @@ elif [ "$rpakb" = "9" ]; then
 	akb="-b:a 450K"
 elif [ "$rpakb" = "10" ]; then
 	akb="-b:a 510K"
-elif [ "$rpakb" = "X" ]  && [[ "$codeca" = "libopus" || "$AudioCodecType" = "Opus" ]]; then
+elif [ "$rpakb" = "X" ]  && [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	AdaptedBitrate="1"
 else
-	if [[ "$AudioCodecType" = "Opus" ]]; then
+	if [[ "$AudioCodecType" = "libopus" ]]; then
 		AdaptedBitrate="1"
 	else
 		akb="-b:a 220K"
@@ -3722,7 +3726,7 @@ else
 	akb="-b:a 640k"
 fi
 }
-Audio_Source_Info_Detail_Question() {
+Audio_Source_Info_Detail_Question() {	# Option 32
 read -r -p " View all files stats in current loop (can be long, it's recursive)? [y/N]" qarm
 case $qarm in
 	"Y"|"y")
@@ -3845,7 +3849,7 @@ if [ "$NBAEXT" -gt "1" ]; then
 	fi
 fi
 }
-Audio_Generate_Spectrum_Img() {			# Option 32 	- PNG of audio spectrum
+Audio_Generate_Spectrum_Img() {			# Option 33 	- PNG of audio spectrum
 clear
 echo
 cat "$FFMES_CACHE_STAT"
@@ -3926,7 +3930,7 @@ echo " End of processing: $(date +%D\ at\ %Hh%Mm), duration: ${Elapsed_Time_form
 echo "$MESS_SEPARATOR"
 echo
 }
-Audio_Concatenate_Files() {				# Option 33 	- Concatenate audio files
+Audio_Concatenate_Files() {				# Option 34 	- Concatenate audio files
 echo
 echo " Concatenate audio files:"
 echo " Note: Before you start, make sure that the files all have the same codec and bitrate."
@@ -3999,7 +4003,7 @@ else
 
 fi
 }
-Audio_Cut_File() {						# Option 34 	- Cut audio file
+Audio_Cut_File() {						# Option 35 	- Cut audio file
 clear
 echo
 cat "$FFMES_CACHE_STAT"
@@ -4174,7 +4178,7 @@ elif [ "$NBCUE" -eq "1" ] & [ "$NBA" -eq "1" ]; then                  # One cue 
 
 fi
 }
-Audio_File_Tester() {				# Option 36 	- ffmpeg test player
+Audio_File_Tester() {					# Option 36 	- ffmpeg test player
 # Local variables
 local START
 local END
@@ -4284,6 +4288,7 @@ TAG_TITLE=()
 TAG_ARTIST=()
 TAG_ALBUM=()
 TAG_DATE=()
+TAG_TRACK_COUNT=()
 PrtSep=()
 
 # Get tag with ffprobe
@@ -4305,11 +4310,18 @@ for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 	TAG_ARTIST+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:artist=" | awk -F'=' '{print $NF}')" )
 	TAG_ALBUM+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:album=" | awk -F'=' '{print $NF}')" )
 	TAG_DATE+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:date=" | awk -F'=' '{print $NF}')" )
+
 	# Table separator trick
 	PrtSep+=("|")
 	# Clean
 	rm "$FFMES_CACHE_TAG-[$i]" &>/dev/null
 done
+
+# Track populate in advance with lead zero if necessary
+for i in $(seq -w 1 "${#LSTAUDIO[@]}"); do
+			TAG_TRACK_COUNT+=( "$i" )
+done
+
 
 # Calcul/Size larger of column
 filename_string_length=$(Calc_Table_width "${LSTAUDIO[@]}")
@@ -4406,26 +4418,11 @@ case $rpstag in
 			StartLoading "" "Rename: ${LSTAUDIO[$i]}"
 			# If no tag track valid
 			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
-				TAG_TRACK_COUNT=$(( COUNT + 1 ))
-				COUNT=$TAG_TRACK_COUNT
-				# Add lead zero if necessary
-				if [ "${#LSTAUDIO[@]}" -lt "100" ]; then
-					if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
-						TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
-					fi
-				elif [ "${#LSTAUDIO[@]}" -ge "100" ]; then
-					if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
-						TAG_TRACK_COUNT="00$TAG_TRACK_COUNT"
-					elif [[ "${#TAG_TRACK_COUNT}" -eq "2" ]] ; then				# if integer in two digit
-						TAG_TRACK_COUNT="0$TAG_TRACK_COUNT"
-					fi
-				fi
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
+					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
-				ParsedTrack="0${TAG_TRACK[$i]}"
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$ParsedTrack" -metadata TRACK="$ParsedTrack" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				ParsedTrack="${TAG_TRACK[$i]}"
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
+					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
@@ -4439,7 +4436,7 @@ case $rpstag in
 			# Rename
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
-				mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[$i]}" "${TAG_TRACK_COUNT[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			StopLoading $?
 		done
@@ -4450,14 +4447,11 @@ case $rpstag in
 			StartLoading "" "Rename: ${LSTAUDIO[$i]}"
 			# If no tag track valid
 			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
-				TAG_TRACK_COUNT=$(( COUNT + 1 ))
-				COUNT=$TAG_TRACK_COUNT
-				TAG_TRACK[$i]="$TAG_TRACK_COUNT"
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			fi
-			if [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then				# if integer in one digit
-				TAG_TRACK[$i]="0${TAG_TRACK[$i]}"
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK[$i]}" -metadata TRACK="${TAG_TRACK[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
+					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
+					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
@@ -4476,7 +4470,7 @@ case $rpstag in
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
-				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[$i]}" "${TAG_TRACK_COUNT[$i]}"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			StopLoading $?
 		done
@@ -4487,7 +4481,8 @@ case $rpstag in
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DISCNUMBER="$ParsedDisc" -metadata DISC="$ParsedDisc" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DISCNUMBER="$ParsedDisc" \
+				-metadata DISC="$ParsedDisc" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4506,31 +4501,22 @@ case $rpstag in
 		# Track record
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			TAG_TRACK_COUNT=$(( COUNT + 1 ))
-			COUNT=$TAG_TRACK_COUNT
-
-			# Add lead zero if necessary
-			if [ "${#LSTAUDIO[@]}" -lt "100" ]; then
-				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
-					TAG_TRACK_COUNT="0$TAG_TRACK_COUNT" 
-				fi
-			elif [ "${#LSTAUDIO[@]}" -ge "100" ]; then
-				if [[ "${#TAG_TRACK_COUNT}" -eq "1" ]] ; then				# if integer in one digit
-					TAG_TRACK_COUNT="00$TAG_TRACK_COUNT"
-				elif [[ "${#TAG_TRACK_COUNT}" -eq "2" ]] ; then				# if integer in two digit
-					TAG_TRACK_COUNT="0$TAG_TRACK_COUNT"
-				fi
-			fi
-
-			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="$TAG_TRACK_COUNT" -metadata TRACK="$TAG_TRACK_COUNT" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			(
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
+				-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
 				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
 			fi
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
 			StopLoading $?
 		done
+		wait
 		Audio_Tag_Editor
 	;;
 	album*)
@@ -4538,11 +4524,8 @@ case $rpstag in
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ALBUM="$ParsedAlbum" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add ALBUM="$ParsedAlbum" --delete ALBUM -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ALBUM="$ParsedAlbum" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4560,13 +4543,10 @@ case $rpstag in
 	artist*)
 		ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
-			( 
+			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add ARTIST="$ParsedArtist" --delete ARTIST -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4586,11 +4566,8 @@ case $rpstag in
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			( 
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add ARTIST="$ParsedArtist" --delete ARTIST -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata ARTIST="$ParsedArtist" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4610,11 +4587,8 @@ case $rpstag in
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DATE="$ParsedDate" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add DATE="$ParsedDate" --delete DATE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata DATE="$ParsedDate" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4633,11 +4607,8 @@ case $rpstag in
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			ParsedTitle="${LSTAUDIO[$i]%.*}"
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4651,11 +4622,8 @@ case $rpstag in
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			(
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="[untitled]" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add TITLE="[untitled]" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="[untitled]" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4677,11 +4645,8 @@ case $rpstag in
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | cut -c "$Cut"-)
 			(
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4703,11 +4668,8 @@ case $rpstag in
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | rev | cut -c"$Cut"- | rev)
 			(
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4728,11 +4690,8 @@ case $rpstag in
 			StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 			ParsedTitle="${TAG_TITLE[$i]//$TitlePattern}"
 			(
-			if [ "${LSTAUDIO[$i]##*.}" != "opus" ]; then
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			else
-				opustags "${LSTAUDIO[$i]}" --add TITLE="$ParsedTitle" --delete TITLE -o temp-"${LSTAUDIO[$i]}" &>/dev/null
-			fi
+			"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TITLE="$ParsedTitle" \
+				temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			# If temp-file exist remove source and rename
 			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
 				rm "${LSTAUDIO[$i]}" &>/dev/null
@@ -4763,7 +4722,7 @@ case $rpstag in
 esac
 done
 }
-Audio_Tag_Search_Untagged() {			# Option 36 	- Untagged find
+Audio_Tag_Search_Untagged() {			# Option 37 	- Untagged find
 clear
 echo
 echo " Find untagged audio files"
@@ -4850,6 +4809,10 @@ while [[ $# -gt 0 ]]; do
 				exit
 			fi
 		fi
+    ;;
+    -kc|--keep_cover)
+		unset ExtractCover
+		ExtractCover="1"
     ;;
     --novaapi)																						# No VAAPI 
 		unset VAAPI_device																			# Unset VAAPI device
@@ -5130,6 +5093,7 @@ case $reps in
 
  21 ) # audio -> PCM
 	if [ "$NBA" -gt "0" ]; then
+	AudioCodecType="pcm"
 	Audio_Multiple_Extention_Check
     Audio_Source_Info
     Audio_PCM_Config
@@ -5154,6 +5118,7 @@ case $reps in
 
  22 ) # audio -> flac lossless
 	if [ "$NBA" -gt "0" ]; then
+	AudioCodecType="flac"
 	Audio_Multiple_Extention_Check
     Audio_Source_Info
     Audio_FLAC_Config
@@ -5180,6 +5145,7 @@ case $reps in
 
  23 ) # audio -> wavpack lossless
 	if [ "$NBA" -gt "0" ]; then
+	AudioCodecType="wavpack"
 	Audio_Multiple_Extention_Check
 	Audio_Source_Info
 	Audio_WavPack_Config
@@ -5206,6 +5172,7 @@ case $reps in
 
  24 ) # audio -> mp3 @ vbr190-250kb
 	if [ "$NBA" -gt "0" ]; then
+	AudioCodecType="libmp3lame"
 	Audio_Multiple_Extention_Check
     Audio_Source_Info
     Audio_MP3_Config
@@ -5232,23 +5199,24 @@ case $reps in
 
  25 ) # audio -> ogg
 	if [ "$NBA" -gt "0" ]; then
-	Audio_Multiple_Extention_Check
-    Audio_Source_Info
-    Audio_OGG_Config
-    Audio_Channels_Config
-    Audio_Peak_Normalization_Question
-    Audio_False_Stereo_Question
-    Audio_Silent_Detection_Question
-    # CONF_START ////////////////////////////////////////////////////////////////////////////
-    # AUDIO ---------------------------------------------------------------------------------
-    acodec="-acodec libvorbis"
-    # CONTAINER -----------------------------------------------------------------------------
-    extcont="ogg"
-    #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    Audio_FFmpeg_cmd                               # encoding
-    Audio_Remove_File_Source
-    Audio_Remove_File_Target
-    Clean                                          # clean temp files
+		AudioCodecType="libvorbis"
+		Audio_Multiple_Extention_Check
+		Audio_Source_Info
+		Audio_OGG_Config
+		Audio_Channels_Config
+		Audio_Peak_Normalization_Question
+		Audio_False_Stereo_Question
+		Audio_Silent_Detection_Question
+		# CONF_START ////////////////////////////////////////////////////////////////////////////
+		# AUDIO ---------------------------------------------------------------------------------
+		acodec="-acodec libvorbis"
+		# CONTAINER -----------------------------------------------------------------------------
+		extcont="ogg"
+		#CONF_END ///////////////////////////////////////////////////////////////////////////////
+		Audio_FFmpeg_cmd                               # encoding
+		Audio_Remove_File_Source
+		Audio_Remove_File_Target
+		Clean                                          # clean temp files
     else
         echo
         echo "$MESS_ZERO_AUDIO_FILE_AUTH"
@@ -5258,24 +5226,24 @@ case $reps in
 
  26 ) # audio -> opus
 	if [ "$NBA" -gt "0" ]; then
-	AudioCodecType="Opus"
-	Audio_Multiple_Extention_Check
-    Audio_Source_Info
-    Audio_Opus_Config
-    Audio_Channels_Config
-    Audio_Peak_Normalization_Question
-    Audio_False_Stereo_Question
-    Audio_Silent_Detection_Question
-    # CONF_START ////////////////////////////////////////////////////////////////////////////
-    # AUDIO ---------------------------------------------------------------------------------
-    acodec="-acodec libopus"
-    # CONTAINER -----------------------------------------------------------------------------
-    extcont="opus"
-    #CONF_END ///////////////////////////////////////////////////////////////////////////////
-    Audio_FFmpeg_cmd                               # encoding
-    Audio_Remove_File_Source
-    Audio_Remove_File_Target
-    Clean                                          # clean temp files
+		AudioCodecType="libopus"
+		Audio_Multiple_Extention_Check
+		Audio_Source_Info
+		Audio_Opus_Config
+		Audio_Channels_Config
+		Audio_Peak_Normalization_Question
+		Audio_False_Stereo_Question
+		Audio_Silent_Detection_Question
+		# CONF_START ////////////////////////////////////////////////////////////////////////////
+		# AUDIO ---------------------------------------------------------------------------------
+		acodec="-acodec libopus"
+		# CONTAINER -----------------------------------------------------------------------------
+		extcont="ogg"
+		#CONF_END ///////////////////////////////////////////////////////////////////////////////
+		Audio_FFmpeg_cmd                               # encoding
+		Audio_Remove_File_Source
+		Audio_Remove_File_Target
+		Clean                                          # clean temp files
     else
         echo
         echo "$MESS_ZERO_AUDIO_FILE_AUTH"
@@ -5286,7 +5254,9 @@ case $reps in
  30 ) # tools -> audio tag
 	if ! [[ "${LSTAUDIO[*]##*.}" = *"ape"* ]]; then
 		if [ "$NBA" -gt "0" ]; then
+			NPROC=$(nproc --all | awk '{ print $1 * 4 }')	# Change number of process for increase speed, here 4*nproc
 			Audio_Tag_Editor
+			NPROC=$(nproc --all)							# Reset number of process
 		elif [ "$NBA" -eq "0" ]; then
 				echo
 				echo "$MESS_ZERO_AUDIO_FILE_AUTH"

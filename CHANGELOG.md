@@ -1,4 +1,18 @@
 # Changelog
+v0.82:
+Video:
+	* fix - stream selection & stream map, if empty line in ffprobe cmd, no longer shifts streams
+Audio:
+	* chg - opus codec, now use ogg container, more flexible (embeded cover etc...)
+	* add - argument: -kc|--keep_cover for keep embed image in audio files
+	* chg - compare audio, now get bitrate with mediainfo, easy & accurate
+Tag:
+	* chg - rationalization of the tag track management, the processing speed is now greatly improved
+Various:
+	* chg - improve of bash code
+	* fix - add lead 0 to percentage is string start by -. (again)
+	* remove - opustags from dependency
+
 v0.81:
 Audio:
 	* chg - audio file tester is now split from the main audio encoding loop

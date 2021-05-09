@@ -7,14 +7,14 @@ Source media files, supported extension:
 * Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aud, caf, dff, dsf, dts, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, opus, rmvb, shn, spx, tta, w64, wav, wma, wv
 * Subtitle in idx/sub, srt, ssa, sup
 
-**Note**: VGM encoding removed from ffmes, I cut the script in half for easier maintainability, the vgm encoding is now done with **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
+**Note**: VGM encoding is now dissociated from ffmes, see **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
 
 --------------------------------------------------------------------------------------------------
 ## Install & update
 `curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
 
 ## Dependencies
-`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc tesseract-ocr tesseract-ocr-all wget opustags`
+`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc tesseract-ocr tesseract-ocr-all wget`
 
 ### Nemo action
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
@@ -28,18 +28,6 @@ Selection=any
 Extensions=any;
 ```
 
-### opustags intall
-Required for opus tag.
-
-Build dependencies: `git build-essential cmake`
-
-```
-git clone https://github.com/fmang/opustags && cd opustags
-mkdir build && cd build && cmake .. 
-make -j"$(nproc)"
-su -c "make install" -m "root"
-```
-
 ## Use
 ```
 Usage: ffmes options
@@ -50,6 +38,7 @@ Usage: ffmes options
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
                           Default: 2
+  -kc|--keep_cover        Keep embed image in audio files.
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
@@ -94,7 +83,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 22, audio to flac
 	* 23, audio to wavpack
 	* 24, audio to mp3 (libmp3lame)
-	* 25, audio to ogg (libvorbis)
+	* 25, audio to vorbis (libvorbis)
 	* 26, audio to opus (libopus)
 * Audio tools:
 	* 30, audio tag editor
@@ -226,7 +215,7 @@ Options:
 * Change or add tag disc number
 * Rename files in "Track - Title" (add track number if not present)
 * Rename files in "Track - Artist - Title" (add track number if not present)
-* Change or add tag track, by alphabetic sorting, to use if no file has this tag
+* Change or add tag track, by alphabetic sorting
 * Change or add tag album
 * Change or add tag disc number
 * Change or add tag artist
@@ -255,7 +244,7 @@ Restriction:
 * ExtractCover (default=0)
 	* Description: action performed during encoding
 	* 0=extract cover from source and remove in output
-	* 1=keep cover from source in output (not compatible with opus)
+	* 1=keep cover from source in output
 	* empty=remove cover in output
 * RemoveM3U (default=1)
 	* Description: action performed after encoding at "Remove source audio?" question
@@ -267,7 +256,7 @@ Restriction:
 --------------------------------------------------------------------------------------------------
 ## Issue
 * rename bug with mv and CIFS mount: add `cache=loose` in your mount option
-* CUE split fail with 24bits audio
+* CUE split fail with 24bits audio (shnsplit bug)
 
 --------------------------------------------------------------------------------------------------
 ## Holy reading
