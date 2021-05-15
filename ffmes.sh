@@ -8,7 +8,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.82
+VERSION=v0.83
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -2718,7 +2718,8 @@ wait
 
 # Populate array with stats & clean
 for (( i=0; i<=$(( NBA - 1 )); i++ )); do
-	ffmpeg_Bitrate+=( "$(mediainfo --Output="General;%OverallBitRate/String%" "${LSTAUDIO[$i]}" | awk '{print $1}')" )
+	ffmpeg_Bitrate+=( "$(mediainfo --Output="General;%OverallBitRate%" "${LSTAUDIO[$i]}" \
+						| awk '{ kbyte=$1/1024; print kbyte }' | sed 's/\..*$//')" )
 	ffmpeg_meandb+=( "$(cat "$FFMES_FFMPEG_CACHE_STAT_DETAILED-[$i]" | grep "mean_volume:" | awk '{print $5}')" )
 	ffmpeg_peakdb+=( "$(cat "$FFMES_FFMPEG_CACHE_STAT_DETAILED-[$i]" | grep "max_volume:" | awk '{print $5}')" )
 	ffprobe_Channel+=( "$(cat "$FFMES_FFPROBE_CACHE_STAT_DETAILED-[$i]" | grep -i "channels=" | awk -F'=' '{print $NF}' | head -1)" )
@@ -2834,9 +2835,6 @@ local TSSIZE
 local START
 local END
 local file_test
-local silence_start_test
-local silence_end_test
-local silence_test
 local filesRejectRm
 
 # Start time counter
@@ -3138,13 +3136,13 @@ Audio_Cover_Process() {					# Part of Audio_FFmpeg_cmd loop
 if [ "$ExtractCover" = "0" ]; then
 
 	for cover in cover.*; do
-	  if [ ! -e "$cover" ]; then
-		"$ffmpeg_bin" -n -i "$files" "${files%.*}".jpg 2>/dev/null
-		mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
-		mv "${files%.*}".jpg cover.jpg 2>/dev/null
 		astream="-map 0:a"
-		break
-	  fi
+		if [ ! -e "$cover" ]; then
+			"$ffmpeg_bin" -n -i "$files" "${files%.*}".jpg 2>/dev/null
+			mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
+			mv "${files%.*}".jpg cover.jpg 2>/dev/null
+			break
+		fi
 	done
 
 elif [ "$ExtractCover" = "1" ] && [ "$extcont" != "opus" ]; then
@@ -4246,7 +4244,6 @@ echo
 ## AUDIO TAG SECTION
 Audio_Tag_Editor() {					# Option 30 	- Tag editor
 # Local variables
-local COUNT
 local Cut
 local Cut1
 local ParsedAlbum
@@ -4254,7 +4251,6 @@ local ParsedArtist
 local ParsedDate
 local ParsedDisc
 local ParsedTitle
-local ParsedTrack
 local PrtSep
 local TAG_ALBUM
 local TAG_ARTIST
@@ -4392,8 +4388,8 @@ echo " Notes: it is not at all recommended to threat more than one album at a ti
 echo
 echo "               | actions                    | descriptions"
 echo "               |----------------------------|-------------------------------------------------------------------|"
-echo '  [rename]   > | rename files               | rename in "Track - Title" (add track tag if empty)                |'
-echo '  [arename]  > | rename files with artist   | rename in "Track - Artist - Title" (add track tag if empty)       |'
+echo '  [rename]   > | rename files               | rename in "Track - Title"                                         |'
+echo '  [arename]  > | rename files with artist   | rename in "Track - Artist - Title"                                |'
 echo "  [disc]     > | change or add disc number  | ex. of input [disc 1]                                             |"
 echo "  [track]    > | change or add tag track    | apply to all files by alphabetic sorting                          |"
 echo "  [album x]  > | change or add tag album    | ex. of input [album Conan the Barbarian]                          |"
@@ -4416,18 +4412,9 @@ case $rpstag in
 	rename)
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			StartLoading "" "Rename: ${LSTAUDIO[$i]}"
-			# If no tag track valid
-			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
-					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
-					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			fi
-			# If temp-file exist remove source and rename
-			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
-				rm "${LSTAUDIO[$i]}" &>/dev/null
-				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
+			# If no tag track
+			if test -z "${TAG_TITLE[$i]}"; then						# if no TAG_TRACK
+				TAG_TRACK[$i]="$i"									# use $i
 			fi
 			# If no tag title
 			if test -z "${TAG_TITLE[$i]}"; then						# if no title
@@ -4435,28 +4422,25 @@ case $rpstag in
 			fi
 			# Rename
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			(
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
-				mv "${LSTAUDIO[$i]}" "${TAG_TRACK_COUNT[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			StopLoading $?
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
 		done
+		wait
 		Audio_Tag_Editor
 	;;
 	arename)
 		for (( i=0; i<=$(( NBA - 1 )); i++ )); do
 			StartLoading "" "Rename: ${LSTAUDIO[$i]}"
-			# If no tag track valid
-			if ! [[ "${TAG_TRACK[$i]}" =~ ^[0-9]+$ ]] ; then		# If not integer
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
-					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			elif [[ "${#TAG_TRACK[$i]}" -eq "1" ]] ; then			# if integer in one digit
-				"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy -metadata TRACKNUMBER="${TAG_TRACK_COUNT[$i]}" \
-					-metadata TRACK="${TAG_TRACK_COUNT[$i]}" temp-"${LSTAUDIO[$i]%.*}"."${LSTAUDIO[$i]##*.}" &>/dev/null
-			fi
-			# If temp-file exist remove source and rename
-			if [[ -f "temp-${LSTAUDIO[$i]}" && -s "temp-${LSTAUDIO[$i]}" ]]; then
-				rm "${LSTAUDIO[$i]}" &>/dev/null
-				mv temp-"${LSTAUDIO[$i]}" "${LSTAUDIO[$i]}" &>/dev/null
+			# If no tag track
+			if test -z "${TAG_TITLE[$i]}"; then						# if no TAG_TRACK
+				TAG_TRACK[$i]="$i"									# use $i
 			fi
 			# If no tag title
 			if test -z "${TAG_TITLE[$i]}"; then						# if no title
@@ -4469,11 +4453,17 @@ case $rpstag in
 			# Rename
 			ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
 			ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)				# Replace eventualy "/" in string
+			(
 			if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
-				mv "${LSTAUDIO[$i]}" "${TAG_TRACK_COUNT[$i]}"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[$i]}" "${TAG_TRACK[$i]}"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 			fi
 			StopLoading $?
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
 		done
+		wait
 		Audio_Tag_Editor
 	;;
 	disc?[0-9])

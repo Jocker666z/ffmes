@@ -1,4 +1,13 @@
 # Changelog
+v0.83:
+Audio:
+	* fix - compare audio, bitrate display if > 1000kb/s
+	* fix - remove cover in audio file even if cover.jpg is in directory at start of conversion
+Tag:
+	* chg - rationalization of rename options
+Various:
+	* remove - dead code
+
 v0.82:
 Video:
 	* fix - stream selection & stream map, if empty line in ffprobe cmd, no longer shifts streams

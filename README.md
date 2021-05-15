@@ -213,8 +213,8 @@ Tesseract engine available:
 #### Option 30 details - tag editor
 Options:
 * Change or add tag disc number
-* Rename files in "Track - Title" (add track number if not present)
-* Rename files in "Track - Artist - Title" (add track number if not present)
+* Rename files in "Track - Title"
+* Rename files in "Track - Artist - Title"
 * Change or add tag track, by alphabetic sorting
 * Change or add tag album
 * Change or add tag disc number
