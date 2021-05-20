@@ -253,6 +253,7 @@ Options:
 * Remove N character at begin in tag title (9 characters at once)
 * Remove N character at end in tag title (9 characters at once)
 * Remove text pattern in tag title.
+
 Restriction:
 * Max depth directory 1
 * Asian character not supported (display in degrading mode)
