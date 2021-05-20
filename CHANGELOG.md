@@ -1,4 +1,21 @@
 # Changelog
+v0.84:
+Audio:
+	* add - aac/m4a audio encoding in option 27, see the doc for more details
+	* add - support for the ops extension, the other name for the opus files
+	* chg - opus codec, back to the opus extension, works perfectly on PC, but causes various problems on specific app (like streaming server etc...)
+	* add - channel layout config question, it avoids spamming the screen with the channel menu, which in reality is rarely changed
+	* fix - add -max_muxing_queue_size 9999 to audio validation, prevent false positive error "Too many packets buffered for output stream 0:1"
+Tag:
+	* add - if term width is too small, reduce the menu width for little term (again)
+	* chg - increase ptitle option, now patern with space at start & end work
+	* chg - now ffmpeg no more use for tag (too bad for this use). It is replaced by various programs, all available in the repositories of the most common gnu/linux distributions. See the doc for dependencies.
+	* chg - tags function has been largely rewrite, it is now separated into several functions for better maintainability. The whole thing is also much faster.
+	* chg - supported files are aiff, ape, flac, m4a, mp3, ogg, opus, wv
+Various:
+	* chg - split dependencies check in core/subtitle/dvdrip/tag
+	* chg - improve of bash code
+
 v0.83:
 Audio:
 	* fix - compare audio, bitrate display if > 1000kb/s

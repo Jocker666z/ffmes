@@ -4,7 +4,7 @@ Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single 
 
 Source media files, supported extension:
 * Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, ts, vob, vp9, webm, wmv
-* Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aud, caf, dff, dsf, dts, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, opus, rmvb, shn, spx, tta, w64, wav, wma, wv
+* Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aud, caf, dff, dsf, dts, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, ops, opus, rmvb, shn, spx, tta, w64, wav, wma, wv
 * Subtitle in idx/sub, srt, ssa, sup
 
 **Note**: VGM encoding is now dissociated from ffmes, see **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
@@ -13,20 +13,17 @@ Source media files, supported extension:
 ## Install & update
 `curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
 
-## Dependencies
-`ffmpeg ffprobe mkvtoolnix mediainfo sox ogmtools ogmrip lsdvd dvdbackup shntool cuetools uchardet coreutils findutils bc tesseract-ocr tesseract-ocr-all wget`
+## Essential dependencies
+`ffmpeg ffprobe mkvtoolnix mediainfo sox shntool cuetools uchardet coreutils findutils bc`
 
-### Nemo action
-`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
-```
-[Nemo Action]
-Active=true
-Name=ffmes %N
-Comment=ffmes %N
-Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
-Selection=any
-Extensions=any;
-```
+## DVD rip dependencies
+`dvdbackup lsdvd ogmtools`
+
+## Tag dependencies
+`flac monkeys-audio audiotools python-mutagen wavpack`
+
+## Subtitle dependencies
+`ogmrip tesseract-ocr tesseract-ocr-all wget`
 
 ## Use
 ```
@@ -55,8 +52,20 @@ Exemples:
 * `ffmes -vv -i FILE-TO.EDIT` for single video or audio, with ffmpeg in log level as debug
 * `ffmes -s 1 -i FILE-TO.EDIT` for single video, select option 1 by-passing the main menu
 
+### Nemo action
+`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
+```
+[Nemo Action]
+Active=true
+Name=ffmes %N
+Comment=ffmes %N
+Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
+Selection=any
+Extensions=any;
+```
+
 ## Test
-ffmes is tested, under Debian stable and unstable almost every day.
+ffmes is tested, under Debian unstable almost every day.
 If you encounter problems or have proposals, I am open to discussion.
 
 --------------------------------------------------------------------------------------------------
@@ -85,6 +94,7 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 24, audio to mp3 (libmp3lame)
 	* 25, audio to vorbis (libvorbis)
 	* 26, audio to opus (libopus)
+	* 27, audio to aac
 * Audio tools:
 	* 30, audio tag editor
 	* 31, view one audio file stats
@@ -199,10 +209,23 @@ Tesseract engine available:
 	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
-#### Option 26 details - opus encoding
+#### Option 26 details - Opus encoding
 * Encoding options:
 	* Bitrate
-		* vbr, 64kb to 510kb (selectable options).
+		* vbr, 64kb to 510kb
+		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
+	* Channels layout 1.0, 2.0, 3.0, 5.1
+	* False stereo files detection (if a channels configuration not selected)
+	* -1db peak normalization (only files that have a value less than)
+	* Silence detect & remove, at start & end (only wav & flac source)
+	* After encoding, option for remove all source files, if not for remove created files
+
+#### Option 27 details - AAC encoding
+* Codec used: if the libfdk_aac codec is available (present in non-free configuration), it will be chosen by default. Otherwise it is the aac codec which will be chosen (present in the free configuration).
+* Encoding options:
+	* Bitrate
+		* vbr 1 to 5
+		* cbr 64kb to 560kb
 		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
 	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* False stereo files detection (if a channels configuration not selected)
@@ -211,6 +234,8 @@ Tesseract engine available:
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 30 details - tag editor
+Tag for aiff, ape, flac, m4a, mp3, ogg, opus, wv files
+
 Options:
 * Change or add tag disc number
 * Rename files in "Track - Title"
@@ -229,7 +254,6 @@ Options:
 Restriction:
 * Max depth directory 1
 * Asian character not supported (display in degrading mode)
-* Monkey's Audio (APE) not supported
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
