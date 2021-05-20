@@ -13,16 +13,18 @@ Source media files, supported extension:
 ## Install & update
 `curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
 
-## Essential dependencies
+## Dependencies
+
+### Essential 
 `ffmpeg ffprobe mkvtoolnix mediainfo sox shntool cuetools uchardet coreutils findutils bc`
 
-## DVD rip dependencies
+### DVD rip
 `dvdbackup lsdvd ogmtools`
 
-## Tag dependencies
+### Tag dependencies
 `flac monkeys-audio audiotools python-mutagen wavpack`
 
-## Subtitle dependencies
+### Subtitle dependencies
 `ogmrip tesseract-ocr tesseract-ocr-all wget`
 
 ## Use
