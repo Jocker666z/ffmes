@@ -1,4 +1,17 @@
 # Changelog
+v0.85:
+Video:
+	* fix - add date id to created filename, in case of a new launch of the concatenator the target file must not be the same as the source, in order to avoid an infinite loop of ffmpeg
+Audio:
+	* chg - aac, add cutoff & use libfdk_aac profile LC instead of HE
+	* chg - split cue, now use best compression ratio of encoder flac
+	* add - split cue, individual dependencies check
+	* add - split cue, support of source file in wavpack
+Various:
+	* chg - improve of bash code
+Tag:
+	* fix - rename with double quote in title
+
 v0.84:
 Audio:
 	* add - aac/m4a audio encoding in option 27, see the doc for more details

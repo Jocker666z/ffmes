@@ -16,7 +16,10 @@ Source media files, supported extension:
 ## Dependencies
 
 ### Essential 
-`ffmpeg ffprobe mkvtoolnix mediainfo sox shntool cuetools uchardet coreutils findutils bc`
+`ffmpeg ffprobe mkvtoolnix mediainfo sox uchardet coreutils findutils bc`
+
+### CUE Splitting
+`cuetools flac monkeys-audio shntool`
 
 ### DVD rip
 `dvdbackup lsdvd ogmtools`
@@ -256,7 +259,7 @@ Options:
 
 Restriction:
 * Max depth directory 1
-* Asian character not supported (display in degrading mode)
+* Asian character not supported (display degrading)
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
@@ -303,3 +306,4 @@ Restriction:
 		* https://x265.readthedocs.io/en/default/presets.html
 * Audio codecs:
 	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison
+	* https://wiki.hydrogenaud.io/index.php/LAME
