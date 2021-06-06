@@ -16,7 +16,7 @@ Source media files, supported extension:
 ## Dependencies
 
 ### Essential 
-`ffmpeg ffprobe mkvtoolnix mediainfo sox uchardet coreutils findutils bc`
+`ffmpeg ffprobe jq mkvtoolnix mediainfo sox uchardet coreutils findutils bc`
 
 ### CUE Splitting
 `cuetools flac monkeys-audio shntool`
@@ -39,7 +39,7 @@ Usage: ffmes options
   -i|--input <directory>  Treat in batch a specific directory.
   -h|--help               Display this help.
   -j|--videojobs <number> Number of video encoding in same time.
-                          Default: 2
+                          Default: 1
   -kc|--keep_cover        Keep embed image in audio files.
   --novaapi               No use vaapi for decode video.
   -s|--select <number>    Preselect option (by-passing main menu).
@@ -81,16 +81,17 @@ If you encounter problems or have proposals, I am open to discussion.
 	* 0, DVD rip (vob, ISO, or disc)
 	* 1, video encoding
 	* 2, copy stream to mkv with map option
+	* 3, encode audio stream only
+	* 4, add audio stream with night normalization
 * Video tools:
 	* 10, view detailed video file informations
 	* 11, add audio stream or subtitle in video file
 	* 12, concatenate video files
 	* 13, extract stream(s) of video file
 	* 14, cut video file
-	* 15, add audio stream with night normalization
-	* 16, split mkv by chapter
-	* 17, change color of DVD subtitle (idx/sub)
-	* 18, convert DVD subtitle (idx/sub) to srt
+	* 15, split mkv by chapter
+	* 16, change color of DVD subtitle (idx/sub)
+	* 17, convert DVD subtitle (idx/sub) to srt
 * Audio:
 	* 20, CUE splitter to flac
 	* 21, audio to wav (PCM)
@@ -122,11 +123,10 @@ If you encounter problems or have proposals, I am open to discussion.
 * Video:
 	* Stream copy or encoding
 	* Encoding options:
-		* crop video
 		* rotate video
 		* HDR to SDR
 		* change resolution
-		* deinterlace
+		* desinterlace
 		* fix frame rate to 24fps
 		* codecs:
 			* x264: profile, tune, preset & bitrate (video stream total size, crf & cbr)
@@ -150,14 +150,17 @@ If you encounter problems or have proposals, I am open to discussion.
 #### Option 2 details - copy stream to mkv with map option
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
-#### Option 15 details - add audio stream with night normalization
+#### Option 3 details - encode audio stream only
+Encode the selected audio streams of video files (or all of them).
+
+#### Option 4 details - add audio stream with night normalization
 From inplace matroska video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
 
-#### Option 16 details - split mkv by chapter
+#### Option 15 details - split mkv by chapter
 Cut one matroska video per chapter, mkvtoolnix package must be installed.
 
-#### Option 17 details - change color of DVD subtitle (idx/sub)
+#### Option 16 details - change color of DVD subtitle (idx/sub)
 You must run the option in a directory containing one or more pairs of idx/sub files with the same filename.
 
 Colors palette available:
@@ -166,7 +169,7 @@ Colors palette available:
 * yellow font / black border
 * yellow font / white border
 
-#### Option 18 details - convert DVD subtitle (idx/sub) to srt
+#### Option 17 details - convert DVD subtitle (idx/sub) to srt
 You must have installed tesseract-ocr with your language support, but also ogmrip package (includes subp2tiff and subptools binaries).
 
 Language supported: english, french, deutsch, spanish, portuguese, italian, japanese, chinese simplified, arabic, korean, russian.
@@ -268,7 +271,7 @@ Restriction:
 * FFPROBE_CUSTOM_BIN: change default ffprobe system bin for other location
 * SOX_CUSTOM_BIN: change default sox system bin for other location
 ### Video
-* NVENC (default=1)
+* NVENC (default=0)
 	* Description: Number of video encoding in same time, the countdown starts at 0 (0=1;1=2...)
 ### Audio
 * ExtractCover (default=0)
@@ -276,7 +279,7 @@ Restriction:
 	* 0=extract cover from source and remove in output
 	* 1=keep cover from source in output
 	* empty=remove cover in output
-* RemoveM3U (default=1)
+* RemoveM3U (default=0)
 	* Description: action performed after encoding at "Remove source audio?" question
 	* 0=no remove
 	* 1=remove

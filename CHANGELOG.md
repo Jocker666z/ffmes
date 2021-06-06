@@ -1,7 +1,30 @@
 # Changelog
+v0.86:
+DVD:
+	* fix - ffmpeg remux processing is no longer stuck on some dvds
+Video:
+	* remove - crop option, easier and safer to do this with a GUI app
+	* add - option 3, encode audio stream only
+	* add - stream selection, now test if input is valid stream
+	* chg - option 15 become 4, because is encoding option
+	* add - option 13, add support of vp9 extraction
+	* chg - default video encoding in same time goes from 2 to 1
+Audio:
+	* add - compare audio, format_name of file (extention)
+	* chg - compare audio, if peakdb=-0.0 display 0.0
+	* chg - now use ffmpeg for merge flac
+	* fix - cut audio, keep embed img
+Various:
+	* chg - rewrite progress bar
+	* chg - rewrite many part of script
+	* chg - now cache folder is /tmp/ffmes, on systems where tmp is in tmpfs avoid disk writes (https://wiki.archlinux.org/title/Tmpfs)
+	* chg - rewrite all function which get infos of media source, this improves maintainability by avoiding code redundancy.
+	* add - jq (JSON parser) in core dependencies, used for parse ffprobe json
+	* remove - FFMES_CACHE_MAP & FFMES_CACHE_STAT variables
+
 v0.85:
 Video:
-	* fix - add date id to created filename, in case of a new launch of the concatenator the target file must not be the same as the source, in order to avoid an infinite loop of ffmpeg
+	* fix - cocantenate video, add date id to created filename, in case of a new launch of the concatenator the target file must not be the same as the source, in order to avoid an infinite loop of ffmpeg
 Audio:
 	* chg - aac, add cutoff & use libfdk_aac profile LC instead of HE
 	* chg - split cue, now use best compression ratio of encoder flac
