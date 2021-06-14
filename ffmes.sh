@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.86
+VERSION=v0.86a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -40,7 +40,7 @@ FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, 
 SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
 
 # DVD rip variables
-DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd)
+DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
 

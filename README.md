@@ -22,13 +22,13 @@ Source media files, supported extension:
 `cuetools flac monkeys-audio shntool`
 
 ### DVD rip
-`dvdbackup lsdvd ogmtools`
+`dvdbackup lsdvd ogmtools pv`
 
-### Tag dependencies
-`flac monkeys-audio audiotools python-mutagen wavpack`
-
-### Subtitle dependencies
+### DVD Subtitle
 `ogmrip tesseract-ocr tesseract-ocr-all wget`
+
+### Audio tag
+`flac monkeys-audio audiotools python-mutagen wavpack`
 
 ## Use
 ```
