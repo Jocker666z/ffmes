@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.86a
+VERSION=v0.86b
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -211,6 +211,10 @@ for index in "${StreamIndex[@]}"; do
 		# Video specific
 		if ! [[ "$audio_list" = "1" ]]; then
 			if [[ "${ffprobe_StreamType[-1]}" = "video" ]]; then
+				# Fix black screen + green line
+				if [[ "${ffprobe_Codec[-1]}" = "mpeg2video" ]]; then
+					unset GPUDECODE
+				fi
 				ffprobe_v_StreamIndex+=( "$video_index" )
 				video_index=$((video_index+1))
 				ffprobe_Profile+=( "$(jqparse_stream "$index" "profile")" )
@@ -2485,6 +2489,7 @@ while true; do
 		# Construct arrays
 		VINDEX=()
 		VCODECTYPE=()
+		# Codec type
 		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
 		for i in "${VINDEX[@]}"; do
 			VCODECTYPE+=("${ffprobe_StreamType[$i]}")
@@ -2516,11 +2521,12 @@ for i in ${!VINDEX[*]}; do
 	case "${VCODECTYPE[i]}" in
 		# Video Stream
 		video)
+			# Add stream
 			if [ -n "$rpstreamch" ]; then
 				stream+=("-map 0:${VINDEX[i]}")
 			fi
 			;;
-		
+
 		# Audio Stream
 		audio)
 			if [ -n "$rpstreamch" ]; then

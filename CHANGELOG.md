@@ -1,4 +1,12 @@
 # Changelog
+v0.86b:
+Video:
+	* fix - if video codec is mpeg2video, force deactivation  of vaapi, see https://trac.ffmpeg.org/ticket/6668
+
+v0.86a:
+DVD:
+	* fix - add pv in dependencies
+
 v0.86:
 DVD:
 	* fix - ffmpeg remux processing is no longer stuck on some dvds
