@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.86b
+VERSION=v0.86c
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -211,9 +211,13 @@ for index in "${StreamIndex[@]}"; do
 		# Video specific
 		if ! [[ "$audio_list" = "1" ]]; then
 			if [[ "${ffprobe_StreamType[-1]}" = "video" ]]; then
-				# Fix black screen + green line
+				# Fix black screen + green line (https://trac.ffmpeg.org/ticket/6668)
 				if [[ "${ffprobe_Codec[-1]}" = "mpeg2video" ]]; then
 					unset GPUDECODE
+				else
+					if [[ -z "$GPUDECODE" ]] && [[ -n "$VAAPI_device" ]]; then
+						TestVAAPI
+					fi
 				fi
 				ffprobe_v_StreamIndex+=( "$video_index" )
 				video_index=$((video_index+1))
@@ -332,6 +336,16 @@ rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
 }
 
 ## CHECK FILES & BIN
+CheckFFmpegVersion() {
+local ffmpeg_version
+
+ffmpeg_version=$(ffmpeg -version | awk -F 'ffmpeg version' '{print $2}' | awk 'NR==1{print $1}')
+
+# stats_period add in v4.4
+if [[ "$ffmpeg_version" < 4.3 ]]; then
+	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
+fi
+}
 CheckCustomBin() {
 if [[ -f "$FFMPEG_CUSTOM_BIN" ]]; then
 	ffmpeg_bin="$FFMPEG_CUSTOM_BIN"
@@ -2030,10 +2044,10 @@ for (( i=0; i<=$(( ${#LSTVIDEO[@]} - 1 )); i++ )); do
 	filesInLoop+=( "${LSTVIDEO[i]%.*}.$videoformat.$extcont" )
 
 	# For progress bar
-	if [[ "${#LSTVIDEO[@]}" = "1" ]] \
-	|| [[ "${#LSTVIDEO[@]}" -gt "1" && "$NVENC" = "0" ]]; then
+	#if [[ "${#LSTVIDEO[@]}" = "1" ]] \
+	#|| [[ "${#LSTVIDEO[@]}" -gt "1" && "$NVENC" = "0" ]]; then
 		Media_Source_Info_Record "${LSTVIDEO[i]}"
-	fi
+	#fi
 
 	(
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "${LSTVIDEO[i]}" \
@@ -5527,6 +5541,7 @@ done
 CheckCoreCommand
 CheckCacheDirectory							# Check if cache directory exist
 CheckCustomBin
+CheckFFmpegVersion
 StartLoading "Listing of media files to be processed"
 SetGlobalVariables							# Set global variable
 DetectDVD									# DVD detection

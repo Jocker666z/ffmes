@@ -1,7 +1,13 @@
 # Changelog
+v0.86c:
+Video:
+	* chg - reactivation of vaapi if video codec is not mpeg2video
+Various:
+	* fix - fix false fail due to -stats_period with ffmpeg in version < 4.4
+
 v0.86b:
 Video:
-	* fix - if video codec is mpeg2video, force deactivation  of vaapi, see https://trac.ffmpeg.org/ticket/6668
+	* fix - if video codec is mpeg2video, force deactivation of vaapi, see https://trac.ffmpeg.org/ticket/6668
 
 v0.86a:
 DVD:
