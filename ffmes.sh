@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.86c
+VERSION=v0.86d
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -168,6 +168,7 @@ ffprobe_fps=()
 ffprobe_a_StreamIndex=()
 ffprobe_SampleFormat=()
 ffprobe_SampleRate=()
+ffprobe_Channel=()
 ffprobe_ChannelLayout=()
 ffprobe_Bitrate=()
 # Subtitle

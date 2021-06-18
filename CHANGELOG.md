@@ -1,4 +1,8 @@
 # Changelog
+v0.86d:
+Various:
+	* fix - reset channel array in get stat function
+
 v0.86c:
 Video:
 	* chg - reactivation of vaapi if video codec is not mpeg2video
