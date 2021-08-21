@@ -1,4 +1,11 @@
 # Changelog
+v0.87:
+Audio:
+	* chg - now default FLAC option is auto for bit depth & sample rate
+	* chg - now default WAVPACK option is auto for bit depth & sample rate
+Various:
+	* fix - replace which by command -v - Debian is deprecated which (https://salsa.debian.org/debian/debianutils/-/commit/3a8dd10b4502f7bae8fc6973c13ce23fc9da7efb)
+	
 v0.86d:
 Various:
 	* fix - reset channel array in get stat function

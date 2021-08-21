@@ -50,7 +50,7 @@ Usage: ffmes options
   -vv|--fullverbose       Display ffmpeg log level as debug
 ```
 
-Exemples:
+Examples:
 * `ffmes` with audio/video in directory
 * `ffmes -i DIRECTORY-TO.EDIT` for directory
 * `ffmes -i FILE-TO.EDIT` for single video or audio

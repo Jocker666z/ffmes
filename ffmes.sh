@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.86d
+VERSION=v0.87
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -351,17 +351,17 @@ CheckCustomBin() {
 if [[ -f "$FFMPEG_CUSTOM_BIN" ]]; then
 	ffmpeg_bin="$FFMPEG_CUSTOM_BIN"
 else
-	ffmpeg_bin=$(which ffmpeg)
+	ffmpeg_bin=$(command -v ffmpeg)
 fi
 if [[ -f "$FFPROBE_CUSTOM_BIN" ]]; then
 	ffprobe_bin="$FFPROBE_CUSTOM_BIN"
 else
-	ffprobe_bin=$(which ffprobe)
+	ffprobe_bin=$(command -v ffprobe)
 fi
 if [[ -f "$SOX_CUSTOM_BIN" ]]; then
 	sox_bin="$SOX_CUSTOM_BIN"
 else
-	sox_bin=$(which sox)
+	sox_bin=$(command -v sox)
 fi
 }
 CheckCommandLabel() {
@@ -4035,13 +4035,13 @@ fi
 	echo "        |-------|--------|-------|"
 	echo "  [1] > |   12  |  44kHz |    16 |"
 	echo "  [2] > |   12  |  44kHz |    24 |"
-	echo " *[3] > |   12  |  44kHz |  auto |"
+	echo "  [3] > |   12  |  44kHz |  auto |"
 	echo "  [4] > |   12  |  48kHz |    16 |"
 	echo "  [5] > |   12  |  48kHz |    24 |"
 	echo "  [6] > |   12  |  48kHz |  auto |"
 	echo "  [7] > |   12  |   auto |    16 |"
 	echo "  [8] > |   12  |   auto |    24 |"
-	echo "  [9] > |   12  |   auto |  auto |"
+	echo " *[9] > |   12  |   auto |  auto |"
 	echo "  [q] > | for exit"
 	read -r -e -p "-> " rpakb
 	if [ "$rpakb" = "q" ]; then
@@ -4077,7 +4077,7 @@ fi
 		asamplerate=""
 	else
 		akb="-compression_level 12"
-		asamplerate="-ar 44100"
+		asamplerate=""
 	fi
 	}
 Audio_WavPack_Config() {				# Option 23 	- audio to wavpack
@@ -4100,7 +4100,7 @@ fi
     echo "         |-------|--------|-------|"
     echo "  [1]  > |    3  |  44kHz |    16 |"
     echo "  [2]  > |    3  |  44kHz | 24/32 |"
-    echo " *[3]  > |    3  |  44kHz |  auto |"
+    echo "  [3]  > |    3  |  44kHz |  auto |"
     echo "  [4]  > |    1  |  44kHz |  auto |"
     echo "  [5]  > |    3  |  48kHz |    16 |"
     echo "  [6]  > |    3  |  48kHz | 24/32 |"
@@ -4108,7 +4108,7 @@ fi
     echo "  [8]  > |    1  |  48kHz |  auto |"
     echo "  [9]  > |    3  |   auto |    16 |"
     echo "  [10] > |    3  |   auto | 24/32 |"
-    echo "  [11] > |    3  |   auto |  auto |"
+    echo " *[11] > |    3  |   auto |  auto |"
     echo "  [12] > |    1  |   auto |  auto |"
 	echo "  [q] >  | for exit"
 	read -r -e -p "-> " rpakb
@@ -4154,7 +4154,7 @@ fi
 		asamplerate=""
 	else
 		akb="-compression_level 3"
-		asamplerate="-ar 44100"
+		asamplerate=""
 	fi
 	}
 Audio_Opus_Config() {					# Option 1,26 	- Conf audio/video opus, audio to opus (libopus)
