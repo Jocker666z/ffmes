@@ -1,4 +1,10 @@
 # Changelog
+v0.88:
+Audio:
+	* add - diffence between db peak & mean db in list of "32 - compare audio files stats"
+	* chg - table & line display of "32 - compare audio files stats"
+	* remove - file ext. from list of "32 - compare audio files stats"
+
 v0.87:
 Audio:
 	* chg - now default FLAC option is auto for bit depth & sample rate

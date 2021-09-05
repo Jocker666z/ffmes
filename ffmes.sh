@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.87
+VERSION=v0.88
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -330,6 +330,7 @@ if [[ "$FilesExtention" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
 		ffmpeg_peakdb_raw="0.0"
 	fi
 	ffmpeg_peakdb="$ffmpeg_peakdb_raw"
+	ffmpeg_diffdb=$( bc <<< "$ffmpeg_peakdb - $ffmpeg_meandb" )
 fi
 
 # Clean
@@ -659,6 +660,7 @@ local bitrate_string_length
 local duration_string_length
 local peakdb_string_length
 local meandb_string_length
+local diffdb_string_lenght
 local filename_string_length
 local FilesSize_string_length
 local horizontal_separator_string_length
@@ -669,8 +671,7 @@ source_files=("$@")
 # Limit to audio files grab stats
 audio_list="1"
 
-# Larger of column & seperator
-format_string_length="4"
+# Larger of column & separator
 codec_string_length="7"
 bitrate_string_length="4"
 SampleFormat_string_length="4"
@@ -679,15 +680,22 @@ Channel_string_length="1"
 duration_string_length="8"
 peakdb_string_length="5"
 meandb_string_length="5"
+diffdb_string_lenght="4"
 FilesSize_string_length="5"
 filename_string_length="40"
+# Separator (=5)
+quality_separator_string_length=$(( 4 * 5 ))
+db_separator_string_length=$(( 2 * 5 ))
 horizontal_separator_string_length=$(( 10 * 5 ))
-# Separator
+# Total
+quality_string_length=$(( codec_string_length + bitrate_string_length + SampleFormat_string_length \
+							+ SampleRate_string_length + Channel_string_length + quality_separator_string_length ))
+db_string_length=$(( peakdb_string_length + meandb_string_length + diffdb_string_lenght \
+						+ db_separator_string_length ))
 separator_string_length=$(( codec_string_length + bitrate_string_length + SampleFormat_string_length \
 							+ SampleRate_string_length + duration_string_length + peakdb_string_length \
-							+ meandb_string_length + filename_string_length + Channel_string_length \
-							+ FilesSize_string_length + horizontal_separator_string_length \
-							+ format_string_length ))
+							+ meandb_string_length + diffdb_string_lenght + filename_string_length \
+							+ Channel_string_length + FilesSize_string_length + horizontal_separator_string_length ))
 
 
 # Only display if launched in argument
@@ -701,16 +709,23 @@ echo " ${#source_files[@]} audio files - $(Calc_Files_Size "${source_files[@]}")
 
 # Table Display
 if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
+	# Title line 1
 	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
-	paste <(printf "%-${format_string_length}.${format_string_length}s\n" "Ext.") <(printf "%s\n" "|") \
-		<(printf "%-${codec_string_length}.${codec_string_length}s\n" "Codec") <(printf "%s\n" "|") \
-		<(printf "%-${bitrate_string_length}.${bitrate_string_length}s\n" "kb/s") <(printf "%s\n" "|") \
-		<(printf "%-${SampleFormat_string_length}.${SampleFormat_string_length}s\n" "fmt") <(printf "%s\n" "|") \
-		<(printf "%-${SampleRate_string_length}.${SampleRate_string_length}s\n" "kHz") <(printf "%s\n" "|") \
+	paste <(printf "%-${quality_string_length}.${quality_string_length}s\n" "Quality") <(printf "%s\n" "|") \
+		<(printf "%-${duration_string_length}.${duration_string_length}s\n" "Duration") <(printf "%s\n" "|") \
+		<(printf "%-${db_string_length}.${db_string_length}s\n" "Decibel") <(printf "%s\n" "|") \
+		<(printf "%-${FilesSize_string_length}.${FilesSize_string_length}s\n" "Size") <(printf "%s\n" "|") \
+		<(printf "%-${filename_string_length}.${filename_string_length}s\n" "") | column -s $'\t' -t
+	# Title line 2
+	paste <(printf "%-${codec_string_length}.${codec_string_length}s\n" "Codec") <(printf "%s\n" ".") \
+		<(printf "%-${bitrate_string_length}.${bitrate_string_length}s\n" "kb/s") <(printf "%s\n" ".") \
+		<(printf "%-${SampleFormat_string_length}.${SampleFormat_string_length}s\n" "fmt") <(printf "%s\n" ".") \
+		<(printf "%-${SampleRate_string_length}.${SampleRate_string_length}s\n" "kHz") <(printf "%s\n" ".") \
 		<(printf "%-${Channel_string_length}.${Channel_string_length}s\n" "ch") <(printf "%s\n" "|") \
 		<(printf "%-${duration_string_length}.${duration_string_length}s\n" "m:s") <(printf "%s\n" "|") \
-		<(printf "%-${peakdb_string_length}.${peakdb_string_length}s\n" "Peak") <(printf "%s\n" "|") \
-		<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "Mean") <(printf "%s\n" "|") \
+		<(printf "%-${peakdb_string_length}.${peakdb_string_length}s\n" "Peak") <(printf "%s\n" ".") \
+		<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "Mean") <(printf "%s\n" ".") \
+		<(printf "%-${diffdb_string_lenght}.${diffdb_string_lenght}s\n" "Diff") <(printf "%s\n" "|") \
 		<(printf "%-${FilesSize_string_length}.${FilesSize_string_length}s\n" "MB") <(printf "%s\n" "|") \
 		<(printf "%-${filename_string_length}.${filename_string_length}s\n" "Files") | column -s $'\t' -t
 	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
@@ -723,15 +738,15 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 		for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
 				# In table if term is wide enough, or in ligne
-				paste <(printf "%-${format_string_length}.${format_string_length}s\n" "$FilesExtention") <(printf "%s\n" "|") \
-					<(printf "%-${codec_string_length}.${codec_string_length}s\n" "${ffprobe_Codec[i]}") <(printf "%s\n" "|") \
-					<(printf "%-${bitrate_string_length}.${bitrate_string_length}s\n" "$mediainfo_Bitrate") <(printf "%s\n" "|") \
-					<(printf "%-${SampleFormat_string_length}.${SampleFormat_string_length}s\n" "${ffprobe_SampleFormat[i]}") <(printf "%s\n" "|") \
-					<(printf "%-${SampleRate_string_length}.${SampleRate_string_length}s\n" "${ffprobe_SampleRate[i]}") <(printf "%s\n" "|") \
+				paste <(printf "%-${codec_string_length}.${codec_string_length}s\n" "${ffprobe_Codec[i]}") <(printf "%s\n" ".") \
+					<(printf "%-${bitrate_string_length}.${bitrate_string_length}s\n" "$mediainfo_Bitrate") <(printf "%s\n" ".") \
+					<(printf "%-${SampleFormat_string_length}.${SampleFormat_string_length}s\n" "${ffprobe_SampleFormat[i]}") <(printf "%s\n" ".") \
+					<(printf "%-${SampleRate_string_length}.${SampleRate_string_length}s\n" "${ffprobe_SampleRate[i]}") <(printf "%s\n" ".") \
 					<(printf "%-${Channel_string_length}.${Channel_string_length}s\n" "${ffprobe_Channel[i]}") <(printf "%s\n" "|") \
 					<(printf "%-${duration_string_length}.${duration_string_length}s\n" "$ffprobe_DurationFormated") <(printf "%s\n" "|") \
-					<(printf "%-${peakdb_string_length}.${peakdb_string_length}s\n" "$ffmpeg_peakdb") <(printf "%s\n" "|") \
-					<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "$ffmpeg_meandb") <(printf "%s\n" "|") \
+					<(printf "%-${peakdb_string_length}.${peakdb_string_length}s\n" "$ffmpeg_peakdb") <(printf "%s\n" ".") \
+					<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "$ffmpeg_meandb") <(printf "%s\n" ".") \
+					<(printf "%-${diffdb_string_lenght}.${diffdb_string_lenght}s\n" "$ffmpeg_diffdb") <(printf "%s\n" "|") \
 					<(printf "%-${FilesSize_string_length}.${FilesSize_string_length}s\n" "$FilesSize") <(printf "%s\n" "|") \
 					<(printf "%-${filename_string_length}.${filename_string_length}s\n" "$files") | column -s $'\t' -t 2>/dev/null
 			fi
@@ -751,13 +766,16 @@ else
 		for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
 				Display_Line_Truncate "  $files"
-				echo "$(Display_Variable_Trick "$FilesExtention" "1")\
-				$(Display_Variable_Trick "${ffprobe_Codec[i]}" "1")\
+				echo "$(Display_Variable_Trick "$ffprobe_DurationFormated" "1" "kHz")\
+				$FilesSize MB" \
+				| awk '{$2=$2};1' | awk '{print "  " $0}'
+				echo "$(Display_Variable_Trick "${ffprobe_Codec[i]}" "1")\
 				$(Display_Variable_Trick "$mediainfo_Bitrate" "1" "kb/s")\
 				$(Display_Variable_Trick "${ffprobe_SampleFormat[i]}" "1")\
 				$(Display_Variable_Trick "${ffprobe_SampleRate[i]}" "1" "kHz")\
-				$(Display_Variable_Trick "$ffprobe_DurationFormated" "1" "kHz")\
-				peak dB: $ffmpeg_peakdb, mean dB: $ffmpeg_meandb, $FilesSize MB" \
+				${ffprobe_Channel[i]} channel(s)" \
+				| awk '{$2=$2};1' | awk '{print "  " $0}'
+				echo " peak dB: $ffmpeg_peakdb, mean dB: $ffmpeg_meandb, diff dB: $ffmpeg_diffdb" \
 				| awk '{$2=$2};1' | awk '{print "  " $0}'
 				printf '%*s' "$TERM_WIDTH_TRUNC" | tr ' ' "-"; echo
 			fi
