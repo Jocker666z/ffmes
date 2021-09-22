@@ -1453,7 +1453,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" ]] \
 
 	# Standby "$FFMES_FFMPEG_PROGRESS"
 	# Time out in ms
-	TimeOut="30000"
+	TimeOut="2000"
 	# Start time counter
 	start_TimeOut=$(( $(date +%s%N) / 1000000 ))
 	while [ ! -f "$FFMES_FFMPEG_PROGRESS" ] && [ ! -s "$FFMES_FFMPEG_PROGRESS" ]; do
@@ -1478,7 +1478,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" ]] \
 
 	# Progress bar loop
 	# Start time counter
-	TimeOut="5000"
+	TimeOut="30000"
 	start_TimeOut=$(( $(date +%s%N) / 1000000 ))
 	while true; do
 
