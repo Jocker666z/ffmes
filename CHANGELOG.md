@@ -1,4 +1,10 @@
 # Changelog
+v0.88b:
+Video:
+	* fix - add time out fail in progress bar, if target size stuck at 0 during 30s
+Tag:
+	* fix - no more verbose rename
+
 v0.88:
 Audio:
 	* add - diffence between db peak & mean db in list of "32 - compare audio files stats"

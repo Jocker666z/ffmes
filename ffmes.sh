@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.88
+VERSION=v0.88b
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -1453,7 +1453,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" ]] \
 
 	# Standby "$FFMES_FFMPEG_PROGRESS"
 	# Time out in ms
-	TimeOut="5000"
+	TimeOut="30000"
 	# Start time counter
 	start_TimeOut=$(( $(date +%s%N) / 1000000 ))
 	while [ ! -f "$FFMES_FFMPEG_PROGRESS" ] && [ ! -s "$FFMES_FFMPEG_PROGRESS" ]; do
@@ -1477,6 +1477,9 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" ]] \
 	echo "  [${sourcefile}]"
 
 	# Progress bar loop
+	# Start time counter
+	TimeOut="5000"
+	start_TimeOut=$(( $(date +%s%N) / 1000000 ))
 	while true; do
 
 		# Get main value
@@ -1522,8 +1525,20 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" ]] \
 		fi
 
 		### Fail break condition
+		# Time out counter
+		interval_TimeOut=$(( $(date +%s%N) / 1000000 ))
+		interval_calc=$(( interval_TimeOut - start_TimeOut ))
+		# Time out fail break
+		if [[ "$interval_calc" -gt "$TimeOut" && -z "$CurrentSize" ]]; then
+			# Loop fail
+			loop_pass="1"
+			echo -e -n "\r\e[0K ]${_done// /▇}${_left// / }[ ${_progress}% - [!] ffmpeg fail"
+			echo
+			break
+		fi
+		# Other break
 		if [[ ! -f "$FFMES_FFMPEG_PROGRESS" && "$_progress" != "100" && "$CurrentState" != "end" ]]; then
-			# Loop pass
+			# Loop fail
 			loop_pass="1"
 			echo -e -n "\r\e[0K ]${_done// /▇}${_left// / }[ ${_progress}% - [!] ffmpeg fail"
 			echo
@@ -5140,7 +5155,7 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 	(
 	if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
 		if [[ "$rename_option" = "rename" ]]; then
-			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}"
+			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "arename" ]]; then
 			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		fi
