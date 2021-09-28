@@ -1,4 +1,8 @@
 # Changelog
+v0.88c:
+Audio:
+	* fix - no more progress bar bug if video present in video directory
+
 v0.88b:
 Video:
 	* fix - add time out fail in progress bar, if target size stuck at 0 during 30s

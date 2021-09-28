@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.88b
+VERSION=v0.88c
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -1440,11 +1440,11 @@ fi
 unset loop_pass
 
 # ffmpeg detailed progress bar
-if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" ]] \
+if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$ffmes_option" -lt "20" ]] \
 || [[ -z "$VERBOSE" && -n "$RipFileName" && -z "$ProgressBarOption" ]] \
-|| [[ -z "$VERBOSE" && "${#LSTAUDIO[@]}" = "1" && -z "$ProgressBarOption" ]] \
-|| [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" -gt "1" && "$NVENC" = "0" && -z "$ProgressBarOption" ]] \
-|| [[ -z "$VERBOSE" && "${#LSTAUDIO[@]}" -gt "1" && "$NPROC" = "0" && -z "$ProgressBarOption" ]]; then
+|| [[ -z "$VERBOSE" && "${#LSTAUDIO[@]}" = "1" && -z "$ProgressBarOption" && "$ffmes_option" -ge "20" ]] \
+|| [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" -gt "1" && "$NVENC" = "0" && -z "$ProgressBarOption" && "$ffmes_option" -lt "20" ]] \
+|| [[ -z "$VERBOSE" && "${#LSTAUDIO[@]}" -gt "1" && "$NPROC" = "0" && -z "$ProgressBarOption" && "$ffmes_option" -ge "20" ]]; then
 
 	# Start value of bar
 	_progress="0"
