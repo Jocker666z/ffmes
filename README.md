@@ -5,7 +5,7 @@ Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single 
 Source media files, supported extension:
 * Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, ts, vob, vp9, webm, wmv
 * Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aud, caf, dff, dsf, dts, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, ops, opus, rmvb, shn, spx, tta, w64, wav, wma, wv
-* Subtitle in idx/sub, srt, ssa, sup
+* Subtitle in ass, idx/sub, srt, ssa, sup
 
 **Note**: VGM encoding is now dissociated from ffmes, see **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
 
@@ -287,9 +287,10 @@ Restriction:
 	* Description: Peak db normalization option, this value is written as positive but is used in negative (e.g. 4 = -4)
 
 --------------------------------------------------------------------------------------------------
-## Issue
+## Known errors
 * rename bug with mv and CIFS mount: add `cache=loose` in your mount option
 * CUE split fail with 24bits audio (shnsplit bug)
+* ffmpeg 4.4 from debian-multimedia repository (ffmpeg/unstable 10:4.4-dmo5 amd64), encounter unrepeatable wavpack encoding error
 
 --------------------------------------------------------------------------------------------------
 ## Holy reading

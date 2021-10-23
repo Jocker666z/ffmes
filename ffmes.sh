@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.88c
+VERSION=v0.89
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -18,7 +18,7 @@ FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# Set ffmes path for 
 FFMES_CACHE="/tmp/ffmes"																	# Cache directory
 FFMES_FFPROBE_CACHE_STATS="$FFMES_CACHE/stat-ffprobe-$(date +%Y%m%s%N).info"				# ffprobe cache file
 FFMES_FFMPEG_CACHE_STAT="$FFMES_CACHE/stat-ffmpeg-$(date +%Y%m%s%N).info"					# ffmpeg cache file
-FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"					# ffmpeg progress cache file
 FFMES_CACHE_TAG="$FFMES_CACHE/tag-$(date +%Y%m%s%N).info"									# tag-DATE.info, audio tag file
 FFMES_CACHE_INTEGRITY="$FFMES_CACHE/interity-$(date +%Y%m%s%N).info"						# integrity-DATE.info, list of files fail interity check
 FFMES_CACHE_UNTAGGED="$FFMES_CACHE/untagged-$(date +%Y%m%s%N).info"							# integrity-DATE.info, list of files untagged
@@ -32,7 +32,7 @@ TERM_WIDTH=$(stty size | awk '{print $2}')													# Get terminal width
 TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')					# Get terminal width truncate
 TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')			# Get terminal width truncate
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log level
-FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
 
 # Custom binary location
 FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
@@ -52,7 +52,7 @@ VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
 # Subtitle variables
 SUBTI_COMMAND_NEEDED=(subp2tiff subptools tesseract wget)
-SUBTI_EXT_AVAILABLE="srt|ssa|idx|sup"
+SUBTI_EXT_AVAILABLE="ass|srt|ssa|idx|sup"
 
 # Audio variables
 CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit wvunpack)
@@ -1578,7 +1578,6 @@ DVDRip() {								# Option 0  	- DVD Rip
 local DVD
 local DVDINFO
 local DVDtitle
-local DVD
 local TitleParsed
 local AspectRatio
 local PCM
@@ -1593,20 +1592,22 @@ clear
 echo
 echo " DVD rip"
 echo " notes: * for DVD, launch ffmes in directory without ISO & VOB, if you have more than one drive, insert only one DVD."
-echo "        * for ISO, launch ffmes in directory without VOB (one iso)"
+echo "        * for ISO, launch ffmes in directory with ISO (without VOB)"
 echo "        * for VOB, launch ffmes in directory with VOB (in VIDEO_TS/)"
 echo
 Echo_Separator_Light
-read -r -p "  Continue? [Y/n]:" q
+while :
+do
+read -r -p " Continue? [Y/n]:" q
 case $q in
 		"N"|"n")
 			Restart
 		;;
 		*)
-			# Relaunch function if user move files after read message
-			SetGlobalVariables
+			break
 		;;
 esac
+done
 
 # Assign input
 if [ "${#LSTVOB[@]}" -ge "1" ]; then
@@ -1615,7 +1616,7 @@ elif [ "${#LSTISO[@]}" -eq "1" ]; then
 	DVD="${LSTISO[0]}"
 else
 	while true; do
-		DVDINFO=$(setcd -i "$DVD_DEVICE")
+		DVDINFO=$(setcd -i "$DVD_DEVICE" 2>/dev/null)
 		case "$DVDINFO" in
 			*'Disc found'*)
 				DVD="$DVD_DEVICE"
@@ -1633,6 +1634,16 @@ else
 	done
 fi
 
+# Test ISO & DVD is valid DVD Video
+lsdvd "$DVD" &>/dev/null
+local lsdvd_result=$?
+if ! [ "$lsdvd_result" -eq 0 ]; then
+	echo
+	Echo_Mess_Error "$DVD is not valid DVD video"
+	echo
+	exit
+fi
+
 # Grep stat
 lsdvd -a -s "$DVD" 2>/dev/null | awk -F', AP:' '{print $1}' | awk -F', Subpictures' '{print $1}' \
 	| awk ' {gsub("Quantization: drc, ","");print}' | sed 's/^/    /' > "$LSDVD_CACHE"
@@ -1641,8 +1652,9 @@ DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "D
 mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | grep Title | awk '{print $2}' |  grep -o '[[:digit:]]*')
 
 # Question
+echo
 if [ "${#LSTVOB[@]}" -ge "1" ]; then
-	echo " ${#LSTVIDEO[@]}OB file(s) are been detected, choice one or more title to rip:"
+	echo " ${#LSTVIDEO[@]} VOB file(s) are been detected, choice one or more title to rip:"
 else
 	echo " $DVDtitle DVD video have been detected, choice one or more title to rip:"
 fi
@@ -2078,10 +2090,7 @@ for (( i=0; i<=$(( ${#LSTVIDEO[@]} - 1 )); i++ )); do
 	filesInLoop+=( "${LSTVIDEO[i]%.*}.$videoformat.$extcont" )
 
 	# For progress bar
-	#if [[ "${#LSTVIDEO[@]}" = "1" ]] \
-	#|| [[ "${#LSTVIDEO[@]}" -gt "1" && "$NVENC" = "0" ]]; then
-		Media_Source_Info_Record "${LSTVIDEO[i]}"
-	#fi
+	Media_Source_Info_Record "${LSTVIDEO[i]}"
 
 	(
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "${LSTVIDEO[i]}" \
@@ -5476,7 +5485,7 @@ case "$untagged_q" in
 esac
 }
 
-# Arguments variables
+#  s variables
 while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
@@ -5610,7 +5619,7 @@ case $ffmes_option in
 
  0 ) # DVD rip
 	CheckDVDCommand
-    DVDRip
+	DVDRip
 	Video_Custom_Video
 	Video_Custom_Audio
 	Video_Custom_Container

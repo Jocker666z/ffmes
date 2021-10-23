@@ -1,7 +1,14 @@
 # Changelog
+v0.89:
+DVD:
+	* add - test if DVD or ISO is valid DVD video
+	* fix - iso in argument
+Subtitle:
+	* add - support of .ass files
+
 v0.88c:
 Audio:
-	* fix - no more progress bar bug if video present in video directory
+	* fix - no more progress bar bug if video files present during audio encoding
 
 v0.88b:
 Video:
