@@ -2,9 +2,9 @@
 
 Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single file.
 
-Source media files, supported extension:
-* Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, ts, vob, vp9, webm, wmv
-* Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aud, caf, dff, dsf, dts, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, ops, opus, rmvb, shn, spx, tta, w64, wav, wma, wv
+Source media files, supported extention:
+* Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, rm, rmvb, ts, vob, vp9, webm, wmv
+* Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aptx, aud, caf, dff, dsf, dts, eac3, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, ops, opus, ra, ram, sbc, shn, spx, tak, thd, tta, w64, wav, wma, wv
 * Subtitle in ass, idx/sub, srt, ssa, sup
 
 **Note**: VGM encoding is now dissociated from ffmes, see **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
@@ -19,7 +19,7 @@ Source media files, supported extension:
 `ffmpeg ffprobe jq mkvtoolnix mediainfo sox uchardet coreutils findutils bc`
 
 ### CUE Splitting
-`cuetools flac monkeys-audio shntool`
+`cuetools flac monkeys-audio shntool wavpack`
 
 ### DVD rip
 `dvdbackup lsdvd ogmtools pv`
@@ -71,7 +71,7 @@ Extensions=any;
 
 ## Test
 ffmes is tested, under Debian unstable almost every day.
-If you encounter problems or have proposals, I am open to discussion.
+If you encounter bugs or have proposals, I'm open to discussion.
 
 --------------------------------------------------------------------------------------------------
 ## Documentations

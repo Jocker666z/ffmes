@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.89
+VERSION=v0.90
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -46,7 +46,7 @@ VOB_EXT_AVAILABLE="vob"
 
 # Video variables
 X265_LOG_LVL="log-level=-1:"																# libx265 log level
-VIDEO_EXT_AVAILABLE="3gp|avi|bik|flv|m2ts|m4v|mkv|mts|mp4|mpeg|mpg|mov|ogv|ts|vob|vp9|webm|wmv"
+VIDEO_EXT_AVAILABLE="3gp|avi|bik|flv|m2ts|m4v|mkv|mts|mp4|mpeg|mpg|mov|ogv|rm|rmvb|ts|vob|vp9|webm|wmv"
 NVENC="0"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
 VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
 
@@ -56,7 +56,7 @@ SUBTI_EXT_AVAILABLE="ass|srt|ssa|idx|sup"
 
 # Audio variables
 CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit wvunpack)
-AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aud|caf|dff|dsf|dts|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|ogg|ops|opus|rmvb|shn|spx|w64|wav|wma|wv"
+AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aptx|aud|caf|dff|dsf|dts|eac3|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|ogg|ops|opus|ra|ram|sbc|shn|spx|tak|thd|tta|w64|wav|wma|wv"
 CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
@@ -3621,7 +3621,7 @@ for files in "${LSTAUDIO[@]}"; do
 	Audio_False_Stereo_Action
 	# Silence detect & remove, at start & end (only for wav and flac source files)
 	Audio_Silent_Detection_Action
-	# Opus auto adapted bitrate
+	# Opus & AAC auto adapted bitrate
 	Audio_Opus_AAC_Auto_Bitrate
 	# Flac & WavPack sampling rate limitation
 	Audio_Sample_Rate_Limitation
@@ -5485,7 +5485,7 @@ case "$untagged_q" in
 esac
 }
 
-#  s variables
+# Arguments variables
 while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in

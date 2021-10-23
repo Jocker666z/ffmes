@@ -1,4 +1,17 @@
 # Changelog
+v0.90:
+Video:
+	* add - add RealVideo extention support: rm, rmvb
+Audio:
+	* add - add Dolby TrueHD extention support: thd
+	* add - add RealAudio extention support: ra, ram
+	* add - add TTA (True Audio) extention support: tta
+	* add - add TAK (Tom's lossless Audio Kompressor) extention support: tak
+	* add - add E-AC-3 extention support: eac3
+	* add - add Qualcomm aptX extention support: aptx
+	* add - add SIG SBC extention support: sbc
+	* fix - remove rmvb from audio codec
+
 v0.89:
 DVD:
 	* add - test if DVD or ISO is valid DVD video
@@ -86,8 +99,8 @@ Tag:
 v0.84:
 Audio:
 	* add - aac/m4a audio encoding in option 27, see the doc for more details
-	* add - support for the ops extension, the other name for the opus files
-	* chg - opus codec, back to the opus extension, works perfectly on PC, but causes various problems on specific app (like streaming server etc...)
+	* add - support for the ops extention, the other name for the opus files
+	* chg - opus codec, back to the opus extention, works perfectly on PC, but causes various problems on specific app (like streaming server etc...)
 	* add - channel layout config question, it avoids spamming the screen with the channel menu, which in reality is rarely changed
 	* fix - add -max_muxing_queue_size 9999 to audio validation, prevent false positive error "Too many packets buffered for output stream 0:1"
 Tag:
@@ -384,7 +397,7 @@ v0.60:
 	* update - opustags to v1.5.0
 * VGM:
 	* add - support of Sony PS3 files in laac
-	* fix - if various extensions in the same directory, the processing is now carried out correctly
+	* fix - if various extentions in the same directory, the processing is now carried out correctly
 	* update - vgmstream to r1050-3312-g70d20924-112-gd7bd5a2a Nov 17 2020
 	* update - vgm2wav to git version of 17 november 2020
 	* update - gbsplay & gbsinfo to 0.0.94-102-g081b3f9
@@ -397,7 +410,7 @@ v0.59:
 	* add - some comments in script
 * VGM:
 	* add - support of Sony PS3 files in laac
-	* fix - if various extensions in the same directory, the processing is now carried out correctly
+	* fix - if various extentions in the same directory, the processing is now carried out correctly
 	* update - vgmstream to r1050-3312-g70d20924-12-gde953729 Oct 23 2020
 
 v0.58a:
@@ -429,7 +442,7 @@ v0.56:
 * Audio :
 	* add - 1st file DB peak information at peak normalization question
 	* fix - typo in display of audio source info
-	* fix - remove audio target, if source extension same as source, now remove .back in filename
+	* fix - remove audio target, if source extention same as source, now remove .back in filename
 * Subtitle:
 	* fix - DVD subtitle (idx/sub) to srt - Clean DVDSub2Srt after each file  (commit by Subarashii-no-Fansub)
 * VGM:
@@ -591,7 +604,7 @@ v0.38:
 	* fix - merge, multiple audio and sub with same extention, now no longer multiplies by the number of files
 	* fix - dvdrip, mapfile use for extract all title, if error now not displayed
 * Audio:
-	* add - it is now possible to remove files with the same extension as the source
+	* add - it is now possible to remove files with the same extention as the source
 	* add - ExtractCover variable, 0=extract cover from files and remove from files, 1=keep cover in outpout files, empty=remove cover from files
 	* add - AudioSourceInfo, now test db peak of first source audio file, and display at end of the audio stream line
 * Various
@@ -608,7 +621,7 @@ v0.37:
 	* remove - libfdk_aac option, non-free, libopus more powerful, removing it makes ffmes compatible with distributions that don't deliver ffmpeg in a non-free version.
 * Audio:
 	* add - silence detect & remove, at start & end, only for wav and flac source
-	* add - it is now possible to encode files with the same extension as the source
+	* add - it is now possible to encode files with the same extention as the source
 	* fix - audio normalization in batch
 	* remove - libfdk_aac option 26, non-free, libopus more powerful, removing it makes ffmes compatible with distributions that don't deliver ffmpeg in a non-free version.
 * VGM:
@@ -808,7 +821,7 @@ v0.20:
 * functions:
 	* DVDRip(): fix - select good output file after rip
 	* ConfChannels(): remove channel selection 2.1 to 4.0, not useful
-	* MultipleAudioExtention(): add - for profile 22 to 25, question when multiple audio extension present in directory
+	* MultipleAudioExtention(): add - for profile 22 to 25, question when multiple audio extention present in directory
 	* SplitCUE(): modified - now converts the CUE file not UTF-8 to UTF-8
 
 v0.19:
