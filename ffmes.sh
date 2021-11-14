@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.90
+VERSION=v0.90a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -1219,9 +1219,11 @@ Restart
 }
 TestVAAPI() {							# VAAPI device test
 if [ -e "$VAAPI_device" ]; then
-	GPUDECODE="-hwaccel vaapi -hwaccel_device /dev/dri/renderD128"
-else
-	GPUDECODE=""
+	if "$ffmpeg_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
+		GPUDECODE="-hwaccel vaapi -hwaccel_device $VAAPI_device"
+	else
+		GPUDECODE=""
+	fi
 fi
 }
 TestHDR(){

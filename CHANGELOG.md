@@ -1,4 +1,8 @@
 # Changelog
+v0.90a:
+Video:
+	* fix - now test if ffmpeg current version support vaapi
+
 v0.90:
 Video:
 	* add - add RealVideo extention support: rm, rmvb
