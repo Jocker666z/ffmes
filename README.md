@@ -7,26 +7,19 @@ Source media files, supported extention:
 * Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aptx, aud, caf, dff, dsf, dts, eac3, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, ops, opus, ra, ram, sbc, shn, spx, tak, thd, tta, w64, wav, wma, wv
 * Subtitle in ass, idx/sub, srt, ssa, sup
 
-**Note**: VGM encoding is now dissociated from ffmes, see **vgm2flac -> https://github.com/Jocker666z/vgm2flac**
-
 --------------------------------------------------------------------------------------------------
 ## Install & update
 `curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/$USER/.local/bin/ffmes && chmod +rx /home/$USER/.local/bin/ffmes`
 
 ## Dependencies
-
 ### Essential 
 `ffmpeg ffprobe jq mkvtoolnix mediainfo sox uchardet coreutils findutils bc`
-
 ### CUE Splitting
 `cuetools flac monkeys-audio shntool wavpack`
-
 ### DVD rip
 `dvdbackup lsdvd ogmtools pv`
-
 ### DVD Subtitle
 `ogmrip tesseract-ocr tesseract-ocr-all wget`
-
 ### Audio tag
 `flac monkeys-audio audiotools python-mutagen wavpack`
 
@@ -49,25 +42,12 @@ Usage: ffmes options
   -v|--verbose            Display ffmpeg log level as info.
   -vv|--fullverbose       Display ffmpeg log level as debug
 ```
-
 Examples:
 * `ffmes` with audio/video in directory
 * `ffmes -i DIRECTORY-TO.EDIT` for directory
 * `ffmes -i FILE-TO.EDIT` for single video or audio
 * `ffmes -vv -i FILE-TO.EDIT` for single video or audio, with ffmpeg in log level as debug
 * `ffmes -s 1 -i FILE-TO.EDIT` for single video, select option 1 by-passing the main menu
-
-### Nemo action
-`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
-```
-[Nemo Action]
-Active=true
-Name=ffmes %N
-Comment=ffmes %N
-Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
-Selection=any
-Extensions=any;
-```
 
 ## Test
 ffmes is tested, under Debian unstable almost every day.
@@ -292,6 +272,30 @@ Restriction:
 * CUE split fail with 24bits audio (shnsplit bug)
 * ffmpeg 4.4 from debian-multimedia repository (ffmpeg/unstable 10:4.4-dmo5 amd64), encounter unrepeatable wavpack encoding error
 
+--------------------------------------------------------------------------------------------------
+## Integration
+### Nemo action - gnome-terminal
+`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
+```
+[Nemo Action]
+Active=true
+Name=ffmes %N
+Comment=ffmes %N
+Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
+Selection=any
+Extensions=any;
+```
+### Nemo action - terminator
+`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
+```
+[Nemo Action]
+Active=true
+Name=ffmes %N
+Comment=ffmes %N
+Exec=terminator --working-directory='%P' -x ~/.local/bin/ffmes -i '%F'
+Selection=any
+Extensions=any;
+```
 --------------------------------------------------------------------------------------------------
 ## Holy reading
 * Video codecs:

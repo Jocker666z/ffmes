@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.90a
+VERSION=v0.90b
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -28,9 +28,6 @@ OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD playe
 # General variables
 CORE_COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
 NPROC=$(nproc --all)																		# Set number of process
-TERM_WIDTH=$(stty size | awk '{print $2}')													# Get terminal width
-TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')					# Get terminal width truncate
-TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')			# Get terminal width truncate
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log level
 FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
 
@@ -950,6 +947,11 @@ if [[ "${#label}" -gt "$TERM_WIDTH_PROGRESS_TRUNC" ]]; then
 else
 	echo "$label"
 fi
+}
+Display_Term_Size() {					# Get terminal size
+TERM_WIDTH=$(stty size | awk '{print $2}')													# Get terminal width
+TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')					# Get terminal width truncate
+TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')			# Get terminal width truncate
 }
 Display_Variable_Trick() {				# Punctuation trick
 local variable
@@ -5587,6 +5589,7 @@ CheckCoreCommand
 CheckCacheDirectory							# Check if cache directory exist
 CheckCustomBin
 CheckFFmpegVersion
+Display_Term_Size
 StartLoading "Listing of media files to be processed"
 SetGlobalVariables							# Set global variable
 DetectDVD									# DVD detection

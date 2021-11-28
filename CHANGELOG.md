@@ -1,4 +1,8 @@
 # Changelog
+v0.90b:
+Various:
+	* fix - get terminal width later in script. At the beginning of the script, in some cases the value was taken before the terminal was opened.
+
 v0.90a:
 Video:
 	* fix - now test if ffmpeg current version support vaapi
