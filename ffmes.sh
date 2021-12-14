@@ -3279,7 +3279,7 @@ else
 	
 	# Concatenate
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 -i <(for f in *."${LSTVIDEO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
-		-c copy "$filename_id" \
+		-map 0 -c copy "$filename_id" \
 		| ProgressBar "" "1" "1" "Concatenate" "1"
 
 	# End time counter
