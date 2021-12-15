@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.90b
+VERSION=v0.91
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -36,8 +36,9 @@ FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if
 FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, if variable empty use system bin
 SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
 
-# DVD rip variables
-DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
+# DVD & Blu-ray rip variables
+DVD_COMMAND_NEEDED=(bluray_copy bluray_info)
+BLURAY_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
 
@@ -393,6 +394,9 @@ fi
 if [[ "$command" = "mkvmerge" ]] || [[ "$command" = "mkvpropedit" ]]; then
 	command="$command (mkvtoolnix package)"
 fi
+if [[ "$command" = "bluray_copy" ]] || [[ "$command" = "bluray_info" ]]; then
+	command="$command (https://github.com/beandog/bluray_info)"
+fi
 }
 CheckCommandDisplay() {
 local label
@@ -443,6 +447,19 @@ for command in "${DVD_COMMAND_NEEDED[@]}"; do
 	fi
 done
 CheckCommandDisplay "DVD rip"
+}
+CheckBDCommand() {
+n=0;
+for command in "${BLURAY_COMMAND_NEEDED[@]}"; do
+	if hash "$command" &>/dev/null; then
+		(( c++ )) || true
+	else
+		CheckCommandLabel
+		command_fail+=("  [!] $command")
+		(( n++ )) || true
+	fi
+done
+CheckCommandDisplay "Blu-ray rip"
 }
 CheckSubtitleCommand() {
 n=0;
@@ -574,7 +591,7 @@ clear
 echo
 echo "  / ffmes $VERSION /"
 echo "  -----------------------------------------------------"
-echo "   0 - DVD rip                                        |"
+echo "   0 - DVD & Blu-ray rip                              |"
 echo "   1 - video encoding                                 |-Video"
 echo "   2 - copy stream to mkv with map option             |"
 echo "   3 - encode audio stream only                       |"
@@ -599,8 +616,8 @@ echo "  26 - audio to opus (libopus)                        |"
 echo "  27 - audio to aac                                   |"
 echo "  -----------------------------------------------------"
 echo "  30 - audio tag editor                               |"
-echo "  31 - view one audio file stats                      |"
-echo "  32 - compare audio files stats                      |-Audio Tools"
+echo "  31 - view one audio file stats                      |-Audio Tools"
+echo "  32 - compare audio files stats                      |"
 echo "  33 - generate png image of audio spectrum           |"
 echo "  34 - concatenate audio files                        |"
 echo "  35 - cut audio file                                 |"
@@ -1262,9 +1279,7 @@ if [ "${#filesPass[@]}" -gt 0 ] ; then
 			echo
 		;;
 		*)
-			#if [[ "$ffmes_option" -ge 20 ]]; then
-				SourceNotRemoved="1"
-			#fi
+			SourceNotRemoved="1"
 		;;
 	esac
 fi
@@ -2047,6 +2062,55 @@ for files in "${LSTSUB[@]}"; do
 done
 }
 
+## Blu-ray
+BLURAYrip() {
+# Local variables
+local BD_disk
+local BD_title
+
+clear
+echo
+echo " Blu-ray rip"
+echo " notes: * for ISO, launch ffmes in directory with one ISO"
+echo "        * for disk directory, launch ffmes in disk directory (must writable)"
+echo
+Echo_Separator_Light
+while :
+do
+read -r -p " Continue? [Y/n]:" q
+case $q in
+		"N"|"n")
+			Restart
+		;;
+		*)
+			break
+		;;
+esac
+done
+
+# Assign input
+if bluray_info "$PWD" &>/dev/null; then
+	BD_disk="$PWD"
+elif [[ -z "$BD_disk" ]] && [ "${#LSTISO[@]}" -eq "1" ]; then
+	BD_disk="${LSTISO[0]}"
+else
+	echo
+	Echo_Mess_Error "No ISO or Blu-Ray directory"
+	echo
+fi
+
+if [[ -n "$BD_disk" ]]; then
+	# Get disk title
+	BD_title=$(bluray_info -j "$BD_disk" 2>/dev/null | jq -r '.bluray | ."disc name"')
+
+	# Remux
+	bluray_copy "$BD_disk" -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner $GPUDECODE -i - \
+				-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
+				"$BD_title".BD.Remux.mkv \
+				&& echo "  $BD_title.BD.Remux.mkv remux done" || Echo_Mess_Error "$BD_title.BD.Remux.mkv remux fail"
+fi
+}
+
 ## VIDEO
 Video_FFmpeg_video_cmd() {				# FFmpeg video encoding command
 # Local variables
@@ -2071,7 +2135,7 @@ if ! [[ "$ENCODV" = "1" ]]; then
 		# Progress
 		ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
 
-		TimestampTest=$("$ffprobe_bin" -loglevel error -select_streams v:0 \
+		TimestampTest=$("$ffprobe_bin" -analyzeduration 512M -probesize 512M -loglevel error -select_streams v:0 \
 						-show_entries packet=pts_time,flags -of csv=print_section=0 "${LSTVIDEO[i]}" \
 						2>/dev/null | awk -F',' '/K/ {print $1}' | tail -1)
 
@@ -2365,6 +2429,7 @@ elif [ "$qv" = "e" ]; then
 	echo
 	echo "  [x264]  > for libx264 codec"
 	echo " *[x265]  > for libx265 codec"
+	echo "  [av1]   > for libaom-av1 codec"
 	echo "  [mpeg4] > for xvid codec"
 	echo "  [q]     > for exit"
 	read -r -e -p "-> " yn
@@ -2378,6 +2443,11 @@ elif [ "$qv" = "e" ]; then
 			codec="libx265"
 			chvcodec="HEVC"
 			Video_x264_5_Config
+		;;
+		"av1")
+			codec="libaom-av1"
+			chvcodec="AV1"
+			Video_av1_Config
 		;;
 		"mpeg4")
 			codec="mpeg4 -vtag xvid"
@@ -2698,7 +2768,7 @@ local video_stream_size
 Display_Video_Custom_Info_choice
 echo " Choose the preset:"
 echo
-echo "  ----------------------------------------------> Encoding Speed"
+echo "  Speed <-------------------------------------------------------"
 echo "  veryfast - faster - fast -  medium - slow* - slower - veryslow"
 echo "  -----------------------------------------------------> Quality"
 read -r -e -p "-> " reppreset
@@ -2980,6 +3050,78 @@ elif [ "$rpvkb" = "9" ]; then
 	vkb="-crf 35"
 else
 	vkb="-crf 20"
+fi
+}
+Video_av1_Config() {					# Option 1  	- Conf av1
+# Local variables
+local video_stream_kb
+local video_stream_size
+
+# Preset av1
+Display_Video_Custom_Info_choice
+echo " Choose cpu-used efficient compression value (preset):"
+echo
+echo "  Speed <----------------------------"
+echo "  8 - 7 - 6 -  5 - 4 - 3 - 2* - 1 - 0"
+echo "  --------------------------> Quality"
+read -r -e -p "-> " reppreset
+if test -n "$reppreset"; then
+	preset="-cpu-used $reppreset"
+	chpreset="- cpu-used: $reppreset"
+else
+	preset="-cpu-used 2 -row-mt 1 -tiles 4x1"
+	chpreset="- cpu-used: 2"
+fi
+
+# Bitrate av1
+Display_Video_Custom_Info_choice
+echo " Choose a CRF number, video strem size, or enter the desired bitrate:"
+echo " Note: * This settings influences size and quality, crf is a better choise in 90% of cases."
+echo "       * libaom-av1 can save about 30% bitrate compared to VP9 and H.265 / HEVC,"
+echo "         and about 50% over H.264, while retaining the same visual quality. "
+echo
+echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
+echo " [1500m]     Example of input for aproximative total size of video stream in MB (not recommended in batch)"
+echo " [-crf 21]   Example of input for crf desired level"
+echo
+echo "  [1] > for crf 0   Q∧ |"
+echo "  [2] > for crf 10  U| |S"
+echo "  [3] > for crf 20  A| |I"
+echo " *[4] > for crf 30  L| |Z"
+echo "  [5] > for crf 40  I| |E"
+echo "  [6] > for crf 50  T| |"
+echo "  [7] > for crf 60  Y| ∨"
+read -r -e -p "-> " rpvkb
+if echo "$rpvkb" | grep -q 'k'; then
+	# Remove all after k from variable for prevent syntax error
+	video_stream_kb="${rpvkb%k*}"
+	# Set cbr variable
+	vkb="-b:v ${video_stream_kb}k"
+elif echo "$rpvkb" | grep -q 'm'; then
+	# Remove all after m from variable
+	video_stream_size="${rpvkb%m*}"
+	# Bitrate calculation
+	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
+	# Set cbr variable
+	vkb="-b:v ${video_stream_kb}k"
+elif echo "$rpvkb" | grep -q 'crf'; then
+	vkb="$rpvkb"
+elif [ "$rpvkb" = "1" ]; then
+	vkb="-crf 0"
+elif [ "$rpvkb" = "2" ]; then
+	vkb="-crf 10"
+elif [ "$rpvkb" = "3" ]; then
+	vkb="-crf 20"
+elif [ "$rpvkb" = "4" ]; then
+	vkb="-crf 30"
+elif [ "$rpvkb" = "5" ]; then
+	vkb="-crf 40"
+elif [ "$rpvkb" = "6" ]; then
+	vkb="-crf 50"
+elif [ "$rpvkb" = "7" ]; then
+	vkb="-crf 60"
+else
+	vkb="-crf 30"
 fi
 }
 Video_Custom_Audio_Only() {				# Option 3  	- Encode audio stream only
@@ -5622,16 +5764,41 @@ case $ffmes_option in
 	Display_Main_Menu
 	;;
 
- 0 ) # DVD rip
-	CheckDVDCommand
-	DVDRip
-	Video_Custom_Video
-	Video_Custom_Audio
-	Video_Custom_Container
-	Video_Custom_Stream
-	Video_FFmpeg_video_cmd
-	Remove_File_Source
-	Clean
+ 0 ) # DVD & BD rip
+	echo " Choose DVD or Blu-Ray?"
+	echo
+	echo "  [0] > for DVD"
+	echo "  [1] > for Blu-ray"
+	read -r -e -p "  -> " qdvdbd
+	case $qdvdbd in
+		"0")
+			# DVD rip
+			CheckDVDCommand
+			DVDRip
+			Video_Custom_Video
+			Video_Custom_Audio
+			Video_Custom_Container
+			Video_Custom_Stream
+			Video_FFmpeg_video_cmd
+			Remove_File_Source
+			Clean
+		;;
+		"1")
+			# Blu-ray rip
+			if [ "${#LSTISO[@]}" -gt "1" ]; then
+				echo
+				Echo_Mess_Error "${#LSTISO[@]} files, one ISO file at a time"
+				echo
+				exit
+			else
+				CheckBDCommand
+				BLURAYrip
+			fi
+		;;
+		*)
+			Echo_Mess_Invalid_Answer
+		;;
+	esac
 	;;
 
  1 ) # video -> full custom

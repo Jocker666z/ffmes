@@ -1,6 +1,6 @@
 # ffmes - ffmpeg media encode script 
 
-Bash tool handling media files, and DVD. Mainly with ffmpeg. In batch or single file.
+Bash tool handling media files, DVD & Blu-ray. Mainly with ffmpeg. In batch or single file.
 
 Source media files, supported extention:
 * Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, rm, rmvb, ts, vob, vp9, webm, wmv
@@ -20,6 +20,8 @@ Source media files, supported extention:
 `dvdbackup lsdvd ogmtools pv`
 ### DVD Subtitle
 `ogmrip tesseract-ocr tesseract-ocr-all wget`
+### Blu-Ray rip
+`bluray_copy bluray_info`
 ### Audio tag
 `flac monkeys-audio audiotools python-mutagen wavpack`
 
@@ -58,7 +60,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 
 ### Main menu options
 * Video:
-	* 0, DVD rip (vob, ISO, or disc)
+	* 0, DVD & Blu-ray rip
 	* 1, video encoding
 	* 2, copy stream to mkv with map option
 	* 3, encode audio stream only
@@ -93,12 +95,17 @@ If you encounter bugs or have proposals, I'm open to discussion.
 
 --------------------------------------------------------------------------------------------------
 ### Video options
-#### Option 0 details - DVD rip (vob, ISO, or disc)
+#### Option 0 details - DVD & Blu-ray rip
+##### DVD:
 * Rip DVD, include ISO and VIDEO_TS VOB
+* Remux all stream in mkv
 * Chapters integration
-* Fix timestamp and display ratio to mkv file (stream copy)
 * launch option 1 (optional)
-    
+##### Blu-ray:
+* Rip ISO & disc directory
+* Remux all stream in mkv
+* https://github.com/beandog/bluray_info must be installed (see install help bellow)
+
 #### Option 1 details - video encoding, full custom options
 * Video:
 	* Stream copy or encoding
@@ -111,6 +118,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 		* codecs:
 			* x264: profile, tune, preset & bitrate (video stream total size, crf & cbr)
 			* x265: profile, tune, HDR, preset & bitrate (video stream total size, crf & cbr)
+			* av1: cpu-used (preset), bitrate (video stream total size, crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
 		* if VAAPI device found at /dev/dri/renderD128, it's used for decode video
 * Audio:
@@ -267,10 +275,21 @@ Restriction:
 	* Description: Peak db normalization option, this value is written as positive but is used in negative (e.g. 4 = -4)
 
 --------------------------------------------------------------------------------------------------
+## Dependencies installation
+### bluray_info & bluray_copy
+
+```
+git clone https://github.com/beandog/bluray_info && cd bluray_info
+autoreconf -fi && ./configure
+make
+su -c "make install" -m "root"
+```
+
+--------------------------------------------------------------------------------------------------
 ## Known errors
 * rename bug with mv and CIFS mount: add `cache=loose` in your mount option
 * CUE split fail with 24bits audio (shnsplit bug)
-* ffmpeg 4.4 from debian-multimedia repository (ffmpeg/unstable 10:4.4-dmo5 amd64), encounter unrepeatable wavpack encoding error
+* ffmpeg 4.4, 4.4.1 from debian-multimedia repository, encounter unrepeatable wavpack encoding error
 
 --------------------------------------------------------------------------------------------------
 ## Integration
@@ -292,10 +311,11 @@ Extensions=any;
 Active=true
 Name=ffmes %N
 Comment=ffmes %N
-Exec=terminator --working-directory='%P' -x ~/.local/bin/ffmes -i '%F'
+Exec=terminator --working-directory='"%P"' -x ~/.local/bin/ffmes -i '"%F"'
 Selection=any
 Extensions=any;
 ```
+
 --------------------------------------------------------------------------------------------------
 ## Holy reading
 * Video codecs:
@@ -315,3 +335,8 @@ Extensions=any;
 * Audio codecs:
 	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison
 	* https://wiki.hydrogenaud.io/index.php/LAME
+
+--------------------------------------------------------------------------------------------------
+## Holy tools
+* Subtitle:
+	* https://github.com/smacke/ffsubsync

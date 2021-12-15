@@ -1,4 +1,11 @@
 # Changelog
+v0.91:
+* Video:
+	* add - preliminary support of bluray rip, for now experimental and need external software (https://github.com/beandog/bluray_info)
+	* add - preliminary support of av1 encoding with libaom-av1 codec
+	* add - for timestamp test, add probesize at 512M, for speed up test. Experimental for now, it may not be a clean enough solution.
+	* fix - concatenate now keep all stream (-map 0 missing)
+
 v0.90b:
 Various:
 	* fix - get terminal width later in script. At the beginning of the script, in some cases the value was taken before the terminal was opened.
