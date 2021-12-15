@@ -37,8 +37,8 @@ FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, 
 SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
 
 # DVD & Blu-ray rip variables
-DVD_COMMAND_NEEDED=(bluray_copy bluray_info)
-BLURAY_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
+BLURAY_COMMAND_NEEDED=(bluray_copy bluray_info)
+DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
 
