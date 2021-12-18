@@ -1,4 +1,14 @@
 # Changelog
+v0.92:
+* Video:
+	* add - in av1 crf quality argument, add -b:v 0
+	* fix - DVD & blu-ray, fix inverted variables
+Various:
+	* add - in some codec menu add quit option
+	* chg - improve some video codec menu
+	* fix - now test ffmpeg version with real ffmpeg bin
+	* fix - now done a proper test of ffmpeg support of -stats_period, by test a full list of option
+
 v0.91:
 * Video:
 	* add - preliminary support of bluray rip, for now experimental and need external software (https://github.com/beandog/bluray_info)

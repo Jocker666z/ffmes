@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.91
+VERSION=v0.92
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -339,10 +339,10 @@ rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
 CheckFFmpegVersion() {
 local ffmpeg_version
 
-ffmpeg_version=$(ffmpeg -version | awk -F 'ffmpeg version' '{print $2}' | awk 'NR==1{print $1}')
+ffmpeg_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
 
-# stats_period add in v4.4
-if [[ "$ffmpeg_version" < 4.3 ]]; then
+# If ffmpeg version < 4.4 not use -stats_period
+if [ -z "$ffmpeg_stats_period" ]; then
 	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
 fi
 }
@@ -912,7 +912,7 @@ if [ "$ENCODV" = "1" ]; then
 	echo "   * Resolution: $chwidth"
 	echo "   * Desinterlace: $chdes"
 	echo "   * Frame rate: $chfps"
-	echo "   * Codec: $chvcodec $chpreset $chtune $chprofile"
+	echo "   * Codec: $chvcodec${chpreset}${chtune}${chprofile}"
 	echo "   * Bitrate: $vkb"
 fi
 echo "  Audio stream: $chsoundstream"
@@ -2738,6 +2738,7 @@ echo "  [4] > for qscale 15  -"
 echo "  [5] > for qscale 20  |"
 echo "  [6] > for qscale 15  |SD"
 echo "  [7] > for qscale 30  |"
+echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
 if echo "$rpvkb" | grep -q 'k' ; then
 	vkb="-b:v $rpvkb"
@@ -2755,6 +2756,8 @@ elif [ "$rpvkb" = "6" ]; then
 	vkb="-q:v 25"
 elif [ "$rpvkb" = "7" ]; then
 	vkb="-q:v 30"
+elif [ "$rpvkb" = "q" ]; then
+	Restart
 else
 	vkb="-q:v 10"
 fi
@@ -2768,23 +2771,30 @@ local video_stream_size
 Display_Video_Custom_Info_choice
 echo " Choose the preset:"
 echo
-echo "  Speed <-------------------------------------------------------"
-echo "  veryfast - faster - fast -  medium - slow* - slower - veryslow"
-echo "  -----------------------------------------------------> Quality"
+echo "  [veryslow] > lower speed; best quality"
+echo "  [slower]"
+echo " *[slow]"
+echo "  [medium]"
+echo "  [fast]"
+echo "  [faster]"
+echo "  [veryfast] > best speed; lower quality"
+echo "  [q]        > for exit"
 read -r -e -p "-> " reppreset
-if test -n "$reppreset"; then
+if [ -n "$reppreset" ]; then
 	preset="-preset $reppreset"
-	chpreset="$reppreset"
+	chpreset="; preset $reppreset"
+elif [ "$reppreset" = "q" ]; then
+	Restart
 else
 	preset="-preset medium"
-	chpreset="slow"
+	chpreset="; preset slow"
 fi
 
 # Tune x264/x265
 Display_Video_Custom_Info_choice
 if [ "$chvcodec" = "H264" ]; then
 	echo " Choose tune:"
-	echo " Note: This settings influences the final rendering of the image, and speed of encoding."
+	echo " Note: This settings influences the final rendering of the image & speed of encoding."
 	echo
 	echo " *[cfilm]       > for movie content, ffmes custom tuning (high quality)"
 	echo "  [canimation]  > for animation content, ffmes custom tuning (high quality)"
@@ -2796,38 +2806,33 @@ if [ "$chvcodec" = "H264" ]; then
 	echo "  [stillimage]  > for slideshow-like content "
 	echo "  [fastdecode]  > for allows faster decoding (disabling certain filters)"
 	echo "  [zerolatency] > for fast encoding and low-latency streaming "
+	echo "  [q]           > for exit"
 	read -r -e -p " -> " reptune
 	if [ "$reptune" = "film" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "animation" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "grain" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "stillimage" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "fastdecode" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "zerolatency" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "cfilm" ]; then
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
-		chtune="ffmes-film"
 	elif [ "$reptune" = "canimation" ]; then
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9 -deblock -2:-2 -psy-rd 1.0:0.25 -aq 0.5 -qcomp 0.8"
-		chtune="ffmes-animation"
 	elif [ "$reptune" = "no" ]; then
 		tune=""
-		chtune=""
+	elif [ "$reptune" = "q" ]; then
+		Restart
 	else
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
-		chtune="ffmes-film"
 	fi
+	# Menu display tune
+	chtune="; tune $reptune"
 elif [ "$chvcodec" = "HEVC" ]; then
 	echo " Choose tune:"
 	echo " Notes: * This settings influences the final rendering of the image, and speed of encoding."
@@ -2838,29 +2843,30 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	echo "  [ssim]        > for movie content; enables adaptive quant auto-mode, disables psy-rd"
 	echo "  [grain]       > for preserves the grain structure in old, grainy film material"
 	echo "  [fastdecode]  > for allows faster decoding (disabling certain filters)"
-	echo "  [zerolatency] > for fast encoding and low-latency streaming "
+	echo "  [zerolatency] > for fast encoding and low-latency streaming"
+	echo "  [q]           > for exit"
 	read -r -e -p "-> " reptune
 	if [ "$reptune" = "psnr" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "ssim" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "grain" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "fastdecode" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
 	elif [ "$reptune" = "zerolatency" ]; then
 		tune="-tune $reptune"
-		chtune="$reptune"
-	elif [ "$reptune" = "no" ]; then
-		tune=""
-		chtune="$reptune tuning"
+	elif [ "$reptune" = "q" ]; then
+		Restart
 	else
 		tune=""
-		chtune="default tuning"
+		chtune="; tune default"
+	fi
+	# Menu display tune
+	if [ -n "$tune" ]; then
+		chtune="; tune $reptune"
+	else
+		chtune="; tune default"
 	fi
 fi
 
@@ -2883,37 +2889,40 @@ if [ "$chvcodec" = "H264" ]; then
 	echo "  [7] > | 5.0 | High     | 169Mb/s | 1920×1080>72  || 2560×1920>30 |"
 	echo "  [8] > | 5.1 | High     | 300Mb/s | 1920×1080>120 || 4096×2048>30 |"
 	echo "  [9] > | 5.2 | High     | 300Mb/s | 1920×1080>172 || 4096×2160>60 |"
+	echo "  [q] > for exit"
 	read -r -e -p "-> " repprofile
 	if [ "$repprofile" = "1" ]; then
 		profile="-profile:v baseline -level 3.0"
-		chprofile="Baseline 3.0"
+		chprofile="; profile Baseline 3.0"
 	elif [ "$repprofile" = "2" ]; then
 		profile="-profile:v baseline -level 3.1"
-		chprofile="Baseline 3.1"
+		chprofile="; profile Baseline 3.1"
 	elif [ "$repprofile" = "3" ]; then
 		profile="-profile:v main -level 4.0"
-		chprofile="Baseline 4.0"
+		chprofile="; profile Baseline 4.0"
 	elif [ "$repprofile" = "4" ]; then
 		profile="-profile:v high -level 4.0"
-		chprofile="High 4.0"
+		chprofile="; profile High 4.0"
 	elif [ "$repprofile" = "5" ]; then
 		profile="-profile:v high -level 4.1"
-		chprofile="High 4.1"
+		chprofile="; profile High 4.1"
 	elif [ "$repprofile" = "6" ]; then
 		profile="-profile:v high -level 4.2"
-		chprofile="High 4.2"
+		chprofile="; profile High 4.2"
 	elif [ "$repprofile" = "7" ]; then
 		profile="-profile:v high -level 5.0"
-		chprofile="High 5.0"
+		chprofile="; profile High 5.0"
 	elif [ "$repprofile" = "8" ]; then
 		profile="-profile:v high -level 5.1"
-		chprofile="High 5.1"
+		chprofile="; profile High 5.1"
 	elif [ "$repprofile" = "9" ]; then
 		profile="-profile:v high -level 5.2"
-		chprofile="High 5.2"
+		chprofile="; profile High 5.2"
+	elif [ "$repprofile" = "q" ]; then
+		Restart
 	else
 		profile="-profile:v high -level 4.1"
-		chprofile="High 4.1"
+		chprofile="; profile High 4.1"
 	fi
 elif [ "$chvcodec" = "HEVC" ]; then
 	echo " Choose a profile or make your profile manually:"
@@ -2948,59 +2957,64 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	echo "  [11] > | 6.2 | 1     | 0     | 12  | 0   | 4:4:4  | 2400   | 8192×4320>120               |"
 	echo "  [12] > | 6.2 | 1     | 0     | 12  | 1   | 4:4:4  | 2400   | 8192×4320>120               |"
 	echo "  [13] > | 6.2 | 1     | 1     | 12  | 0   | 4:4:4  | 28800  | 8192×4320>120               |"
+	echo "   [q] > for exit"
 	read -r -e -p "-> " repprofile
 	if echo "$repprofile" | grep -q 'profil'; then
-			profile="$repprofile"
-			chprofile="$repprofile"
+		profile="$repprofile"
+		chprofile="; profile $repprofile"
 	elif [ "$repprofile" = "1" ]; then
-			profile="-profile:v main -x265-params ${X265_LOG_LVL}level=3.1 -pix_fmt yuv420p"
-			chprofile="3.1 - 8 bit - 4:2:0"
+		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=3.1 -pix_fmt yuv420p"
+		chprofile="; profile 3.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "2" ]; then
-			profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1 -pix_fmt yuv420p"
-			chprofile="4.1 - 8 bit - 4:2:0"
+		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1 -pix_fmt yuv420p"
+		chprofile="; profile 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "3" ]; then
-			profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
-			chprofile="4.1 - 8 bit - 4:2:0"
+		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
+		chprofile="; profile 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "4" ]; then
-			profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p12le"
-			chprofile="4.1 - 12 bit - 4:4:4"
+		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p12le"
+		chprofile="; profile 4.1 - 12 bit - 4:4:4"
 	elif [ "$repprofile" = "5" ]; then
-			profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-			chprofile="4.1 - 12 bit - 4:4:4 - HDR"
+		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+		chprofile="; profile 4.1 - 12 bit - 4:4:4 - HDR"
 	elif [ "$repprofile" = "6" ]; then
-			profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p12le"
-			chprofile="4.1 - 12 bit - 4:4:4 - intra"
+		profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p12le"
+		chprofile="; profile 4.1 - 12 bit - 4:4:4 - intra"
 	elif [ "$repprofile" = "7" ]; then
-			profile="-profile:v main -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p"
-			chprofile="5.2 - 8 bit - 4:2:0"
+		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p"
+		chprofile="; profile 5.2 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "8" ]; then
-			profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p12le"
-			chprofile="5.2 - 12 bit - 4:4:4"
+		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p12le"
+		chprofile="; profile 5.2 - 12 bit - 4:4:4"
 	elif [ "$repprofile" = "9" ]; then
-			profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-			chprofile="5.2 - 12 bit - 4:4:4 - HDR"
+		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+		chprofile="; profile 5.2 - 12 bit - 4:4:4 - HDR"
 	elif [ "$repprofile" = "10" ]; then
-			profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p12le"
-			chprofile="5.2 - 12 bit - 4:4:4 - intra"
+		profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p12le"
+		chprofile="; profile 5.2 - 12 bit - 4:4:4 - intra"
 	elif [ "$repprofile" = "11" ]; then
-			profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p12le"
-			chprofile="6.2 - 12 bit - 4:4:4"
+		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p12le"
+		chprofile="; profile 6.2 - 12 bit - 4:4:4"
 	elif [ "$repprofile" = "12" ]; then
-			profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-			chprofile="6.2 - 12 bit - 4:4:4 - HDR"
+		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
+		chprofile="; profile 6.2 - 12 bit - 4:4:4 - HDR"
 	elif [ "$repprofile" = "13" ]; then
-			profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p12le"
-			chprofile="6.2 - 12 bit - 4:4:4 - intra"
+		profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p12le"
+		chprofile="; profile 6.2 - 12 bit - 4:4:4 - intra"
+	elif [ "$repprofile" = "q" ]; then
+		Restart
 	else
-			profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
-			chprofile="High 4.1 - 8 bit - 4:2:0"
+		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
+		chprofile="; profile High 4.1 - 8 bit - 4:2:0"
 	fi
 fi
 
 # Bitrate x264/x265
 Display_Video_Custom_Info_choice
 echo " Choose a CRF number, video strem size, or enter the desired bitrate:"
-echo " Note: This settings influences size and quality, crf is a better choise in 90% of cases."
+echo " Note: * This settings influences size and quality, crf is a better choise in 90% of cases."
+echo "       * libx265 which can offer 25–50% bitrate savings compared to libx264."
+
 echo
 echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
 echo " [1500m]     Example of input for aproximative total size of video stream in MB (not recommended in batch)"
@@ -3015,6 +3029,7 @@ echo "  [6] > for crf 22  I| |E"
 echo "  [7] > for crf 25  T| |"
 echo "  [8] > for crf 30  Y| |"
 echo "  [9] > for crf 35   | ∨"
+echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
 if echo "$rpvkb" | grep -q 'k'; then
 	# Remove all after k from variable for prevent syntax error
@@ -3048,6 +3063,8 @@ elif [ "$rpvkb" = "8" ]; then
 	vkb="-crf 30"
 elif [ "$rpvkb" = "9" ]; then
 	vkb="-crf 35"
+elif [ "$rpvkb" = "q" ]; then
+	Restart
 else
 	vkb="-crf 20"
 fi
@@ -3061,16 +3078,25 @@ local video_stream_size
 Display_Video_Custom_Info_choice
 echo " Choose cpu-used efficient compression value (preset):"
 echo
-echo "  Speed <----------------------------"
-echo "  8 - 7 - 6 -  5 - 4 - 3 - 2* - 1 - 0"
-echo "  --------------------------> Quality"
+echo "  [0] > for cpu-used 0   ∧ |"
+echo "  [1] > for cpu-used 1  Q| |"
+echo " *[2] > for cpu-used 2  U| |S"
+echo "  [3] > for cpu-used 3  A| |P"
+echo "  [4] > for cpu-used 4  L| |E"
+echo "  [5] > for cpu-used 5  I| |E"
+echo "  [6] > for cpu-used 6  T| |D"
+echo "  [7] > for cpu-used 7  Y| |"
+echo "  [8] > for cpu-used 8   | ∨"
+echo "  [q] > for exit"
 read -r -e -p "-> " reppreset
-if test -n "$reppreset"; then
+if [ -n "$reppreset" ]; then
 	preset="-cpu-used $reppreset"
-	chpreset="- cpu-used: $reppreset"
+	chpreset="; cpu-used: $reppreset"
+elif [ "$reppreset" = "q" ]; then
+	Restart
 else
 	preset="-cpu-used 2 -row-mt 1 -tiles 4x1"
-	chpreset="- cpu-used: 2"
+	chpreset="; cpu-used: 2"
 fi
 
 # Bitrate av1
@@ -3091,6 +3117,7 @@ echo " *[4] > for crf 30  L| |Z"
 echo "  [5] > for crf 40  I| |E"
 echo "  [6] > for crf 50  T| |"
 echo "  [7] > for crf 60  Y| ∨"
+echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
 if echo "$rpvkb" | grep -q 'k'; then
 	# Remove all after k from variable for prevent syntax error
@@ -3105,23 +3132,25 @@ elif echo "$rpvkb" | grep -q 'm'; then
 	# Set cbr variable
 	vkb="-b:v ${video_stream_kb}k"
 elif echo "$rpvkb" | grep -q 'crf'; then
-	vkb="$rpvkb"
+	vkb="$rpvkb -b:v 0"
 elif [ "$rpvkb" = "1" ]; then
-	vkb="-crf 0"
+	vkb="-crf 0 -b:v 0"
 elif [ "$rpvkb" = "2" ]; then
-	vkb="-crf 10"
+	vkb="-crf 10 -b:v 0"
 elif [ "$rpvkb" = "3" ]; then
-	vkb="-crf 20"
+	vkb="-crf 20 -b:v 0"
 elif [ "$rpvkb" = "4" ]; then
-	vkb="-crf 30"
+	vkb="-crf 30 -b:v 0"
 elif [ "$rpvkb" = "5" ]; then
-	vkb="-crf 40"
+	vkb="-crf 40 -b:v 0"
 elif [ "$rpvkb" = "6" ]; then
-	vkb="-crf 50"
+	vkb="-crf 50 -b:v 0"
 elif [ "$rpvkb" = "7" ]; then
-	vkb="-crf 60"
+	vkb="-crf 60 -b:v 0"
+elif [ "$rpvkb" = "q" ]; then
+	Restart
 else
-	vkb="-crf 30"
+	vkb="-crf 30 -b:v 0"
 fi
 }
 Video_Custom_Audio_Only() {				# Option 3  	- Encode audio stream only
