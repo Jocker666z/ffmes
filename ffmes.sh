@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.92
+VERSION=v0.93
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -27,7 +27,7 @@ OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD playe
 
 # General variables
 CORE_COMMAND_NEEDED=(ffmpeg ffprobe sox mediainfo mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
-NPROC=$(nproc --all)																		# Set number of process
+NPROC=$(nproc --all)																		# Set number of thread
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log level
 FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
 
@@ -340,11 +340,17 @@ CheckFFmpegVersion() {
 local ffmpeg_version
 
 ffmpeg_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
+ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -encoders | grep "hevc_vaapi")
 
 # If ffmpeg version < 4.4 not use -stats_period
 if [ -z "$ffmpeg_stats_period" ]; then
 	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
 fi
+
+if [ -z "$ffmpeg_vaapi_encoder" ]; then
+	unset VAAPI_device
+fi
+
 }
 CheckCustomBin() {
 if [[ -f "$FFMPEG_CUSTOM_BIN" ]]; then
@@ -905,12 +911,14 @@ Display_Media_Stats_One "${LSTVIDEO[@]}"
 echo " Target configuration:"
 echo "  Video stream: $chvidstream"
 if [ "$ENCODV" = "1" ]; then
-	echo "   * Rotation: $chrotation"
-	if test -n "$HDR"; then						# display only if HDR source
-		echo "   * HDR to SDR: $chsdr2hdr"
-	fi
-	echo "   * Resolution: $chwidth"
 	echo "   * Desinterlace: $chdes"
+	echo "   * Resolution: $chwidth"
+	if [[ "$codec" != "hevc_vaapi" ]]; then
+		echo "   * Rotation: $chrotation"
+		if test -n "$HDR"; then						# display only if HDR source
+			echo "   * HDR to SDR: $chsdr2hdr"
+		fi
+	fi
 	echo "   * Frame rate: $chfps"
 	echo "   * Codec: $chvcodec${chpreset}${chtune}${chprofile}"
 	echo "   * Bitrate: $vkb"
@@ -1119,27 +1127,44 @@ Calc_Video_Resolution() {				# Option 1  	- Conf/Calc change Resolution
 # Local variables
 local RATIO
 local WIDTH
+local HEIGHT
 
 WIDTH="$1"
+for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
+	if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
+		if [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]]; then
+			source_width="${ffprobe_Width[i]}"
+			source_heigh="${ffprobe_Height[i]}"
+		fi
+	fi
+done
 
 # Ratio calculation
-RATIO=$(bc -l <<< "${ffprobe_Width[0]} / $WIDTH")
+RATIO=$(bc -l <<< "${source_width} / $WIDTH")
 
 # Height calculation, display decimal only if not integer
-HEIGHT=$(bc -l <<< "${ffprobe_Height[0]} / $RATIO" | sed 's!\.0*$!!')
+HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
 
 # Increment filter counter
 nbvfilter=$((nbvfilter+1))
 # Scale filter
 if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
 	if [ "$nbvfilter" -gt 1 ] ; then
-		vfilter+=",scale=$WIDTH:-2"
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter+=",scale_vaapi=w=$WIDTH:h=-2"
+		else
+			vfilter+=",scale=$WIDTH:-2"
+		fi
 	else
 		vfilter="-vf scale=$WIDTH:-2"
 	fi
 else
 	if [ "$nbvfilter" -gt 1 ] ; then
-		vfilter+=",scale=$WIDTH:-1"
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter+=",scale_vaapi=w=$WIDTH:h=-1"
+		else
+			vfilter+=",scale=$WIDTH:-1"
+		fi
 	else
 		vfilter="-vf scale=$WIDTH:-1"
 	fi
@@ -1239,7 +1264,7 @@ Restart
 TestVAAPI() {							# VAAPI device test
 if [ -e "$VAAPI_device" ]; then
 	if "$ffmpeg_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
-		GPUDECODE="-hwaccel vaapi -hwaccel_device $VAAPI_device"
+		GPUDECODE="-vaapi_device $VAAPI_device"
 	else
 		GPUDECODE=""
 	fi
@@ -2192,10 +2217,7 @@ PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTVIDEO[@]}" "$total_target_files_size" "$total_source_files_size"
 }
-Video_Custom_Video() {					# Option 1  	- Conf video
-# Local variables
-local nbvfilter
-
+Video_Custom_Video() {					# Option 1  	- Conf codec video
 # Get Stats of source
 Display_Video_Custom_Info_choice
 
@@ -2218,6 +2240,197 @@ elif [ "$qv" = "e" ]; then
 	# Set video encoding
 	ENCODV="1"
 
+	# Codec choice
+	Display_Video_Custom_Info_choice
+	echo " Choice the video codec to use:"
+	echo
+	echo "  [x264]       > for libx264 codec"
+	echo " *[x265]       > for libx265 codec"
+	if [[ -n "$VAAPI_device" ]]; then
+		echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding; use Mesa VAAPI"
+	fi
+	echo "  [av1]        > for libaom-av1 codec"
+	echo "  [mpeg4]      > for xvid codec"
+	echo "  [q]          > for exit"
+	read -r -e -p "-> " yn
+	case $yn in
+		"x264")
+			codec="libx264 -x264-params colorprim=bt709:transfer=bt709:colormatrix=bt709:fullrange=off -pix_fmt yuv420p"
+			chvcodec="H264"
+			Video_Custom_Video_Filter
+			Video_x264_5_Config
+		;;
+		"x265")
+			codec="libx265"
+			chvcodec="HEVC"
+			Video_Custom_Video_Filter
+			Video_x264_5_Config
+		;;
+		"hevc_vaapi")
+			codec="hevc_vaapi"
+			chvcodec="HEVC_VAAPI"
+			Video_Custom_Video_Filter
+			Video_hevc_vaapi_Config
+		;;
+		"av1")
+			codec="libaom-av1"
+			chvcodec="AV1"
+			Video_Custom_Video_Filter
+			Video_av1_Config
+		;;
+		"mpeg4")
+			codec="mpeg4 -vtag xvid"
+			chvcodec="XVID"
+			Video_Custom_Video_Filter
+			Video_MPEG4_Config
+		;;
+		"q"|"Q")
+			Restart
+		;;
+		*)
+			codec="libx265"
+			chvcodec="HEVC"
+			Video_Custom_Video_Filter
+			Video_x264_5_Config
+		;;
+	esac
+
+# No video change
+else
+
+	# Set video configuration variable
+	chvidstream="Copy"
+	filevcodec="vcopy"
+	videoconf="-c:v copy"
+
+fi
+
+# Set video configuration variable
+vcodec="$codec"
+filevcodec="$chvcodec"
+videoconf="$framerate $vfilter -c:v $vcodec $preset $profile $tune $vkb"
+}
+Video_Custom_Video_Filter() {			# Option 1  	- Conf filter video
+# Local variables
+local nbvfilter
+
+if [[ "$codec" = "hevc_vaapi" ]]; then
+
+	# VAAPI filter
+	nbvfilter=$((nbvfilter+1))
+	vfilter="-vf format=nv12,hwupload"
+
+fi
+
+# Desinterlace
+Display_Video_Custom_Info_choice
+if [ "$mediainfo_Interlaced" = "Interlaced" ]; then
+	echo " Video SEEMS interlaced, you want deinterlace:"
+else
+	echo " Video not seems interlaced, you want force deinterlace:"
+fi
+echo " Note: the detection is not 100% reliable, a visual check of the video will guarantee it."
+echo
+echo "  [y] > for yes "
+echo " *[↵] > for no change"
+echo "  [q] > for exit"
+read -r -e -p "-> " yn
+case $yn in
+	"y"|"Y")
+		nbvfilter=$((nbvfilter+1))
+		chdes="Yes"
+		if [ "$nbvfilter" -gt 1 ] ; then
+			if [[ "$codec" = "hevc_vaapi" ]]; then
+				vfilter+=",deinterlace_vaapi"
+			else
+				vfilter+=",yadif"
+			fi
+		else
+			vfilter="-vf yadif"
+		fi
+	;;
+	"q"|"Q")
+		Restart
+	;;
+	*)
+		chdes="No change"
+	;;
+esac
+
+# Resolution
+Display_Video_Custom_Info_choice
+echo " Resolution change:"
+echo
+echo "  [y] > for yes"
+echo " *[↵] > for no change"
+echo "  [q] > for exit"
+read -r -e -p "-> " yn
+case $yn in
+	"y"|"Y")
+		Display_Video_Custom_Info_choice
+		echo " Choose the desired width:"
+		echo " Notes: Original ratio is respected."
+		echo
+		echo "  [1] > 640px  - VGA"
+		echo "  [2] > 720px  - DV NTSC/VGA"
+		echo "  [3] > 768px  - PAL"
+		echo "  [4] > 1024px - XGA"
+		echo "  [5] > 1280px - 720p, WXGA"
+		echo "  [6] > 1680px - WSXGA+"
+		echo "  [7] > 1920px - 1080p, WUXGA+"
+		echo "  [8] > 2048px - 2K"
+		echo "  [9] > 2560px - WQXGA+"
+		echo " [10] > 3840px - UHD-1"
+		echo " [11] > 4096px - 4K"
+		echo " [12] > 5120px - 4K WHXGA, Ultra wide"
+		echo " [13] > 7680px - UHD-2"
+		echo " [14] > 8192px - 8K"
+		echo "  [c] > for no change"
+		echo "  [q] > for exit"
+		while :
+		do
+		read -r -e -p "-> " WIDTH
+		case $WIDTH in
+			1) Calc_Video_Resolution 640; break;;
+			2) Calc_Video_Resolution 720; break;;
+			3) Calc_Video_Resolution 768; break;;
+			4) Calc_Video_Resolution 1024; break;;
+			5) Calc_Video_Resolution 1280; break;;
+			6) Calc_Video_Resolution 1680; break;;
+			7) Calc_Video_Resolution 1920; break;;
+			8) Calc_Video_Resolution 2048; break;;
+			9) Calc_Video_Resolution 2560; break;;
+			10) Calc_Video_Resolution 3840; break;;
+			11) Calc_Video_Resolution 4096; break;;
+			12) Calc_Video_Resolution 5120; break;;
+			13) Calc_Video_Resolution 7680; break;;
+			14) Calc_Video_Resolution 8192; break;;
+			"c"|"C")
+				chwidth="No change"
+				break
+			;;
+			"q"|"Q")
+				Restart
+				break
+			;;
+			*)
+				echo
+				Echo_Mess_Invalid_Answer
+				echo
+			;;
+		esac
+		done
+	;;
+	"q"|"Q")
+		Restart
+	;;
+	*)
+		chwidth="No change"
+	;;
+esac
+
+if [[ "$codec" != "hevc_vaapi" ]]; then
+
 	# Rotation
 	Display_Video_Custom_Info_choice
 	echo " Rotate the video?"
@@ -2234,7 +2447,11 @@ elif [ "$qv" = "e" ]; then
 	read -r -e -p "-> " ynrotat
 	case $ynrotat in
 		[0-4])
-			vfilter="-vf transpose=$ynrotat"
+			if [ "$nbvfilter" -gt 1 ] ; then
+				vfilter+=",transpose=$ynrotat"
+			else
+				vfilter="-vf transpose=$ynrotat"
+			fi
 			nbvfilter=$((nbvfilter+1))
 
 			if [ "$ynrotat" = "0" ]; then
@@ -2299,185 +2516,28 @@ elif [ "$qv" = "e" ]; then
 	esac
 	fi
 
-	# Resolution
-	Display_Video_Custom_Info_choice
-	echo " Resolution change:"
-	echo
-	echo "  [y] > for yes"
-	echo " *[↵] > for no change"
-	echo "  [q] > for exit"
-	read -r -e -p "-> " yn
-	case $yn in
-		"y"|"Y")
-			Display_Video_Custom_Info_choice
-			echo " Choose the desired width:"
-			echo " Notes: Original ratio is respected."
-			echo
-			echo "  [1] > 640px  - VGA"
-			echo "  [2] > 720px  - DV NTSC/VGA"
-			echo "  [3] > 768px  - PAL"
-			echo "  [4] > 1024px - XGA"
-			echo "  [5] > 1280px - 720p, WXGA"
-			echo "  [6] > 1680px - WSXGA+"
-			echo "  [7] > 1920px - 1080p, WUXGA+"
-			echo "  [8] > 2048px - 2K"
-			echo "  [9] > 2560px - WQXGA+"
-			echo " [10] > 3840px - UHD-1"
-			echo " [11] > 4096px - 4K"
-			echo " [12] > 5120px - 4K WHXGA, Ultra wide"
-			echo " [13] > 7680px - UHD-2"
-			echo " [14] > 8192px - 8K"
-			echo "  [c] > for no change"
-			echo "  [q] > for exit"
-			while :
-			do
-			read -r -e -p "-> " WIDTH
-			case $WIDTH in
-				1) Calc_Video_Resolution 640; break;;
-				2) Calc_Video_Resolution 720; break;;
-				3) Calc_Video_Resolution 768; break;;
-				4) Calc_Video_Resolution 1024; break;;
-				5) Calc_Video_Resolution 1280; break;;
-				6) Calc_Video_Resolution 1680; break;;
-				7) Calc_Video_Resolution 1920; break;;
-				8) Calc_Video_Resolution 2048; break;;
-				9) Calc_Video_Resolution 2560; break;;
-				10) Calc_Video_Resolution 3840; break;;
-				11) Calc_Video_Resolution 4096; break;;
-				12) Calc_Video_Resolution 5120; break;;
-				13) Calc_Video_Resolution 7680; break;;
-				14) Calc_Video_Resolution 8192; break;;
-				"c"|"C")
-					chwidth="No change"
-					break
-				;;
-				"q"|"Q")
-					Restart
-					break
-				;;
-				*)
-					echo
-					Echo_Mess_Invalid_Answer
-					echo
-				;;
-			esac
-			done
-		;;
-		"q"|"Q")
-			Restart
-		;;
-		*)
-			chwidth="No change"
-		;;
-	esac
-
-	# Desinterlace
-	Display_Video_Custom_Info_choice
-	if [ "$mediainfo_Interlaced" = "Interlaced" ]; then
-		echo " Video SEEMS interlaced, you want deinterlace:"
-	else
-		echo " Video not seems interlaced, you want force deinterlace:"
-	fi
-	echo " Note: the detection is not 100% reliable, a visual check of the video will guarantee it."
-	echo
-	echo "  [y] > for yes "
-	echo " *[↵] > for no change"
-	echo "  [q] > for exit"
-	read -r -e -p "-> " yn
-	case $yn in
-		"y"|"Y")
-			nbvfilter=$((nbvfilter+1))
-			chdes="Yes"
-			if [ "$nbvfilter" -gt 1 ] ; then
-				vfilter+=",yadif"
-			else
-				vfilter="-vf yadif"
-			fi
-		;;
-		"q"|"Q")
-			Restart
-		;;
-		*)
-			chdes="No change"
-		;;
-	esac
-
-	# Frame rate
-	Display_Video_Custom_Info_choice
-	echo " Change frame rate to 24 images per second?"
-	echo
-	echo "  [y] > for yes "
-	echo " *[↵] > for no change"
-	echo "  [q] > for exit"
-	read -r -e -p "-> " yn
-	case $yn in
-		"y"|"Y")
-			framerate="-r 24"
-			chfps="24 fps"
-		;;
-		"q"|"Q")
-			Restart
-		;;
-		*)
-			chfps="No change"
-		;;
-	esac
-
-	# Codec choice
-	Display_Video_Custom_Info_choice
-	echo " Choice the video codec to use:"
-	echo
-	echo "  [x264]  > for libx264 codec"
-	echo " *[x265]  > for libx265 codec"
-	echo "  [av1]   > for libaom-av1 codec"
-	echo "  [mpeg4] > for xvid codec"
-	echo "  [q]     > for exit"
-	read -r -e -p "-> " yn
-	case $yn in
-		"x264")
-			codec="libx264 -x264-params colorprim=bt709:transfer=bt709:colormatrix=bt709:fullrange=off -pix_fmt yuv420p"
-			chvcodec="H264"
-			Video_x264_5_Config
-		;;
-		"x265")
-			codec="libx265"
-			chvcodec="HEVC"
-			Video_x264_5_Config
-		;;
-		"av1")
-			codec="libaom-av1"
-			chvcodec="AV1"
-			Video_av1_Config
-		;;
-		"mpeg4")
-			codec="mpeg4 -vtag xvid"
-			chvcodec="XVID"
-			Video_MPEG4_Config
-		;;
-		"q"|"Q")
-			Restart
-		;;
-		*)
-			codec="libx265"
-			chvcodec="HEVC"
-			Video_x264_5_Config
-		;;
-	esac
-
-	# Set video configuration variable
-	vcodec="$codec"
-	filevcodec="$chvcodec"
-	videoconf="$framerate $vfilter -c:v $vcodec $preset $profile $tune $vkb"
-
-# No video change
-else
-
-	# Set video configuration variable
-	chvidstream="Copy"
-	filevcodec="vcopy"
-	videoconf="-c:v copy"
-
 fi
+
+# Frame rate
+Display_Video_Custom_Info_choice
+echo " Change frame rate to 24 images per second?"
+echo
+echo "  [y] > for yes "
+echo " *[↵] > for no change"
+echo "  [q] > for exit"
+read -r -e -p "-> " yn
+case $yn in
+	"y"|"Y")
+		framerate="-r 24"
+		chfps="24 fps"
+	;;
+	"q"|"Q")
+		Restart
+	;;
+	*)
+		chfps="No change"
+	;;
+esac
 
 }
 Video_Custom_Audio() {					# Option 1  	- Conf audio, encode or not
@@ -3014,7 +3074,6 @@ Display_Video_Custom_Info_choice
 echo " Choose a CRF number, video strem size, or enter the desired bitrate:"
 echo " Note: * This settings influences size and quality, crf is a better choise in 90% of cases."
 echo "       * libx265 which can offer 25–50% bitrate savings compared to libx264."
-
 echo
 echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
 echo " [1500m]     Example of input for aproximative total size of video stream in MB (not recommended in batch)"
@@ -3069,6 +3128,69 @@ else
 	vkb="-crf 20"
 fi
 }
+Video_hevc_vaapi_Config() {				# Option 1  	- Conf hevc_vaapi
+# Local variables
+local video_stream_kb
+local video_stream_size
+
+# Bitrate
+Display_Video_Custom_Info_choice
+echo " Choose a QP number, video strem size, or enter the desired bitrate:"
+echo " Note: * libx265 which can offer 25–50% bitrate savings compared to libx264."
+echo
+echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
+echo " [1500m]     Example of input for aproximative total size of video stream in MB (not recommended in batch)"
+echo " [-qp 21]   Example of input for crf desired level"
+echo
+echo "  [1] > for crf 0    ∧ |"
+echo "  [2] > for crf 5   Q| |"
+echo "  [3] > for crf 10  U| |S"
+echo "  [4] > for crf 15  A| |I"
+echo "  [5] > for crf 20  L| |Z"
+echo "  [6] > for crf 22  I| |E"
+echo " *[7] > for crf 25  T| |"
+echo "  [8] > for crf 30  Y| |"
+echo "  [9] > for crf 35   | ∨"
+echo "  [q] > for exit"
+read -r -e -p "-> " rpvkb
+if echo "$rpvkb" | grep -q 'k'; then
+	# Remove all after k from variable for prevent syntax error
+	video_stream_kb="${rpvkb%k*}"
+	# Set cbr variable
+	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
+elif echo "$rpvkb" | grep -q 'm'; then
+	# Remove all after m from variable
+	video_stream_size="${rpvkb%m*}"
+	# Bitrate calculation
+	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
+	# Set cbr variable
+	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
+elif echo "$rpvkb" | grep -q 'qp'; then
+	vkb="-rc_mode 2 $rpvkb"
+elif [ "$rpvkb" = "1" ]; then
+	vkb="-rc_mode 1 -qp 0"
+elif [ "$rpvkb" = "2" ]; then
+	vkb="-rc_mode 1 -qp 5"
+elif [ "$rpvkb" = "3" ]; then
+	vkb="-rc_mode 1 -qp 10"
+elif [ "$rpvkb" = "4" ]; then
+	vkb="-rc_mode 1 -qp 15"
+elif [ "$rpvkb" = "5" ]; then
+	vkb="-rc_mode 1 -qp 20"
+elif [ "$rpvkb" = "6" ]; then
+	vkb="-rc_mode 1 -qp 22"
+elif [ "$rpvkb" = "7" ]; then
+	vkb="-rc_mode 1 -qp 25"
+elif [ "$rpvkb" = "8" ]; then
+	vkb="-rc_mode 1 -qp 30"
+elif [ "$rpvkb" = "9" ]; then
+	vkb="-rc_mode 1 -qp 35"
+elif [ "$rpvkb" = "q" ]; then
+	Restart
+else
+	vkb="-rc_mode 1 -qp 25"
+fi
+}
 Video_av1_Config() {					# Option 1  	- Conf av1
 # Local variables
 local video_stream_kb
@@ -3090,7 +3212,7 @@ echo "  [8] > for cpu-used 8   | ∨"
 echo "  [q] > for exit"
 read -r -e -p "-> " reppreset
 if [ -n "$reppreset" ]; then
-	preset="-cpu-used $reppreset"
+	preset="-cpu-used $reppreset -row-mt 1 -tiles 4x1"
 	chpreset="; cpu-used: $reppreset"
 elif [ "$reppreset" = "q" ]; then
 	Restart

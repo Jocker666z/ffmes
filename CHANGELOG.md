@@ -1,9 +1,17 @@
 # Changelog
+v0.93:
+* Video:
+	* add - preliminary support of vaapi_hevc codec
+	* add - check if vaapi_hevc codec is supported by current used ffmpeg bin
+	* chg - improve vaapi argument
+	* fix - in av1, add -row-mt 1 -tiles 4x1 for all -cpu-used
+	* fix - in resolution change, now proper get height value of source if video is not first stream
+
 v0.92:
 * Video:
 	* add - in av1 crf quality argument, add -b:v 0
 	* fix - DVD & blu-ray, fix inverted variables
-Various:
+* Various:
 	* add - in some codec menu add quit option
 	* chg - improve some video codec menu
 	* fix - now test ffmpeg version with real ffmpeg bin
@@ -26,15 +34,15 @@ Video:
 
 v0.90:
 Video:
-	* add - add RealVideo extention support: rm, rmvb
+	* add - add RealVideo extension support: rm, rmvb
 Audio:
-	* add - add Dolby TrueHD extention support: thd
-	* add - add RealAudio extention support: ra, ram
-	* add - add TTA (True Audio) extention support: tta
-	* add - add TAK (Tom's lossless Audio Kompressor) extention support: tak
-	* add - add E-AC-3 extention support: eac3
-	* add - add Qualcomm aptX extention support: aptx
-	* add - add SIG SBC extention support: sbc
+	* add - add Dolby TrueHD extension support: thd
+	* add - add RealAudio extension support: ra, ram
+	* add - add TTA (True Audio) extension support: tta
+	* add - add TAK (Tom's lossless Audio Kompressor) extension support: tak
+	* add - add E-AC-3 extension support: eac3
+	* add - add Qualcomm aptX extension support: aptx
+	* add - add SIG SBC extension support: sbc
 	* fix - remove rmvb from audio codec
 
 v0.89:
@@ -96,7 +104,7 @@ Video:
 	* add - option 13, add support of vp9 extraction
 	* chg - default video encoding in same time goes from 2 to 1
 Audio:
-	* add - compare audio, format_name of file (extention)
+	* add - compare audio, format_name of file (extension)
 	* chg - compare audio, if peakdb=-0.0 display 0.0
 	* chg - now use ffmpeg for merge flac
 	* fix - cut audio, keep embed img
@@ -124,8 +132,8 @@ Tag:
 v0.84:
 Audio:
 	* add - aac/m4a audio encoding in option 27, see the doc for more details
-	* add - support for the ops extention, the other name for the opus files
-	* chg - opus codec, back to the opus extention, works perfectly on PC, but causes various problems on specific app (like streaming server etc...)
+	* add - support for the ops extension, the other name for the opus files
+	* chg - opus codec, back to the opus extension, works perfectly on PC, but causes various problems on specific app (like streaming server etc...)
 	* add - channel layout config question, it avoids spamming the screen with the channel menu, which in reality is rarely changed
 	* fix - add -max_muxing_queue_size 9999 to audio validation, prevent false positive error "Too many packets buffered for output stream 0:1"
 Tag:
@@ -408,7 +416,7 @@ v0.61:
 	* add - FLAC, add option auto for bit depth & sample rate
 	* add - WavPack encoding option (25)
 	* chg - if a number of channel selected, no display false stereo files detection
-	* fix - if multi audio extention choice, now regenerate list audio extention variable (LSTAUDIOEXT), for prevent display of silent detect if no wav or flac in source
+	* fix - if multi audio extension choice, now regenerate list audio extension variable (LSTAUDIOEXT), for prevent display of silent detect if no wav or flac in source
 * Audio tag:
 	* fix - add Monkey's Audio (APE) limitation -> not supported
 * Various:
@@ -422,7 +430,7 @@ v0.60:
 	* update - opustags to v1.5.0
 * VGM:
 	* add - support of Sony PS3 files in laac
-	* fix - if various extentions in the same directory, the processing is now carried out correctly
+	* fix - if various extensions in the same directory, the processing is now carried out correctly
 	* update - vgmstream to r1050-3312-g70d20924-112-gd7bd5a2a Nov 17 2020
 	* update - vgm2wav to git version of 17 november 2020
 	* update - gbsplay & gbsinfo to 0.0.94-102-g081b3f9
@@ -435,7 +443,7 @@ v0.59:
 	* add - some comments in script
 * VGM:
 	* add - support of Sony PS3 files in laac
-	* fix - if various extentions in the same directory, the processing is now carried out correctly
+	* fix - if various extensions in the same directory, the processing is now carried out correctly
 	* update - vgmstream to r1050-3312-g70d20924-12-gde953729 Oct 23 2020
 
 v0.58a:
@@ -467,7 +475,7 @@ v0.56:
 * Audio :
 	* add - 1st file DB peak information at peak normalization question
 	* fix - typo in display of audio source info
-	* fix - remove audio target, if source extention same as source, now remove .back in filename
+	* fix - remove audio target, if source extension same as source, now remove .back in filename
 * Subtitle:
 	* fix - DVD subtitle (idx/sub) to srt - Clean DVDSub2Srt after each file  (commit by Subarashii-no-Fansub)
 * VGM:
@@ -623,13 +631,13 @@ v0.39:
 
 v0.38:
 * Video:
-	* add - extract dvd_subtitle with .idx/.sub extention (with mkvextract)
-	* add - merge hdmv_pgs_subtitle & dvd_subtitle with .idx/.sub & .sup extention (with mkvmerge)
+	* add - extract dvd_subtitle with .idx/.sub extension (with mkvextract)
+	* add - merge hdmv_pgs_subtitle & dvd_subtitle with .idx/.sub & .sup extension (with mkvmerge)
 	* add - option 15, add night normalization audio stream, with night "acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm"
-	* fix - merge, multiple audio and sub with same extention, now no longer multiplies by the number of files
+	* fix - merge, multiple audio and sub with same extension, now no longer multiplies by the number of files
 	* fix - dvdrip, mapfile use for extract all title, if error now not displayed
 * Audio:
-	* add - it is now possible to remove files with the same extention as the source
+	* add - it is now possible to remove files with the same extension as the source
 	* add - ExtractCover variable, 0=extract cover from files and remove from files, 1=keep cover in outpout files, empty=remove cover from files
 	* add - AudioSourceInfo, now test db peak of first source audio file, and display at end of the audio stream line
 * Various
@@ -646,7 +654,7 @@ v0.37:
 	* remove - libfdk_aac option, non-free, libopus more powerful, removing it makes ffmes compatible with distributions that don't deliver ffmpeg in a non-free version.
 * Audio:
 	* add - silence detect & remove, at start & end, only for wav and flac source
-	* add - it is now possible to encode files with the same extention as the source
+	* add - it is now possible to encode files with the same extension as the source
 	* fix - audio normalization in batch
 	* remove - libfdk_aac option 26, non-free, libopus more powerful, removing it makes ffmes compatible with distributions that don't deliver ffmpeg in a non-free version.
 * VGM:
@@ -753,9 +761,9 @@ v0.30:
 	
 v0.29:
 * Video:
-	* fix - now multiple video extention is case sensitive
+	* fix - now multiple video extension is case sensitive
 * Audio:
-	* fix - now multiple audio extention is case sensitive
+	* fix - now multiple audio extension is case sensitive
 	* fix - opus encoding audio in 5.1
 	* add - opus accurate auto adapted bitrate from source (particularly useful for processing very large batches of files)
 * VGM:
@@ -846,7 +854,7 @@ v0.20:
 * functions:
 	* DVDRip(): fix - select good output file after rip
 	* ConfChannels(): remove channel selection 2.1 to 4.0, not useful
-	* MultipleAudioExtention(): add - for profile 22 to 25, question when multiple audio extention present in directory
+	* MultipleAudioExtention(): add - for profile 22 to 25, question when multiple audio extension present in directory
 	* SplitCUE(): modified - now converts the CUE file not UTF-8 to UTF-8
 
 v0.19:
@@ -921,7 +929,7 @@ v0.14:
 	* SetGlobalVariables(), add, bc now needed for comparing size
 	* FFmpeg_audio_cmd():
 		* add, now compare size between source(s) and encoded file(s), report at end of process
-		* fix, with add a trick for encoding file with same extention of source
+		* fix, with add a trick for encoding file with same extension of source
 	* Clean():
 		* fix, regression of v0.13 that does not delete ffmpeg logs
 		* add, consider if file exist in cache directory 3 days after creation, delete it
@@ -1181,7 +1189,7 @@ v0.02:
 * add check video & sound file in main repertory, for display count of file & alarm for number of video file > 1.
 * add menu entry for quit (exit or quit or q) and restart (restart or rst or r) script.
 * errors functions, now merged in one function.
-* rework batchs management, now a specific function list and increment text file with extention of videos in repertory. This list put in ffmpeg cmd.
+* rework batchs management, now a specific function list and increment text file with extension of videos in repertory. This list put in ffmpeg cmd.
 * improvement of error response due to more accurate batchs management
 
 v0.01:

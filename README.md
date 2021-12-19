@@ -2,7 +2,7 @@
 
 Bash tool handling media files, DVD & Blu-ray. Mainly with ffmpeg. In batch or single file.
 
-Source media files, supported extention:
+Source media files, supported extension:
 * Video in 3gp, avi, bik, flv, m2ts, m4v, mkv, mp4, mov, mpeg, mts, ogv, rm, rmvb, ts, vob, vp9, webm, wmv
 * Audio in 8svx, aac, ac3, aif, aiff, amb, ape, aptx, aud, caf, dff, dsf, dts, eac3, flac, m4a, mka, mlp, mod, mp2, mp3, mqa, mpc, mpg, ogg, ops, opus, ra, ram, sbc, shn, spx, tak, thd, tta, w64, wav, wma, wv
 * Subtitle in ass, idx/sub, srt, ssa, sup
@@ -110,17 +110,17 @@ If you encounter bugs or have proposals, I'm open to discussion.
 * Video:
 	* Stream copy or encoding
 	* Encoding options:
-		* rotate video
-		* HDR to SDR
-		* change resolution
 		* desinterlace
+		* change resolution
+		* rotate video (except hevc_vaapi)
+		* HDR to SDR (except hevc_vaapi)
 		* fix frame rate to 24fps
 		* codecs:
-			* x264: profile, tune, preset & bitrate (video stream total size, crf & cbr)
-			* x265: profile, tune, HDR, preset & bitrate (video stream total size, crf & cbr)
+			* x264: profile (8bits), tune, preset & bitrate (video stream total size, crf & cbr)
+			* x265: profile (8>12bits), tune, HDR, preset & bitrate (video stream total size, crf & cbr)
+			* hevc_vaapi: profile (8bits), bitrate (video stream total size, qp & cbr); need ffmpeg --enable-vaapi & proper system configuration
 			* av1: cpu-used (preset), bitrate (video stream total size, crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
-		* if VAAPI device found at /dev/dri/renderD128, it's used for decode video
 * Audio:
 	* Stream copy or encoding
 	* Encoding options (apply to all streams):
