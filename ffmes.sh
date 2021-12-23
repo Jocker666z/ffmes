@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.93
+VERSION=v0.94
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -607,7 +607,7 @@ echo "  10 - view detailed video file informations          |"
 echo "  11 - add audio stream or subtitle in video file     |-Video Tools"
 echo "  12 - concatenate video files                        |"
 echo "  13 - extract stream(s) of video file                |"
-echo "  14 - cut video file                                 |"
+echo "  14 - split or cut video file by time                |"
 echo "  15 - split mkv by chapter                           |"
 echo "  16 - change color of DVD subtitle (idx/sub)         |"
 echo "  17 - convert DVD subtitle (idx/sub) to srt          |"
@@ -626,7 +626,7 @@ echo "  31 - view one audio file stats                      |-Audio Tools"
 echo "  32 - compare audio files stats                      |"
 echo "  33 - generate png image of audio spectrum           |"
 echo "  34 - concatenate audio files                        |"
-echo "  35 - cut audio file                                 |"
+echo "  35 - split or cut audio file by time                |"
 echo "  36 - audio file tester                              |"
 echo "  37 - find untagged audio files                      |"
 echo "  -----------------------------------------------------"
@@ -3759,25 +3759,32 @@ Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" ""
 }
 Video_Cut_File() {						# Option 14 	- Cut video
 # Local variables
+local qcut0
 local qcut
 local CutStart
 local CutEnd
+local split_output
+local CutSegment
+# Array
+filesInLoop=()
 
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 
-echo " Enter duration of cut:"
+echo " Enter duration of cut or split:"
 echo " Notes: * for hours :   HOURS:MM:SS.MICROSECONDS"
 echo "        * for minutes : MM:SS.MICROSECONDS"
 echo "        * for seconds : SS.MICROSECONDS"
 echo "        * microseconds is optional, you can not indicate them"
 echo
 echo " Examples of input:"
-echo "  [s.20]       -> remove video after 20 second"
-echo "  [e.01:11:20] -> remove video before 1 hour 11 minutes 20 second"
+echo "  [s.20]        > remove video after 20 second"
+echo "  [e.01:11:20]  > remove video before 1 hour 11 minutes 20 second"
+echo "  [p.00:02:00]  > split video in parts of 2 minutes"
 echo
 echo "  [s.time]      > for remove end"
 echo "  [e.time]      > for remove start"
 echo "  [t.time.time] > for remove start and end"
+echo "  [p.time]      > for split"
 echo "  [q]           > for exit"
 while :
 do
@@ -3801,6 +3808,11 @@ case $qcut0 in
 		CutEnd=$(echo "$qcut" | awk '{print $3;}')
 		break
 	;;
+	p.*)
+		qcut=$(echo "$qcut0" | sed -r 's/[.]+/ /g')
+		CutSegment=$(echo "$qcut" | awk '{print $2;}')
+		break
+	;;
 	"q"|"Q")
 		Restart
 		break
@@ -3819,17 +3831,43 @@ START=$(date +%s)
 echo
 Echo_Separator_Light
 
+# Segment
+if [[ -n "$CutSegment" ]]; then
+	# Create file path & directory for segmented files
+	split_output_files="${LSTVIDEO[0]##*/}"
+	split_output="splitted_raw_${split_output_files%.*}"
+	if ! [[ -d "$split_output" ]]; then
+		mkdir "$split_output"
+	fi
+
+	# Segment
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" $FFMPEG_PROGRESS \
+		-f segment -segment_time "$CutSegment" \
+		-c copy -map 0 -map_metadata 0 -reset_timestamps 1 \
+		"$split_output"/"${split_output_files%.*}"_segment_%04d."${LSTVIDEO[0]##*.}" \
+		| ProgressBar "${LSTVIDEO[0]}" "" "" "Segment"
+
+	# map array of target files
+	mapfile -t filesInLoop < <(find "$split_output" -maxdepth 1 -type f -regextype posix-egrep \
+		-iregex '.*\.('${LSTVIDEO[0]##*.}')$' 2>/dev/null | sort)
+
 # Cut
-"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" $FFMPEG_PROGRESS \
-	-ss "$CutStart" -to "$CutEnd" \
-	-c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}" \
-	| ProgressBar "${LSTVIDEO[0]}" "" "" "Cut"
+else
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" $FFMPEG_PROGRESS \
+		-ss "$CutStart" -to "$CutEnd" \
+		-c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}" \
+		| ProgressBar "${LSTVIDEO[0]}" "" "" "Cut"
+fi
 
 # End time counter
 END=$(date +%s)
 
 # Check Target if valid
-Test_Target_File "0" "video" "${LSTVIDEO[0]%.*}.cut.${LSTVIDEO[0]##*.}"
+if [[ -n "$CutSegment" ]]; then
+	Test_Target_File "0" "video" "${filesInLoop[@]}"
+else
+	Test_Target_File "0" "video" "${LSTVIDEO[0]%.*}.cut.${LSTVIDEO[0]##*.}"
+fi
 
 # Make statistics of processed files
 Calc_Elapsed_Time "$START" "$END"
@@ -5086,6 +5124,10 @@ local total_target_files_size
 local PERC
 local START
 local END
+local split_output
+local CutSegment
+# Array
+filesInLoop=()
 
 # Display stats
 Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5097,13 +5139,15 @@ echo "        * for seconds : SS.MICROSECONDS"
 echo "        * microseconds is optional, you can not indicate them"
 echo
 echo " Examples of input:"
-echo "  [s.20]       -> remove audio after 20 second"
-echo "  [e.01:11:20] -> remove audio before 1 hour 11 minutes 20 second"
+echo "  [s.20]        > remove audio after 20 second"
+echo "  [e.01:11:20]  > remove audio before 1 hour 11 minutes 20 second"
+echo "  [p.00:02:00]  > split audio in parts of 2 minutes"
 echo
 echo "  [s.time]      > for remove end"
 echo "  [e.time]      > for remove start"
 echo "  [t.time.time] > for remove start and end"
 echo "  [q]           > for exit"
+echo "  [p.time]      > for split"
 while :
 do
 read -r -e -p "-> " qcut0
@@ -5126,6 +5170,11 @@ case $qcut0 in
 		CutEnd=$(echo "$qcut" | awk '{print $3;}')
 		break
 	;;
+	p.*)
+		qcut=$(echo "$qcut0" | sed -r 's/[.]+/ /g')
+		CutSegment=$(echo "$qcut" | awk '{print $2;}')
+		break
+	;;
 	"q"|"Q")
 		Restart
 		break
@@ -5144,20 +5193,59 @@ START=$(date +%s)
 echo
 Echo_Separator_Light
 
+# Segment
+if [[ -n "$CutSegment" ]]; then
+	# Create file path & directory for segmented files
+	split_output_files="${LSTAUDIO[0]##*/}"
+	split_output="splitted_raw_${split_output_files%.*}"
+	if ! [[ -d "$split_output" ]]; then
+		mkdir "$split_output"
+	fi
+
+	# Segment
+	# Flac exception for reconstruc duration
+	if [[ "${LSTAUDIO[0]##*.}" = "flac" ]] || [[ "${LSTAUDIO[0]##*.}" = "FLAC" ]]; then
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[0]}" $FFMPEG_PROGRESS \
+			-f segment -segment_time "$CutSegment" \
+			-map 0 -map_metadata 0 -c:a flac -reset_timestamps 1 \
+			"$split_output"/"${split_output_files%.*}"_segment_%04d."${LSTAUDIO[0]##*.}" \
+			| ProgressBar "${LSTAUDIO[0]}" "" "" "Segment"
+	else
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[0]}" $FFMPEG_PROGRESS \
+			-f segment -segment_time "$CutSegment" \
+			-c copy -map 0 -map_metadata 0 \
+			"$split_output"/"${split_output_files%.*}"_segment_%04d."${LSTAUDIO[0]##*.}" \
+			| ProgressBar "${LSTAUDIO[0]}" "" "" "Segment"
+	fi
+
+	# map array of target files
+	mapfile -t filesInLoop < <(find "$split_output" -maxdepth 1 -type f -regextype posix-egrep \
+		-iregex '.*\.('${LSTAUDIO[0]##*.}')$' 2>/dev/null | sort)
+
 # Cut
-# Flac exception for reconstruc duration
-if [[ "${LSTAUDIO[0]##*.}" = "flac" ]] || [[ "${LSTAUDIO[0]##*.}" = "FLAC" ]]; then
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[0]}" $FFMPEG_PROGRESS -ss "$CutStart" -to "$CutEnd" \
-		-map 0 -map_metadata 0 "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}" \
-		| ProgressBar "${LSTAUDIO[0]}" "" "" "Cut"
 else
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -i "${LSTAUDIO[0]}" $FFMPEG_PROGRESS -ss "$CutStart" -to "$CutEnd" \
-		-map 0 -c copy -map_metadata 0 "${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}" \
-		| ProgressBar "${LSTAUDIO[0]}" "" "" "Cut"
+	# Flac exception for reconstruc duration
+	if [[ "${LSTAUDIO[0]##*.}" = "flac" ]] || [[ "${LSTAUDIO[0]##*.}" = "FLAC" ]]; then
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[0]}" $FFMPEG_PROGRESS \
+			-ss "$CutStart" -to "$CutEnd" \
+			-map 0 -map_metadata 0 -c:a flac -reset_timestamps 1 \
+			"${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}" \
+			| ProgressBar "${LSTAUDIO[0]}" "" "" "Cut"
+	else
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[0]}" $FFMPEG_PROGRESS \
+			-ss "$CutStart" -to "$CutEnd" \
+			-map 0 -c copy -map_metadata 0 \
+			"${LSTAUDIO[0]%.*}".cut."${LSTAUDIO[0]##*.}" \
+			| ProgressBar "${LSTAUDIO[0]}" "" "" "Cut"
+	fi
 fi
 
-#File validation
-Test_Target_File "1" "audio" "${LSTAUDIO[0]%.*}.cut.${LSTAUDIO[0]##*.}"
+# Check Target if valid
+if [[ -n "$CutSegment" ]]; then
+	Test_Target_File "0" "audio" "${filesInLoop[@]}"
+else
+	Test_Target_File "1" "audio" "${LSTAUDIO[0]%.*}.cut.${LSTAUDIO[0]##*.}"
+fi
 
 # End time counter
 END=$(date +%s)

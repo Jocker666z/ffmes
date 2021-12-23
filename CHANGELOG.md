@@ -1,4 +1,10 @@
 # Changelog
+v0.94:
+* Video:
+	* add - split by time support in option 14
+* Audio:
+	* add - split by time support in option 35
+
 v0.93:
 * Video:
 	* add - preliminary support of vaapi_hevc codec

@@ -70,7 +70,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 	* 11, add audio stream or subtitle in video file
 	* 12, concatenate video files
 	* 13, extract stream(s) of video file
-	* 14, cut video file
+	* 14, split or cut video file by time
 	* 15, split mkv by chapter
 	* 16, change color of DVD subtitle (idx/sub)
 	* 17, convert DVD subtitle (idx/sub) to srt
@@ -89,7 +89,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 	* 32, compare audio files stats
 	* 33, generate png image of audio spectrum
 	* 34, concatenate audio files 
-	* 35, cut audio file
+	* 35, split or cut audio file by time
 	* 36, audio file tester
 	* 37, find untagged audio files
 
@@ -144,6 +144,13 @@ Encode the selected audio streams of video files (or all of them).
 #### Option 4 details - add audio stream with night normalization
 From inplace matroska video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
+
+#### Option 14 details - split or cut video file by time
+Cut or split one video by time. Examples of input:
+
+* [s.20]        > remove video after 20 second
+* [e.01:11:20]  > remove video before 1 hour 11 minutes 20 second
+* [p.00:02:00]  > split video in parts of 2 minutes
 
 #### Option 15 details - split mkv by chapter
 Cut one matroska video per chapter, mkvtoolnix package must be installed.
@@ -251,6 +258,13 @@ Options:
 Restriction:
 * Max depth directory 1
 * Asian character not supported (display degrading)
+
+#### Option 35 details - split or cut audio file by time
+Cut or split one audio by time. Examples of input:
+
+* [s.20]        > remove audio after 20 second
+* [e.01:11:20]  > remove audio before 1 hour 11 minutes 20 second
+* [p.00:02:00]  > split audio in parts of 2 minutes
 
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
