@@ -1,4 +1,9 @@
 # Changelog
+v0.95:
+* Video:
+	* add - replace speed by ETA in progress bar for video, if fps variable available
+	* fix - regression if codec copy selected in option 1
+
 v0.94:
 * Video:
 	* add - split by time support in option 14

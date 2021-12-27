@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.94
+VERSION=v0.95
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -111,25 +111,33 @@ if test -n "$ARGUMENT"; then
 	fi
 else
 	# List source(s) video file(s) & number of differents extentions
-	mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+	mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep \
+		-iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
 	mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	# List source(s) audio file(s) & number of differents extentions
-	mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep \
+		-iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 	mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	# List source(s) ISO file(s)
-	mapfile -t LSTISO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTISO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+		-iregex '.*\.('$ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 fi
 # List source(s) audio file(s) that can be tagged
-mapfile -t LSTAUDIOTAG < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTAUDIOTAG < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 # List source(s) subtitle file(s)
-mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 mapfile -t LSTSUBEXT < <(echo "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 # List source(s) CUE file(s)
-mapfile -t LSTCUE < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$CUE_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTCUE < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$CUE_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 # List source(s) VOB file(s)
-mapfile -t LSTVOB < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTVOB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 # List source(s) M3U file(s)
-mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$M3U_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$M3U_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 # Count uniq extension
 NBVEXT=$(echo "${LSTVIDEOEXT[@]##*.}" | uniq -u | wc -w)
@@ -183,7 +191,8 @@ ffprobe_default=()
 source_files="$1"
 
 # Get stats with ffprobe
-"$ffprobe_bin" -analyzeduration 1G -probesize 1G -loglevel panic -show_chapters -show_format -show_streams -print_format json=c=1 \
+"$ffprobe_bin" -analyzeduration 1G -probesize 1G -loglevel panic \
+	-show_chapters -show_format -show_streams -print_format json=c=1 \
 	"$source_files" > "$FFMES_FFPROBE_CACHE_STATS"
 
 
@@ -247,7 +256,6 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_ColorTransfert+=( "" )
 				ffprobe_ColorPrimaries+=( "" )
 				ffprobe_FieldOrder+=( "" )
-				ffprobe_fps+=( "" )
 				ffprobe_AttachedPic+=( "" )
 			fi
 		fi
@@ -289,18 +297,23 @@ done
 
 # Variable stats
 ## ffprobe stats
+ffprobe_StartTime=$(jqparse_format "start_time")
+ffprobe_Duration=$(jqparse_format "duration")
+ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
 if ! [[ "$audio_list" = "1" ]]; then
+	# If ffprobe_fps[0] active consider video, if not consider audio
+	# Total Frames made by calculation instead of count, less accurate but more speed up
+	if [[ -n "${ffprobe_fps[0]}" ]]; then
+		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
+	fi
+
+	ffprobe_OverallBitrate=$(jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' | awk -F"." '{ print $1 }')
 	ffprobe_ChapterNumber=$(jq -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | grep -c "start_time")
 	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
 		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
 	fi
 fi
-ffprobe_StartTime=$(jqparse_format "start_time")
-ffprobe_Duration=$(jqparse_format "duration")
-ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
-if ! [[ "$audio_list" = "1" ]]; then
-	ffprobe_OverallBitrate=$(jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' | awk -F"." '{ print $1 }')
-fi
+
 ## Mediainfo stats
 if ! [[ "$audio_list" = "1" ]]; then
 	mediainfo_VideoSize=$(mediainfo --Inform="Video;%StreamSize%" "$source_files" | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
@@ -337,7 +350,8 @@ rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
 
 ## CHECK FILES & BIN
 CheckFFmpegVersion() {
-local ffmpeg_version
+local ffmpeg_stats_period
+local ffmpeg_vaapi_encoder
 
 ffmpeg_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
 ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -encoders | grep "hevc_vaapi")
@@ -671,7 +685,6 @@ echo
 }
 Display_Audio_Stats_List() {
 # Local variables - display
-local format_string_length
 local codec_string_length
 local bitrate_string_length
 local SampleFormat_string_length
@@ -1459,10 +1472,13 @@ local interval_calc
 local TotalDuration
 local CurrentState
 local CurrentDuration
-local CurrentSpeed
 local Currentfps
 local Currentbitrate
 local CurrentSize
+local Current_Frame
+local CurrentfpsETA
+local Current_Remaining
+local Current_ETA
 local ProgressTitle
 local _progress
 local _done
@@ -1532,17 +1548,44 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 		CurrentDuration=$(( CurrentDuration/1000000 ))
 
 		# Get extra value
-		CurrentSpeed=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		Currentfps=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "fps" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		Currentbitrate=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "bitrate" 2>/dev/null | tail -1 \
 						| awk -F"=" '{ print $2 }' | awk -F"." '{ print $1 }')
 		CurrentSize=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "total_size" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }' \
 						| awk '{ foo = $1 / 1024 / 1024 ; print foo }')
-		ExtendLabel=$(echo "$(Display_Variable_Trick "${CurrentSpeed}" "7")\
-					$(Display_Variable_Trick "${Currentfps}" "7" "fps")\
-					$(Display_Variable_Trick "${Currentbitrate}" "7" "kb/s")\
-					$(Display_Variable_Trick "${CurrentSize}" "7" "MB")" \
-					| awk '{$2=$2};1' | awk '{print "  " $0}' | tr '\n' ' ')
+
+		# ETA - If ffprobe_fps[0] active consider video, if not consider audio
+		if [[ -n "${ffprobe_fps[0]}" ]]; then
+			Current_Frame=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "frame=" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+			if [[ "$Currentfps" = "0.00" ]] || [[ -z "$Currentfps" ]];then
+				CurrentfpsETA="0.01"
+			else
+				CurrentfpsETA="$Currentfps"
+			fi
+			if [[ -z "$Current_Frame" ]];then
+				Current_Frame="1"
+			fi
+			Current_Remaining=$(bc <<< "scale=0; ; ( ($ffprobe_TotalFrames - $Current_Frame) / $CurrentfpsETA)")
+			Current_ETA="ETA: $((Current_Remaining/3600))h$((Current_Remaining%3600/60))m$((Current_Remaining%60))s"
+		else
+			Current_ETA=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		fi
+
+		# Displayed label
+		if [[ -n "${Currentbitrate}" ]]; then
+			ExtendLabel=$(echo "$(Display_Variable_Trick "${Current_ETA}" "7")\
+						$(Display_Variable_Trick "${Currentfps}" "7" "fps")\
+						$(Display_Variable_Trick "${Currentbitrate}" "7" "kb/s")\
+						$(Display_Variable_Trick "${CurrentSize}" "7" "MB")" \
+						| awk '{$2=$2};1' | awk '{print "  " $0}' | tr '\n' ' ')
+		else
+			Current_ETA="IDLE: $(bc <<< "scale=0; ; ( $interval_calc / 1000)")/$(bc <<< "scale=0; ; ( $TimeOut / 1000)")s"
+			ExtendLabel=$(echo "$(Display_Variable_Trick "${Current_ETA}" "7")\
+						$(Display_Variable_Trick "${Currentfps}" "7" "fps")\
+						$(Display_Variable_Trick "${Currentbitrate}" "7" "kb/s")\
+						$(Display_Variable_Trick "${CurrentSize}" "7" "MB")" \
+						| awk '{$2=$2};1' | awk '{print "  " $0}' | tr '\n' ' ')
+		fi
 
 		# Display variables
 		if [[ "$CurrentState" = "end" ]]; then
@@ -2247,7 +2290,7 @@ elif [ "$qv" = "e" ]; then
 	echo "  [x264]       > for libx264 codec"
 	echo " *[x265]       > for libx265 codec"
 	if [[ -n "$VAAPI_device" ]]; then
-		echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding; use Mesa VAAPI"
+		echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding"
 	fi
 	echo "  [av1]        > for libaom-av1 codec"
 	echo "  [mpeg4]      > for xvid codec"
@@ -2297,11 +2340,10 @@ elif [ "$qv" = "e" ]; then
 
 # No video change
 else
-
 	# Set video configuration variable
 	chvidstream="Copy"
 	filevcodec="vcopy"
-	videoconf="-c:v copy"
+	codec="copy"
 
 fi
 
@@ -3333,10 +3375,10 @@ Video_Custom_Audio_Codec
 for i in "${VINDEX[@]}"; do
 	if [[ "$codeca" = "libopus" ]]; then
 		stream+=( "-filter:a:${ffprobe_a_StreamIndex[i]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1 -c:a:${ffprobe_a_StreamIndex[i]} $codeca" )
-		mapLabel+=( "${VINDEX[i]}" )
+		mapLabel+=( "$i" )
 	else
 		stream+=( "-c:a:${ffprobe_a_StreamIndex[i]} $codeca" )
-		mapLabel+=( "${VINDEX[i]}" )
+		mapLabel+=( "$i" )
 	fi
 done
 
@@ -3448,7 +3490,8 @@ for files in "${LSTVIDEO[@]}"; do
 			$FFMPEG_PROGRESS \
 			-map 0:v -c:v copy -map 0:s? $subtitleconf -map 0:a -map 0:a:${VINDEX[i]}? \
 			-c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus \
-			-b:a:${VINDEX[i]} 320K -ac 2 -filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm \
+			-b:a:${VINDEX[i]} 320K -ac 2 \
+			-filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm \
 			"${files%.*}"-NightNorm.mkv \
 			| ProgressBar "$files" "" "" "Encoding"
 
@@ -3897,7 +3940,7 @@ else
 	echo
 fi
 }
-Video_Multiple_Extention_Check() {		# Sources video multiple extention question
+Video_Multiple_Extention_Check() {		# If sources video multiple extention question
 if [ "$NBVEXT" -gt "1" ]; then
 	echo
 	echo " Different source video file extensions have been found, would you like to select one or more?"
@@ -3913,7 +3956,8 @@ if [ "$NBVEXT" -gt "1" ]; then
 	if [ "$NEW_VIDEO_EXT_AVAILABLE" = "q" ]; then
 		Restart
 	elif test -n "$NEW_VIDEO_EXT_AVAILABLE"; then
-		mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$NEW_VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+		mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep \
+			-regex '.*\.('$NEW_VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
 	fi
 fi
 }
@@ -4113,7 +4157,8 @@ if [ "$SilenceDetect" = "1" ]; then
 	if [[ "${files##*.}" = "wav" || "${files##*.}" = "flac" ]]; then
 		test_duration=$(mediainfo --Output="General;%Duration%" "${files%.*}"."${files##*.}")
 		if [[ "$test_duration" -gt 10000 ]] ; then
-			"$sox_bin" "${files%.*}"."${files##*.}" temp-out."${files##*.}" silence 1 0.2 -85d reverse silence 1 0.2 -85d reverse
+			"$sox_bin" "${files%.*}"."${files##*.}" temp-out."${files##*.}" \
+				silence 1 0.2 -85d reverse silence 1 0.2 -85d reverse
 			rm "${files%.*}"."${files##*.}" &>/dev/null
 			mv temp-out."${files##*.}" "${files%.*}"."${files##*.}" &>/dev/null
 		fi
@@ -4961,7 +5006,7 @@ if [[ -n "$TESTWAV" || -n "$TESTFLAC" ]]; then
 	esac
 fi
 }
-Audio_Multiple_Extention_Check() {		# Question if sources with multiple extention
+Audio_Multiple_Extention_Check() {		# If sources audio multiple extention question
 if [ "$NBAEXT" -gt "1" ]; then
 	echo
 	echo " Different source audio file extensions have been found, would you like to select one or more?"
@@ -4980,7 +5025,8 @@ if [ "$NBAEXT" -gt "1" ]; then
 		Restart
 	elif test -n "$NEW_AUDIO_EXT_AVAILABLE"; then
 		StartLoading "Search the files processed"
-		mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep -regex '.*\.('$NEW_AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+		mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep \
+			-regex '.*\.('$NEW_AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 		StopLoading $?
 	fi
@@ -5269,7 +5315,8 @@ local START
 local END
 
 # Limit to current directory
-mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 if [ "${#LSTAUDIO[@]}" -eq "0" ]; then
 	Echo_Mess_Error "No audio file in the working directory"
@@ -5330,7 +5377,8 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	fi
 
 	# Generate target file array
-	mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+		-iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
 
 	# Tag
 	cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2> /dev/null
@@ -5377,7 +5425,8 @@ for files in "${LSTAUDIO[@]}"; do
 	# Test integrity
 	(
 	ProgressBar "" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Integrity check"
-	"$ffmpeg_bin" -v error -i "$files" $FFMPEG_LOG_LVL -f null - &>/dev/null || echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+	"$ffmpeg_bin" -v error -i "$files" $FFMPEG_LOG_LVL -f null - &>/dev/null \
+		|| echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
 	) &
 	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
 		wait -n
