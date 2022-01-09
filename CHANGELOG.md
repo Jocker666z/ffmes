@@ -1,4 +1,14 @@
 # Changelog
+v0.96:
+* Video:
+	* add - extract pcm_bluray stream as wav
+	* chg - now gpu ffmpeg vaapi argument is more flexible, if decoding not supporting by gpu fail case reducing
+	* chg - improve order of hevc_vaapi filters
+	* fix - extract pcm_dvd, remove force 48kHz output
+	* fix - hevc_vaapi no more use this codec for mpeg2video source
+* Various:
+	* add - variable FFMPEG_VIDEO_CUSTOM_BIN
+
 v0.95:
 * Video:
 	* add - replace speed by ETA in progress bar for video, if fps variable available

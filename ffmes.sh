@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.95
+VERSION=v0.96
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -33,6 +33,7 @@ FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmp
 
 # Custom binary location
 FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
+FFMPEG_VIDEO_CUSTOM_BIN=""																	# FFmpeg video encoding binary, enter location of bin, if variable empty use system bin
 FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, if variable empty use system bin
 SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
 
@@ -351,13 +352,18 @@ rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
 ## CHECK FILES & BIN
 CheckFFmpegVersion() {
 local ffmpeg_stats_period
+local ffmpeg_video_stats_period
 local ffmpeg_vaapi_encoder
 
+ffmpeg_video_stats_period=$("$ffmpeg_video_bin" -hide_banner -h full | grep "stats_period")
 ffmpeg_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
-ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -encoders | grep "hevc_vaapi")
+ffmpeg_vaapi_encoder=$("$ffmpeg_video_bin" -hide_banner -encoders | grep "hevc_vaapi")
 
 # If ffmpeg version < 4.4 not use -stats_period
 if [ -z "$ffmpeg_stats_period" ]; then
+	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
+fi
+if [ -z "$ffmpeg_video_stats_period" ]; then
 	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
 fi
 
@@ -371,6 +377,11 @@ if [[ -f "$FFMPEG_CUSTOM_BIN" ]]; then
 	ffmpeg_bin="$FFMPEG_CUSTOM_BIN"
 else
 	ffmpeg_bin=$(command -v ffmpeg)
+fi
+if [[ -f "$FFMPEG_VIDEO_CUSTOM_BIN" ]]; then
+	ffmpeg_video_bin="$FFMPEG_VIDEO_CUSTOM_BIN"
+else
+	ffmpeg_video_bin=$(command -v ffmpeg)
 fi
 if [[ -f "$FFPROBE_CUSTOM_BIN" ]]; then
 	ffprobe_bin="$FFPROBE_CUSTOM_BIN"
@@ -1169,7 +1180,11 @@ if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
 			vfilter+=",scale=$WIDTH:-2"
 		fi
 	else
-		vfilter="-vf scale=$WIDTH:-2"
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter+="-vf scale_vaapi=w=$WIDTH:h=-2"
+		else
+			vfilter="-vf scale=$WIDTH:-2"
+		fi
 	fi
 else
 	if [ "$nbvfilter" -gt 1 ] ; then
@@ -1179,7 +1194,11 @@ else
 			vfilter+=",scale=$WIDTH:-1"
 		fi
 	else
-		vfilter="-vf scale=$WIDTH:-1"
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter+="-vf scale_vaapi=w=$WIDTH:h=-1"
+		else
+			vfilter="-vf scale=$WIDTH:-1"
+		fi
 	fi
 fi
 # Displayed width x height
@@ -1276,8 +1295,9 @@ Restart
 }
 TestVAAPI() {							# VAAPI device test
 if [ -e "$VAAPI_device" ]; then
-	if "$ffmpeg_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
-		GPUDECODE="-vaapi_device $VAAPI_device"
+	if "$ffmpeg_video_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
+		#GPUDECODE="-vaapi_device $VAAPI_device"
+		GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
 	else
 		GPUDECODE=""
 	fi
@@ -2172,7 +2192,7 @@ if [[ -n "$BD_disk" ]]; then
 	BD_title=$(bluray_info -j "$BD_disk" 2>/dev/null | jq -r '.bluray | ."disc name"')
 
 	# Remux
-	bluray_copy "$BD_disk" -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner $GPUDECODE -i - \
+	bluray_copy "$BD_disk" -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner -i - \
 				-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
 				"$BD_title".BD.Remux.mkv \
 				&& echo "  $BD_title.BD.Remux.mkv remux done" || Echo_Mess_Error "$BD_title.BD.Remux.mkv remux fail"
@@ -2227,10 +2247,9 @@ for (( i=0; i<=$(( ${#LSTVIDEO[@]} - 1 )); i++ )); do
 
 	# For progress bar
 	Media_Source_Info_Record "${LSTVIDEO[i]}"
-
 	(
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G $GPUDECODE -y -i "${LSTVIDEO[i]}" \
-			$FFMPEG_PROGRESS \
+	"$ffmpeg_video_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G \
+			$GPUDECODE -y -i "${LSTVIDEO[i]}" $FFMPEG_PROGRESS \
 			-threads 0 $vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
 			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
 			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
@@ -2289,7 +2308,7 @@ elif [ "$qv" = "e" ]; then
 	echo
 	echo "  [x264]       > for libx264 codec"
 	echo " *[x265]       > for libx265 codec"
-	if [[ -n "$VAAPI_device" ]]; then
+	if [[ -n "$VAAPI_device" ]] && [[ -n "$GPUDECODE" ]]; then
 		echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding"
 	fi
 	echo "  [av1]        > for libaom-av1 codec"
@@ -2342,7 +2361,7 @@ elif [ "$qv" = "e" ]; then
 else
 	# Set video configuration variable
 	chvidstream="Copy"
-	filevcodec="vcopy"
+	chvcodec="vcopy"
 	codec="copy"
 
 fi
@@ -2356,13 +2375,17 @@ Video_Custom_Video_Filter() {			# Option 1  	- Conf filter video
 # Local variables
 local nbvfilter
 
-if [[ "$codec" = "hevc_vaapi" ]]; then
+# VAAPI filter
+#if [[ "$codec" = "hevc_vaapi" ]]; then
 
-	# VAAPI filter
-	nbvfilter=$((nbvfilter+1))
-	vfilter="-vf format=nv12,hwupload"
+	#nbvfilter=$((nbvfilter+1))
+	#if [[ "$vaapi_mpeg2video_filter" = "1" ]]; then
+		#vfilter="-vf hwupload=extra_hw_frames=10,format=nv12|vaapi"
+	#else
+		#vfilter="-vf format=nv12|vaapi,hwupload"
+	#fi
 
-fi
+#fi
 
 # Desinterlace
 Display_Video_Custom_Info_choice
@@ -2388,7 +2411,11 @@ case $yn in
 				vfilter+=",yadif"
 			fi
 		else
-			vfilter="-vf yadif"
+			if [[ "$codec" = "hevc_vaapi" ]]; then
+				vfilter="-vf deinterlace_vaapi"
+			else
+				vfilter="-vf yadif"
+			fi
 		fi
 	;;
 	"q"|"Q")
@@ -2470,6 +2497,18 @@ case $yn in
 		chwidth="No change"
 	;;
 esac
+
+# VAAPI filter
+if [[ "$codec" = "hevc_vaapi" ]]; then
+
+	nbvfilter=$((nbvfilter+1))
+	if [ "$nbvfilter" -gt 1 ] ; then
+		vfilter+=",format=nv12|vaapi,hwupload"
+	else
+		vfilter="-vf format=nv12|vaapi,hwupload"
+	fi
+
+fi
 
 if [[ "$codec" != "hevc_vaapi" ]]; then
 
@@ -3407,7 +3446,7 @@ for files in "${LSTVIDEO[@]}"; do
 	filename_id="${files%.*}-${chacodec}.${files##*.}"
 
 	# Encoding
-	"$ffmpeg_bin"  $FFMPEG_LOG_LVL -y -i "$files" \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
 		$FFMPEG_PROGRESS \
 		-map 0 -c:v copy $subtitleconf -c:a copy \
 		$audio_stream_config \
@@ -3651,6 +3690,7 @@ Video_Extract_Stream() {				# Option 13 	- Extract stream
 local rpstreamch_parsed
 local streams_invalid
 local MKVEXTRACT
+local PCM_EXTRACT
 local FILE_EXT
 
 # Array
@@ -3743,7 +3783,11 @@ for files in "${LSTVIDEO[@]}"; do
 			pcm_s24le) FILE_EXT=wav ;;
 			pcm_s32le) FILE_EXT=wav ;;
 			pcm_dvd)
-				DVDPCMEXTRACT="1"
+				PCM_EXTRACT="1"
+				FILE_EXT=wav
+				;;
+			pcm_bluray)
+				PCM_EXTRACT="1"
 				FILE_EXT=wav
 				;;
 
@@ -3767,10 +3811,10 @@ for files in "${LSTVIDEO[@]}"; do
 					-c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
 					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 
-			elif [ "$DVDPCMEXTRACT" = "1" ]; then
+			elif [ "$PCM_EXTRACT" = "1" ]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
 					$FFMPEG_PROGRESS \
-					-map 0:"${VINDEX[i]}" -acodec pcm_s16le -ar 48000 \
+					-map 0:"${VINDEX[i]}" -acodec pcm_s24le \
 					"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
 					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 

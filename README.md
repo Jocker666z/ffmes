@@ -269,7 +269,8 @@ Cut or split one audio by time. Examples of input:
 --------------------------------------------------------------------------------------------------
 ## In script options (variables)
 ### Various
-* FFMPEG_CUSTOM_BIN: change default ffmpeg system bin for other location
+* FFMPEG_CUSTOM_BIN: used for everything except video encoding; change default ffmpeg system bin for other location
+* FFMPEG_VIDEO_CUSTOM_BIN: used for video encoding; change default ffmpeg system bin for other location
 * FFPROBE_CUSTOM_BIN: change default ffprobe system bin for other location
 * SOX_CUSTOM_BIN: change default sox system bin for other location
 ### Video
