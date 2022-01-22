@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.96
+VERSION=v0.97
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -181,6 +181,8 @@ ffprobe_Bitrate=()
 # Subtitle
 ffprobe_s_StreamIndex=()
 ffprobe_forced=()
+## Data
+ffprobe_d_StreamIndex=()
 ## Tag
 ffprobe_language=()
 # Disposition
@@ -203,6 +205,7 @@ source_files="$1"
 video_index="0"
 audio_index="0"
 subtitle_index="0"
+data_index="0"
 
 ## Map stream index
 mapfile -t StreamIndex < <(jq -r '.streams[] | .index' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null)
@@ -294,6 +297,18 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_forced+=( "" )
 			fi
 		fi
+
+		# Data specific
+		if ! [[ "$audio_list" = "1" ]]; then
+			if [[ "${ffprobe_StreamType[-1]}" = "data" ]]; then
+				ffprobe_d_StreamIndex+=( "$data_index" )
+				data_index=$((data_index+1))
+			else
+				ffprobe_d_StreamIndex+=( "" )
+				ffprobe_forced+=( "" )
+			fi
+		fi
+
 done
 
 # Variable stats
@@ -607,7 +622,7 @@ Usage: ffmes [options]
   -j|--videojobs <number> Number of video encoding in same time.
                           Default: 1
   -kc|--keep_cover        Keep embed image in audio files.
-  --novaapi               No use vaapi for decode video.
+  --novaapi               No use vaapi.
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
                           Positive input used as negative.
@@ -920,6 +935,13 @@ for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 		$(Display_Variable_Trick "${ffprobe_language[i]}" "2") \
 		$(Display_Variable_Trick "${ffprobe_default[i]}" "2") \
 		$(Display_Variable_Trick "${ffprobe_forced[i]}" "2")" \
+		| awk '{$2=$2};1' | awk '{print "  " $0}'
+	fi
+
+	# Data
+	if [[ "${ffprobe_StreamType[$i]}" = "data" ]]; then
+		echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}: \
+		$(Display_Variable_Trick "${ffprobe_Codec[i]}")" \
 		| awk '{$2=$2};1' | awk '{print "  " $0}'
 	fi
 
@@ -1296,8 +1318,11 @@ Restart
 TestVAAPI() {							# VAAPI device test
 if [ -e "$VAAPI_device" ]; then
 	if "$ffmpeg_video_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
-		#GPUDECODE="-vaapi_device $VAAPI_device"
-		GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
+		if [[ "chvcodec" = "hevc_vaapi" ]]; then
+			GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
+		else
+			GPUDECODE="-vaapi_device $VAAPI_device"
+		fi
 	else
 		GPUDECODE=""
 	fi
@@ -2357,6 +2382,9 @@ elif [ "$qv" = "e" ]; then
 		;;
 	esac
 
+# Tune VAAPI ffmpeg argument for encoding or decoding
+TestVAAPI
+
 # No video change
 else
 	# Set video configuration variable
@@ -2376,17 +2404,6 @@ Video_Custom_Video_Filter() {			# Option 1  	- Conf filter video
 local nbvfilter
 
 # VAAPI filter
-#if [[ "$codec" = "hevc_vaapi" ]]; then
-
-	#nbvfilter=$((nbvfilter+1))
-	#if [[ "$vaapi_mpeg2video_filter" = "1" ]]; then
-		#vfilter="-vf hwupload=extra_hw_frames=10,format=nv12|vaapi"
-	#else
-		#vfilter="-vf format=nv12|vaapi,hwupload"
-	#fi
-
-#fi
-
 # Desinterlace
 Display_Video_Custom_Info_choice
 if [ "$mediainfo_Interlaced" = "Interlaced" ]; then
@@ -2745,7 +2762,7 @@ while true; do
 		# Construct arrays
 		VINDEX=( "${ffprobe_StreamIndex[@]}" )
 		VCODECTYPE=("${ffprobe_StreamType[@]}")
-		stream+=("-map 0")
+		#stream+=("-map 0")
 		break
 
 	elif [[ "$rpstreamch_parsed" == "q" ]]; then			# Quit
@@ -2793,26 +2810,19 @@ for i in ${!VINDEX[*]}; do
 	case "${VCODECTYPE[i]}" in
 		# Video Stream
 		video)
-			# Add stream
-			if [ -n "$rpstreamch" ]; then
-				stream+=("-map 0:${VINDEX[i]}")
-			fi
+			stream+=("-map 0:${VINDEX[i]}")
 			;;
 
 		# Audio Stream
 		audio)
-			if [ -n "$rpstreamch" ]; then
-				if ! [[ "$chsoundstream" = "Remove" ]]; then
-					stream+=("-map 0:${VINDEX[i]}")
-				fi
+			if [[ "$chsoundstream" != "Remove" ]]; then
+				stream+=("-map 0:${VINDEX[i]}")
 			fi
 			;;
 
 		# Subtitle Stream
 		subtitle)
-			if [ -n "$rpstreamch" ]; then
-				stream+=("-map 0:${VINDEX[i]}")
-			fi
+			stream+=("-map 0:${VINDEX[i]}")
 			if test -z "$subtitleconf"; then
 				if [ "$extcont" = mkv ]; then
 					subtitleconf="-c:s copy"

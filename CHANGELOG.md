@@ -1,4 +1,11 @@
 # Changelog
+v0.97:
+* Video:
+	* add - now display data stream in video info
+	* add - now, stream copy, ignore data stream & images, just keep video, audio, & sub
+	* chg - improve stream map
+	* fix - decoding fail with ffmpeg vaapi argument
+
 v0.96:
 * Video:
 	* add - extract pcm_bluray stream as wav

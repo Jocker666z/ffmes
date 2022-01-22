@@ -36,7 +36,7 @@ Usage: ffmes options
   -j|--videojobs <number> Number of video encoding in same time.
                           Default: 1
   -kc|--keep_cover        Keep embed image in audio files.
-  --novaapi               No use vaapi for decode video.
+  --novaapi               No use vaapi.
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
                           Positive input used as negative.
