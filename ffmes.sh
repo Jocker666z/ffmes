@@ -1318,7 +1318,7 @@ Restart
 TestVAAPI() {							# VAAPI device test
 if [ -e "$VAAPI_device" ]; then
 	if "$ffmpeg_video_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
-		if [[ "chvcodec" = "hevc_vaapi" ]]; then
+		if [[ "$chvcodec" = "hevc_vaapi" ]]; then
 			GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
 		else
 			GPUDECODE="-vaapi_device $VAAPI_device"
