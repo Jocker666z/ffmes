@@ -1,8 +1,12 @@
 # Changelog
+v0.97a:
+* Video:
+	* fix - in hevc vaapi, fix resolution change
+
 v0.97:
 * Video:
 	* add - now display data stream in video info
-	* add - now, stream copy, ignore data stream & images, just keep video, audio, & sub
+	* add - now, stream copy, ignore data stream
 	* chg - improve stream map
 	* fix - decoding fail with ffmpeg vaapi argument
 

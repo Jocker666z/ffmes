@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.97
+VERSION=v0.97a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -2443,6 +2443,18 @@ case $yn in
 	;;
 esac
 
+# VAAPI filter
+if [[ "$codec" = "hevc_vaapi" ]]; then
+
+	nbvfilter=$((nbvfilter+1))
+	if [ "$nbvfilter" -gt 1 ] ; then
+		vfilter+=",format=nv12|vaapi,hwupload"
+	else
+		vfilter="-vf format=nv12|vaapi,hwupload"
+	fi
+
+fi
+
 # Resolution
 Display_Video_Custom_Info_choice
 echo " Resolution change:"
@@ -2514,18 +2526,6 @@ case $yn in
 		chwidth="No change"
 	;;
 esac
-
-# VAAPI filter
-if [[ "$codec" = "hevc_vaapi" ]]; then
-
-	nbvfilter=$((nbvfilter+1))
-	if [ "$nbvfilter" -gt 1 ] ; then
-		vfilter+=",format=nv12|vaapi,hwupload"
-	else
-		vfilter="-vf format=nv12|vaapi,hwupload"
-	fi
-
-fi
 
 if [[ "$codec" != "hevc_vaapi" ]]; then
 
