@@ -1,7 +1,19 @@
 # Changelog
+v0.98:
+* Audio
+	* add - cue split, option for remove backup dir with CUE+AUDIO files after split
+	* add - cue split, flac compression level question with: -0, -5, -8, -8 -e -p
+	* chg - cue split, also move utf-8 cue in backup dir after split
+	* chg - cue split, remove shnsplit warning
+	* chg - cue split, remove empty line in cue file for prevent shnsplit error
+* Various:
+	* add - main menu, display ffmpeg version used in title
+	* fix - progress bar, if current frame stuck at 1, consider ETA value is invalid
+	* fix - progress bar, now standby first interval time calculation for prevent (standard_in) 1: syntax error
+
 v0.97a:
 * Video:
-	* fix - in hevc vaapi, fix resolution change
+	* fix - hevc vaapi, fix resolution change
 
 v0.97:
 * Video:

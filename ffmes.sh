@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.97a
+VERSION=v0.98
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -370,6 +370,17 @@ local ffmpeg_stats_period
 local ffmpeg_video_stats_period
 local ffmpeg_vaapi_encoder
 
+# ffmpeg version
+ffmpeg_video_bin_version=$("$ffmpeg_video_bin" -version | awk -F 'ffmpeg version' '{print $2}' | awk 'NR==1{print $1}')
+ffmpeg_bin_version=$("$ffmpeg_bin" -version | awk -F 'ffmpeg version' '{print $2}' | awk 'NR==1{print $1}')
+# ffmpeg version label formating for main menu
+if [[ "$ffmpeg_video_bin_version" = "$ffmpeg_bin_version" ]]; then
+	ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
+else
+	ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version} & v${ffmpeg_video_bin_version} (video)"
+fi
+
+# ffmpeg capabilities
 ffmpeg_video_stats_period=$("$ffmpeg_video_bin" -hide_banner -h full | grep "stats_period")
 ffmpeg_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
 ffmpeg_vaapi_encoder=$("$ffmpeg_video_bin" -hide_banner -encoders | grep "hevc_vaapi")
@@ -635,7 +646,7 @@ EOF
 Display_Main_Menu() {					# Main menu
 clear
 echo
-echo "  / ffmes $VERSION /"
+echo "  / ffmes $VERSION / $ffmpeg_version_label"
 echo "  -----------------------------------------------------"
 echo "   0 - DVD & Blu-ray rip                              |"
 echo "   1 - video encoding                                 |-Video"
@@ -1342,6 +1353,19 @@ else
 	done
 fi
 }
+Remove_Audio_Split_Backup_Dir() {		# Remove CUE/AUDIO backup directory, question+action
+read -r -p " Remove backup directory with cue/audio files? [y/N]:" qarm
+case $qarm in
+	"Y"|"y")
+		# Remove source files
+		rm -R BACK/
+		echo
+	;;
+	*)
+		SourceNotRemoved="1"
+	;;
+esac
+}
 Remove_File_Source() {					# Remove source, question+action
 if [ "${#filesPass[@]}" -gt 0 ] ; then
 	read -r -p " Remove source files? [y/N]:" qarm
@@ -1610,8 +1634,13 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 			if [[ -z "$Current_Frame" ]];then
 				Current_Frame="1"
 			fi
-			Current_Remaining=$(bc <<< "scale=0; ; ( ($ffprobe_TotalFrames - $Current_Frame) / $CurrentfpsETA)")
-			Current_ETA="ETA: $((Current_Remaining/3600))h$((Current_Remaining%3600/60))m$((Current_Remaining%60))s"
+			# if Current_Frame stuck at 1, consider ETA value is invalid
+			if [[ "$Current_Frame" -eq "1" ]]; then
+				Current_ETA="ETA: N/A"
+			else
+				Current_Remaining=$(bc <<< "scale=0; ; ( ($ffprobe_TotalFrames - $Current_Frame) / $CurrentfpsETA)")
+				Current_ETA="ETA: $((Current_Remaining/3600))h$((Current_Remaining%3600/60))m$((Current_Remaining%60))s"
+			fi
 		else
 			Current_ETA=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		fi
@@ -1624,7 +1653,10 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 						$(Display_Variable_Trick "${CurrentSize}" "7" "MB")" \
 						| awk '{$2=$2};1' | awk '{print "  " $0}' | tr '\n' ' ')
 		else
-			Current_ETA="IDLE: $(bc <<< "scale=0; ; ( $interval_calc / 1000)")/$(bc <<< "scale=0; ; ( $TimeOut / 1000)")s"
+			# Standby first interval time calculation for prevent (standard_in) 1: syntax error
+			if [[ -n "$interval_calc" ]]; then
+				Current_ETA="IDLE: $(bc <<< "scale=0; ; ( $interval_calc / 1000)")/$(bc <<< "scale=0; ; ( $TimeOut / 1000)")s"
+			fi
 			ExtendLabel=$(echo "$(Display_Variable_Trick "${Current_ETA}" "7")\
 						$(Display_Variable_Trick "${Currentfps}" "7" "fps")\
 						$(Display_Variable_Trick "${Currentbitrate}" "7" "kb/s")\
@@ -3227,10 +3259,12 @@ local video_stream_size
 # Bitrate
 Display_Video_Custom_Info_choice
 echo " Choose a QP number, video strem size, or enter the desired bitrate:"
-echo " Note: * libx265 which can offer 25–50% bitrate savings compared to libx264."
+echo " Note: * hevc which can offer 25–50% bitrate savings compared to libx264."
+echo "       * At same bitrate, the quality of hevc_vaapi if inferior at the libx265 codec,"
+echo "         but the encoding speed is much faster."
 echo
-echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
-echo " [1500m]     Example of input for aproximative total size of video stream in MB (not recommended in batch)"
+echo " [1200k]    Example of input for cbr desired bitrate in kb/s"
+echo " [1500m]    Example of input for aproximative total size of video stream in MB (not recommended in batch)"
 echo " [-qp 21]   Example of input for crf desired level"
 echo
 echo "  [1] > for crf 0    ∧ |"
@@ -4496,7 +4530,7 @@ else
 	Audio_Source_Info_Detail_Question
 fi
 	echo " Choose FLAC desired configuration:"
-	echo " Notes: * libFLAC uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
+	echo " Notes: * ffmpeg FLAC uses a compression level parameter that varies from 0 (fastest) to 12 (slowest)."
 	echo "          The compressed files are always perfect, lossless representations of the original data."
 	echo "          Although the compression process involves a tradeoff between speed and size, "
 	echo "          the decoding process is always quite fast and not dependent on the level of compression."
@@ -5362,6 +5396,8 @@ Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$
 Audio_CUE_Split() {						# Option 22 	- CUE Splitter to flac
 # Local variables
 local CHARSET_DETECT
+local empty_line_detect
+local flac_level
 local total_source_files_size
 local total_target_files_size
 local PERC
@@ -5381,7 +5417,35 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	# Display
 	echo
 	Echo_Separator_Light
-	echo " CUE Split:"
+	echo " CUE Split, choose FLAC compression:"
+	echo " Notes: * FLAC uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
+	echo "          The compressed files are always perfect, lossless representations of the original data."
+	echo "          Although the compression process involves a tradeoff between speed and size, "
+	echo "          the decoding process is always quite fast and not dependent on the level of compression."
+	echo
+	echo " Choose a number:"
+	echo
+	echo "        | compression level "
+	echo "        |-------------------"
+	echo "  [1] > |   -0"
+	echo "  [2] > |   -5"
+	echo " *[3] > |   -8"
+	echo "  [4] > |   -8 -e -p"
+	echo "  [q] > | for exit"
+	read -r -e -p "-> " rpakb
+	if [ "$rpakb" = "q" ]; then
+		Restart
+	elif [ "$rpakb" = "1" ]; then
+		flac_level="-0"
+	elif [ "$rpakb" = "2" ]; then
+		flac_level="-5"
+	elif [ "$rpakb" = "3" ]; then
+		flac_level="-8"
+	elif [ "$rpakb" = "4" ]; then
+		flac_level="-8 -e -p"
+	else
+		flac_level="-8"
+	fi
 
 	# Start time counter
 	START=$(date +%s)
@@ -5393,6 +5457,14 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		mkdir BACK 2> /dev/null
 		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
 		mv -f utf-8.cue "${LSTCUE[0]}"
+	fi
+
+	# Remove empty line in CUE
+	empty_line_detect=$(grep -cvP '\S' "${LSTCUE[0]}")
+	if [[ "$empty_line_detect" -gt "0" ]]; then
+		sed '/^[[:space:]]*$/d' "${LSTCUE[0]}" > /tmp/cleanCUE.cue
+		cp /tmp/cleanCUE.cue "${LSTCUE[0]}"
+		rm /tmp/cleanCUE.cue
 	fi
 
 	# If wavpack file -> unpack
@@ -5414,7 +5486,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	fi
 
 	# Split file
-	shnsplit -f "${LSTCUE[0]}" -t "%n - %t" "${LSTAUDIO[0]}" -o "flac flac --best -s -o %f -"
+	shnsplit -w -f "${LSTCUE[0]}" -t "%n - %t" "${LSTAUDIO[0]}" -o "flac flac $flac_level -s -o %f -"
 
 	# Clean
 	if test $? -eq 0; then
@@ -5423,6 +5495,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 			mkdir BACK 2> /dev/null
 		fi
 		mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2> /dev/null
+		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".utf8.back 2> /dev/null
 	else
 		Echo_Separator_Light
 		echo "  CUE Splitting fail on shnsplit file"
@@ -6293,6 +6366,7 @@ case $ffmes_option in
 		Echo_Mess_Error "More than one CUE file in working directory" "1"
 	else
 		Audio_CUE_Split
+		Remove_Audio_Split_Backup_Dir
 		Clean
 	fi
 	;;
