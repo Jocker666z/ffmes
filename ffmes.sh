@@ -32,7 +32,7 @@ FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log lev
 FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
 
 # Custom binary location
-FFMPEG_CUSTOM_BIN="/home/guignol/Téléchargements/ffmpeg-static/ffmpeg"																		# FFmpeg binary, enter location of bin, if variable empty use system bin
+FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
 FFMPEG_VIDEO_CUSTOM_BIN=""																	# FFmpeg video encoding binary, enter location of bin, if variable empty use system bin
 FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, if variable empty use system bin
 SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
