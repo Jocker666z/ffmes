@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.98
+VERSION=v0.99
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -32,7 +32,7 @@ FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log lev
 FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
 
 # Custom binary location
-FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
+FFMPEG_CUSTOM_BIN="/home/guignol/Téléchargements/ffmpeg-static/ffmpeg"																		# FFmpeg binary, enter location of bin, if variable empty use system bin
 FFMPEG_VIDEO_CUSTOM_BIN=""																	# FFmpeg video encoding binary, enter location of bin, if variable empty use system bin
 FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, if variable empty use system bin
 SOX_CUSTOM_BIN=""																			# Sox binary, enter location of bin, if variable empty use system bin
@@ -101,15 +101,16 @@ LSTM3U=()
 
 # Populate arrays
 if test -n "$ARGUMENT"; then
-	if [[ "$InputFileExt" =~ ${VIDEO_EXT_AVAILABLE[*]} ]]; then
+	if [[ ${VIDEO_EXT_AVAILABLE[*]} =~ "${InputFileExt}" ]]; then
 		LSTVIDEO+=("$ARGUMENT")
 		mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-	elif [[ "$InputFileExt" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
+	elif [[ ${AUDIO_EXT_AVAILABLE[*]} =~ "${InputFileExt}" ]]; then
 		LSTAUDIO+=("$ARGUMENT")
 		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-	elif [[ "$InputFileExt" =~ ${ISO_EXT_AVAILABLE[*]} ]]; then
+	elif [[ ${ISO_EXT_AVAILABLE[*]} =~ "$InputFileExt" ]]; then
 		LSTISO+=("$ARGUMENT")
 	fi
+
 else
 	# List source(s) video file(s) & number of differents extentions
 	mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep \
@@ -1665,8 +1666,13 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 		fi
 
 		# Display variables
+		# End case
 		if [[ "$CurrentState" = "end" ]]; then
 			_progress="100"
+		# Total duration not available (dts audio)
+		elif [[ -z "$TotalDuration" ]]; then
+			_progress="100"
+		# Common case
 		else
 			_progress=$(( ( ((CurrentDuration * 100) / TotalDuration) * 100 ) / 100 ))
 		fi
@@ -1917,25 +1923,17 @@ for title in "${qtitle[@]}"; do
 	# mkvmerge - add chapters
 	Echo_Separator_Light
 	echo " Add chapters - $DVDtitle - title $title"
-	mkvmerge "$RipFileName".mkv --chapters "$RipFileName".chapters -o "$RipFileName"-chapters.mkv 2>/dev/null
+	mkvpropedit -c "$RipFileName".chapters "$RipFileName".mkv 2>/dev/null
 
-	# Clean 1
-	if [[ $(stat --printf="%s" "$RipFileName"-chapters.mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
-		rm "$RipFileName".mkv 2>/dev/null
-		mv "$RipFileName"-chapters.mkv "$RipFileName".mkv 2>/dev/null
-		rm "$RipFileName".chapters 2>/dev/null
-	else																			# if file<30 KBytes rejected
-		echo "X mkvmerge pass of DVD Rip fail"
-		rm "$RipFileName".chapters 2>/dev/null
-	fi
-
-	# Check Target if valid (size test) and clean 2
+	# Check Target if valid (size test) and clean
 	if [[ $(stat --printf="%s" "$RipFileName".mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
+		rm "$RipFileName".chapters 2>/dev/null
 		rm -f "$RipFileName".VOB 2> /dev/null
 		rm -R -f "$RipFileName" 2> /dev/null
-	else																			# if file<30 KBytes rejected
+	else																				# if file<30 KBytes rejected
 		echo "X FFmpeg pass of DVD Rip fail"
 		rm -R -f "$RipFileName".mkv 2> /dev/null
+		rm "$RipFileName".chapters 2>/dev/null
 	fi
 done
 
@@ -2208,7 +2206,7 @@ done
 }
 
 ## Blu-ray
-BLURAYrip() {
+BLURAYrip() {							# Option 0  	- Bluray Rip
 # Local variables
 local BD_disk
 local BD_title
@@ -2248,11 +2246,21 @@ if [[ -n "$BD_disk" ]]; then
 	# Get disk title
 	BD_title=$(bluray_info -j "$BD_disk" 2>/dev/null | jq -r '.bluray | ."disc name"')
 
+	# Extract chapters
+	bluray_info -m -g "$BD_disk" 2>/dev/null > BD.chapter
+
 	# Remux
-	bluray_copy "$BD_disk" -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner -i - \
+	bluray_copy "$BD_disk" -m -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner -y -i - \
 				-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
 				"$BD_title".BD.Remux.mkv \
 				&& echo "  $BD_title.BD.Remux.mkv remux done" || Echo_Mess_Error "$BD_title.BD.Remux.mkv remux fail"
+
+	# Add chapters
+	mkvpropedit -q -c BD.chapter "$BD_title".BD.Remux.mkv 2>/dev/null \
+	&& echo "  $BD_title.BD.Remux.mkv add chapters done" || Echo_Mess_Error "$BD_title.BD.Remux.mkv add chapters fail"
+
+	# Clean
+	rm "$BD_title".chapter 2>/dev/null
 fi
 }
 
@@ -4981,7 +4989,7 @@ else
 	AdaptedBitrate="1"
 fi
 }
-Audio_AC3_Config() {					# Option 1  	- Conf audio/video AC3
+Audio_AC3_Config() {					# Option 1 		- Conf audio/video AC3
 Display_Video_Custom_Info_choice
 echo " Choose AC3 desired configuration:"
 echo

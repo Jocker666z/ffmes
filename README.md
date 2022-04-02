@@ -98,11 +98,13 @@ If you encounter bugs or have proposals, I'm open to discussion.
 #### Option 0 details - DVD & Blu-ray rip
 ##### DVD:
 * Rip DVD, include ISO and VIDEO_TS VOB
+* Choose title
 * Remux all stream in mkv
 * Chapters integration
 * launch option 1 (optional)
 ##### Blu-ray:
 * Rip ISO & disc directory
+* No choose title, extract only main title
 * Remux all stream in mkv
 * https://github.com/beandog/bluray_info must be installed (see install help bellow)
 
@@ -292,6 +294,8 @@ Cut or split one audio by time. Examples of input:
 --------------------------------------------------------------------------------------------------
 ## Dependencies installation
 ### bluray_info & bluray_copy
+
+Dependencies: `libbluray-dev`
 
 ```
 git clone https://github.com/beandog/bluray_info && cd bluray_info

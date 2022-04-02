@@ -1,4 +1,14 @@
 # Changelog
+v0.99:
+* Video:
+	* add - bluray rip, add chapter in target file
+	* chg - bluray rip, secure that it is the main title that is extracted
+	* chg - DVD Rip, now use mkvpropedit instead mkvmerge for add chapters, the action is now almost instantaneous
+	* chg - DVD Rip, improve cleaning at end of all process
+* Various:
+	* fix - progress bar, if total duration not available (example for dts audio), force bar to 100, no more calculation error displayed
+	* chg - file detection, improve file type test (regex) with -i argument command (reduce false positive)
+
 v0.98:
 * Audio
 	* add - cue split, option for remove backup dir with CUE+AUDIO files after split
