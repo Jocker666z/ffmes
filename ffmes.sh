@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.99
+VERSION=v0.99a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -1613,20 +1613,20 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 	while true; do
 
 		# Get main value
-		CurrentState=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "progress" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
-		CurrentDuration=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "out_time_ms" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		CurrentState=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "progress" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		CurrentDuration=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "out_time_ms" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		CurrentDuration=$(( CurrentDuration/1000000 ))
 
 		# Get extra value
-		Currentfps=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "fps" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
-		Currentbitrate=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "bitrate" 2>/dev/null | tail -1 \
+		Currentfps=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "fps" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		Currentbitrate=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "bitrate" 2>/dev/null | tail -1 \
 						| awk -F"=" '{ print $2 }' | awk -F"." '{ print $1 }')
-		CurrentSize=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "total_size" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }' \
+		CurrentSize=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "total_size" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }' \
 						| awk '{ foo = $1 / 1024 / 1024 ; print foo }')
 
 		# ETA - If ffprobe_fps[0] active consider video, if not consider audio
 		if [[ -n "${ffprobe_fps[0]}" ]]; then
-			Current_Frame=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "frame=" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+			Current_Frame=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "frame=" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 			if [[ "$Currentfps" = "0.00" ]] || [[ -z "$Currentfps" ]];then
 				CurrentfpsETA="0.01"
 			else
@@ -1643,7 +1643,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 				Current_ETA="ETA: $((Current_Remaining/3600))h$((Current_Remaining%3600/60))m$((Current_Remaining%60))s"
 			fi
 		else
-			Current_ETA=$(tail -n 12 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+			Current_ETA=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		fi
 
 		# Displayed label
