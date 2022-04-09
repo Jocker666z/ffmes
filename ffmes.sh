@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.100
+VERSION=v0.100a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -102,13 +102,13 @@ LSTM3U=()
 
 # Populate arrays
 if test -n "$ARGUMENT"; then
-	if [[ ${VIDEO_EXT_AVAILABLE[*]} =~ "${InputFileExt}" ]]; then
+	if [[ ${VIDEO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
 		LSTVIDEO+=("$ARGUMENT")
 		mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-	elif [[ ${AUDIO_EXT_AVAILABLE[*]} =~ "${InputFileExt}" ]]; then
+	elif [[ ${AUDIO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
 		LSTAUDIO+=("$ARGUMENT")
 		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-	elif [[ ${ISO_EXT_AVAILABLE[*]} =~ "$InputFileExt" ]]; then
+	elif [[ ${ISO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
 		LSTISO+=("$ARGUMENT")
 	fi
 
@@ -364,16 +364,6 @@ fi
 
 # Clean
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
-}
-BD_Source_Info_Record() {				# Construct arrays with Blu-Ray stats
-# Local variables
-
-# Array
-
-# Record global json
-bluray_info -j "$BD_disk" 2>/dev/null | jq > "$BDINFO_CACHE"
-
-
 }
 
 ## CHECK FILES & BIN
@@ -2258,7 +2248,6 @@ BLURAYrip() {							# Option 0  	- Blu-ray Rip
 local BD_disk
 local bd_disc_name
 local bd_main_title
-local bluray_copy_argument
 local bd_show_list
 local bd_track_audio_test
 local bd_track_subtitle_test
@@ -2321,12 +2310,6 @@ if [[ -n "$BD_disk" ]]; then
 	# If no main extract view Stat
 	if [[ "$bd_show_list" = "1" ]]; then
 		# Size of table
-		title_string_length="7"
-		bitrate_string_length="4"
-		SampleFormat_string_length="4"
-		SampleRate_string_length="4"
-		Channel_string_length="1"
-		duration_string_length="8"
 		horizontal_separator_string_length=$(( 7 * 5 ))
 		separator_string_length=$(( 3 + 4 + 8 + 5 + 5 + 32 + 8 + horizontal_separator_string_length ))
 

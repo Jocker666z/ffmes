@@ -1,4 +1,9 @@
 # Changelog
+v0.100a:
+* Various:
+	* chg - remove dead code
+	* chg - minor code clean
+
 v0.100:
 * Video:
 	* add - bluray rip, add menu with titles can be extracted
