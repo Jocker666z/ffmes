@@ -1,4 +1,15 @@
 # Changelog
+v0.100:
+* Video:
+	* add - bluray rip, add menu with titles can be extracted
+	* add - bluray rip, add option for extract all titles
+	* chg - hevc_vaappi, after test active codec with MPEG2 source - black screen + green line seems fix (https://trac.ffmpeg.org/ticket/6668)
+	* fix - hevc_vaapi, encoding with some filters combination
+
+v0.99a:
+* Various:
+	* fix - progress bar, add 1 line in read ffmpeg stat files, for fix the absence of ETA on some encoding
+
 v0.99:
 * Video:
 	* add - bluray rip, add chapter in target file

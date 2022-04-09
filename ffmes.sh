@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.99a
+VERSION=v0.100
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -23,6 +23,7 @@ FFMES_CACHE_TAG="$FFMES_CACHE/tag-$(date +%Y%m%s%N).info"									# tag-DATE.inf
 FFMES_CACHE_INTEGRITY="$FFMES_CACHE/interity-$(date +%Y%m%s%N).info"						# integrity-DATE.info, list of files fail interity check
 FFMES_CACHE_UNTAGGED="$FFMES_CACHE/untagged-$(date +%Y%m%s%N).info"							# integrity-DATE.info, list of files untagged
 LSDVD_CACHE="$FFMES_CACHE/lsdvd-$(date +%Y%m%s%N).info"										# lsdvd cache
+BDINFO_CACHE="$FFMES_CACHE/bdinfo-$(date +%Y%m%s%N).info"									# bluray_info cache
 OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD player drives names
 
 # General variables
@@ -86,7 +87,7 @@ for DEVICE in "${OPTICAL_DEVICE[@]}"; do
 	fi
 done
 }
-SetGlobalVariables() {					# Construct variables with files accepted
+SetGlobalVariables() {					# Construct arrays with files accepted
 # Array
 LSTVIDEO=()
 LSTVIDEOEXT=()
@@ -145,7 +146,7 @@ mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep \
 NBVEXT=$(echo "${LSTVIDEOEXT[@]##*.}" | uniq -u | wc -w)
 NBAEXT=$(echo "${LSTAUDIOEXT[@]##*.}" | uniq -u | wc -w)
 }
-Media_Source_Info_Record() {
+Media_Source_Info_Record() {			# Construct arrays with files stats
 # Local variables
 local source_files
 local ffprobe_fps_raw
@@ -214,40 +215,40 @@ for index in "${StreamIndex[@]}"; do
 
 		# Shared
 		ffprobe_StreamIndex+=( "$index" )
-		ffprobe_Codec+=( "$(jqparse_stream "$index" "codec_name")" )
-		ffprobe_StreamType+=( "$(jqparse_stream "$index" "codec_type")" )
+		ffprobe_Codec+=( "$(ff_jqparse_stream "$index" "codec_name")" )
+		ffprobe_StreamType+=( "$(ff_jqparse_stream "$index" "codec_type")" )
 		if ! [[ "$audio_list" = "1" ]]; then
-			ffprobe_language+=( "$(jqparse_tag "$index" "language")" )
-			ffprobe_default+=( "$(jqparse_disposition "$index" "default")" )
+			ffprobe_language+=( "$(ff_jqparse_tag "$index" "language")" )
+			ffprobe_default+=( "$(ff_jqparse_disposition "$index" "default")" )
 		fi
 
 		# Video specific
 		if ! [[ "$audio_list" = "1" ]]; then
 			if [[ "${ffprobe_StreamType[-1]}" = "video" ]]; then
-				# Fix black screen + green line (https://trac.ffmpeg.org/ticket/6668)
-				if [[ "${ffprobe_Codec[-1]}" = "mpeg2video" ]]; then
-					unset GPUDECODE
-				else
-					if [[ -z "$GPUDECODE" ]] && [[ -n "$VAAPI_device" ]]; then
-						TestVAAPI
-					fi
-				fi
+				## Fix black screen + green line (https://trac.ffmpeg.org/ticket/6668)
+				#if [[ "${ffprobe_Codec[-1]}" = "mpeg2video" ]]; then
+					#unset GPUDECODE
+				#else
+					#if [[ -z "$GPUDECODE" ]] && [[ -n "$VAAPI_device" ]]; then
+						#TestVAAPI
+					#fi
+				#fi
 				ffprobe_v_StreamIndex+=( "$video_index" )
 				video_index=$((video_index+1))
-				ffprobe_Profile+=( "$(jqparse_stream "$index" "profile")" )
-				ffprobe_Width+=( "$(jqparse_stream "$index" "width")" )
-				ffprobe_Height+=( "$(jqparse_stream "$index" "height")" )
-				ffprobe_SAR+=( "$(jqparse_stream "$index" "sample_aspect_ratio")" )
-				ffprobe_DAR+=( "$(jqparse_stream "$index" "display_aspect_ratio")" )
-				ffprobe_Pixfmt+=( "$(jqparse_stream "$index" "pix_fmt")" )
-				ffprobe_ColorRange+=( "$(jqparse_stream "$index" "color_range")" )
-				ffprobe_ColorSpace+=( "$(jqparse_stream "$index" "color_space")" )
-				ffprobe_ColorTransfert+=( "$(jqparse_stream "$index" "color_transfer")" )
-				ffprobe_ColorPrimaries+=( "$(jqparse_stream "$index" "color_primaries")" )
-				ffprobe_FieldOrder+=( "$(jqparse_stream "$index" "field_order")" )
-				ffprobe_fps_raw=$(jqparse_stream "$index" "r_frame_rate")
+				ffprobe_Profile+=( "$(ff_jqparse_stream "$index" "profile")" )
+				ffprobe_Width+=( "$(ff_jqparse_stream "$index" "width")" )
+				ffprobe_Height+=( "$(ff_jqparse_stream "$index" "height")" )
+				ffprobe_SAR+=( "$(ff_jqparse_stream "$index" "sample_aspect_ratio")" )
+				ffprobe_DAR+=( "$(ff_jqparse_stream "$index" "display_aspect_ratio")" )
+				ffprobe_Pixfmt+=( "$(ff_jqparse_stream "$index" "pix_fmt")" )
+				ffprobe_ColorRange+=( "$(ff_jqparse_stream "$index" "color_range")" )
+				ffprobe_ColorSpace+=( "$(ff_jqparse_stream "$index" "color_space")" )
+				ffprobe_ColorTransfert+=( "$(ff_jqparse_stream "$index" "color_transfer")" )
+				ffprobe_ColorPrimaries+=( "$(ff_jqparse_stream "$index" "color_primaries")" )
+				ffprobe_FieldOrder+=( "$(ff_jqparse_stream "$index" "field_order")" )
+				ffprobe_fps_raw=$(ff_jqparse_stream "$index" "r_frame_rate")
 				ffprobe_fps+=( "$(bc <<< "scale=2; $ffprobe_fps_raw" | sed 's!\.0*$!!')" )
-				ffprobe_AttachedPic+=( "$(jqparse_disposition "$index" "attached_pic")" )
+				ffprobe_AttachedPic+=( "$(ff_jqparse_disposition "$index" "attached_pic")" )
 			else
 				ffprobe_v_StreamIndex+=( "" )
 				ffprobe_Profile+=( "" )
@@ -269,11 +270,11 @@ for index in "${StreamIndex[@]}"; do
 		if [[ "${ffprobe_StreamType[-1]}" = "audio" ]]; then
 			ffprobe_a_StreamIndex+=( "$audio_index" )
 			audio_index=$((audio_index+1))
-			ffprobe_SampleFormat+=( "$(jqparse_stream "$index" "sample_fmt")" )
-			ffprobe_SampleRate+=( "$(jqparse_stream "$index" "sample_rate" | awk '{ foo = $1 / 1000 ; print foo }')" )
-			ffprobe_Channel+=( "$(jqparse_stream "$index" "channels")" )
-			ffprobe_ChannelLayout+=( "$(jqparse_stream "$index" "channel_layout")" )
-			ffprobe_Bitrate_raw=$(jqparse_stream "$index" "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }')
+			ffprobe_SampleFormat+=( "$(ff_jqparse_stream "$index" "sample_fmt")" )
+			ffprobe_SampleRate+=( "$(ff_jqparse_stream "$index" "sample_rate" | awk '{ foo = $1 / 1000 ; print foo }')" )
+			ffprobe_Channel+=( "$(ff_jqparse_stream "$index" "channels")" )
+			ffprobe_ChannelLayout+=( "$(ff_jqparse_stream "$index" "channel_layout")" )
+			ffprobe_Bitrate_raw=$(ff_jqparse_stream "$index" "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }')
 			if [[ "$ffprobe_Bitrate_raw" = "0" ]]; then
 				ffprobe_Bitrate+=( "" )
 			else
@@ -292,7 +293,7 @@ for index in "${StreamIndex[@]}"; do
 			if [[ "${ffprobe_StreamType[-1]}" = "subtitle" ]]; then
 				ffprobe_s_StreamIndex+=( "$subtitle_index" )
 				subtitle_index=$((subtitle_index+1))
-				ffprobe_forced+=( "$(jqparse_disposition "$index" "forced")" )
+				ffprobe_forced+=( "$(ff_jqparse_disposition "$index" "forced")" )
 			else
 				ffprobe_s_StreamIndex+=( "" )
 				ffprobe_forced+=( "" )
@@ -314,8 +315,8 @@ done
 
 # Variable stats
 ## ffprobe stats
-ffprobe_StartTime=$(jqparse_format "start_time")
-ffprobe_Duration=$(jqparse_format "duration")
+ffprobe_StartTime=$(ff_jqparse_format "start_time")
+ffprobe_Duration=$(ff_jqparse_format "duration")
 ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
 if ! [[ "$audio_list" = "1" ]]; then
 	# If ffprobe_fps[0] active consider video, if not consider audio
@@ -324,7 +325,7 @@ if ! [[ "$audio_list" = "1" ]]; then
 		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
 	fi
 
-	ffprobe_OverallBitrate=$(jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' | awk -F"." '{ print $1 }')
+	ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' | awk -F"." '{ print $1 }')
 	ffprobe_ChapterNumber=$(jq -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | grep -c "start_time")
 	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
 		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
@@ -363,6 +364,16 @@ fi
 
 # Clean
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
+}
+BD_Source_Info_Record() {				# Construct arrays with Blu-Ray stats
+# Local variables
+
+# Array
+
+# Record global json
+bluray_info -j "$BD_disk" 2>/dev/null | jq > "$BDINFO_CACHE"
+
+
 }
 
 ## CHECK FILES & BIN
@@ -1203,11 +1214,9 @@ RATIO=$(bc -l <<< "${source_width} / $WIDTH")
 # Height calculation, display decimal only if not integer
 HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
 
-# Increment filter counter
-nbvfilter=$((nbvfilter+1))
 # Scale filter
 if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
-	if [ "$nbvfilter" -gt 1 ] ; then
+	if [ "$nbvfilter" -gt 0 ]; then
 		if [[ "$codec" = "hevc_vaapi" ]]; then
 			vfilter+=",scale_vaapi=w=$WIDTH:h=-2"
 		else
@@ -1215,13 +1224,13 @@ if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
 		fi
 	else
 		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+="-vf scale_vaapi=w=$WIDTH:h=-2"
+			vfilter+="-vf format=nv12|vaapi,hwupload,scale_vaapi=w=$WIDTH:h=-2"
 		else
 			vfilter="-vf scale=$WIDTH:-2"
 		fi
 	fi
 else
-	if [ "$nbvfilter" -gt 1 ] ; then
+	if [ "$nbvfilter" -gt 0 ]; then
 		if [[ "$codec" = "hevc_vaapi" ]]; then
 			vfilter+=",scale_vaapi=w=$WIDTH:h=-1"
 		else
@@ -1229,41 +1238,44 @@ else
 		fi
 	else
 		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+="-vf scale_vaapi=w=$WIDTH:h=-1"
+			vfilter+="-vf format=nv12|vaapi,hwupload,scale_vaapi=w=$WIDTH:h=-1"
 		else
 			vfilter="-vf scale=$WIDTH:-1"
 		fi
 	fi
 fi
+
+nbvfilter=$((nbvfilter+1))
+
 # Displayed width x height
 chwidth="${WIDTH}x${HEIGHT%.*}"
 }
 
 ## JSON PARSING
-jqparse_stream() {
+ff_jqparse_stream() {
 local index
 local value
 index="$1"
 value="$2"
 
-jq -r ".streams[] | select(.index==$1) | .$2" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+jq -r ".streams[] | select(.index==$index) | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
 }
-jqparse_tag() {
+ff_jqparse_tag() {
 local index
 local value
 index="$1"
 value="$2"
 
-jq -r ".streams[] | select(.index==$1) | .tags | .$2" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+jq -r ".streams[] | select(.index==$index) | .tags | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
 }
-jqparse_disposition() {
+ff_jqparse_disposition() {
 local index
 local value
 local test
 index="$1"
 value="$2"
 
-test=$(jq -r ".streams[] | select(.index==$1) | .disposition.$2" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g)
+test=$(jq -r ".streams[] | select(.index==$index) | .disposition.$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g)
 if [[ "$value" = "default" ]] && [[ "$test" = "1" ]]; then
 	echo "default"
 elif [[ "$value" = "forced" ]] && [[ "$test" = "1" ]]; then
@@ -1274,11 +1286,45 @@ else
 	echo ""
 fi
 }
-jqparse_format() {
+ff_jqparse_format() {
 local value
 value="$1"
 
-jq -r ".format | .$1" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+jq -r ".format | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+}
+bd_jqparse_main_info() {
+local value
+value="$1"
+
+jq -r ".bluray.$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
+}
+bd_jqparse_title() {
+local title
+local value
+title="$1"
+value="$2"
+
+jq -r ".titles[] | select(.title==$title) | .$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
+}
+bd_jqparse_title_audio() {
+local title
+local track
+title="$1"
+track="$2"
+
+# One line formated
+jq -r ".titles[] | select(.title==$title) | .audio[] | select(.track==$track) | .language,.codec,.format,.rate" "$BDINFO_CACHE" 2>/dev/null \
+	| sed ':b;N;$!bb;s/\n/, /g' | awk '$0=""$0"kHz"'
+}
+bd_jqparse_title_subtitles() {
+local title
+local track
+title="$1"
+track="$2"
+
+# One line formated
+jq -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==$track) | .language" "$BDINFO_CACHE" 2>/dev/null \
+	| sed ':b;N;$!bb;s/\n/, /g'
 }
 
 ## IN SCRIPT VARIOUS FUNCTIONS
@@ -1322,6 +1368,7 @@ rm "$FFMES_CACHE_UNTAGGED" &>/dev/null
 rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 rm "$FFMES_FFMPEG_PROGRESS" &>/dev/null
+rm "$BDINFO_CACHE" &>/dev/null
 }
 ffmesUpdate() {							# Option 99  	- ffmes update to lastest version (hidden option)
 curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/"$USER"/.local/bin/ffmes && chmod +rx /home/"$USER"/.local/bin/ffmes
@@ -2206,16 +2253,23 @@ done
 }
 
 ## Blu-ray
-BLURAYrip() {							# Option 0  	- Bluray Rip
+BLURAYrip() {							# Option 0  	- Blu-ray Rip
 # Local variables
 local BD_disk
-local BD_title
+local bd_disc_name
+local bd_main_title
+local bluray_copy_argument
+local bd_show_list
+local bd_track_audio_test
+local bd_track_subtitle_test
+local temp_bd_title_audio
+local temp_bd_title_subtitle
 
 clear
 echo
 echo " Blu-ray rip"
 echo " notes: * for ISO, launch ffmes in directory with one ISO"
-echo "        * for disk directory, launch ffmes in disk directory (must writable)"
+echo "        * for disk directory, launch ffmes in Blu-ray disk directory (must writable)"
 echo
 Echo_Separator_Light
 while :
@@ -2243,24 +2297,168 @@ else
 fi
 
 if [[ -n "$BD_disk" ]]; then
-	# Get disk title
-	BD_title=$(bluray_info -j "$BD_disk" 2>/dev/null | jq -r '.bluray | ."disc name"')
+
+	# Record global json - jq sub "space" by "_" in key
+	bluray_info -j "$BD_disk" 2>/dev/null \
+		| jq 'walk( if type == "object" then with_entries( .key |= ( gsub( " "; "_"))) else . end )' > "$BDINFO_CACHE"
+
+	# Main stats
+	bd_disc_name=$(bd_jqparse_main_info "disc_name")
+	bd_main_title=$(bd_jqparse_main_info "main_title")
+
+	# Display messge for rip main track only
+	read -r -p " Extract only main title of Blu-ray $bd_disc_name or view list? [y/N]:" qarm
+	case $qarm in
+		"Y"|"y")
+			# Extract argument
+			bd_title_pass_extract+=( "${bd_main_title}" )
+		;;
+		*)
+			bd_show_list="1"
+		;;
+	esac
+
+	# If no main extract view Stat
+	if [[ "$bd_show_list" = "1" ]]; then
+		# Size of table
+		title_string_length="7"
+		bitrate_string_length="4"
+		SampleFormat_string_length="4"
+		SampleRate_string_length="4"
+		Channel_string_length="1"
+		duration_string_length="8"
+		horizontal_separator_string_length=$(( 7 * 5 ))
+		separator_string_length=$(( 3 + 4 + 8 + 5 + 5 + 32 + 8 + horizontal_separator_string_length ))
+
+		# Print title raw of table0
+		echo
+		printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+		paste <(printf "%-3.3s\n" "") <(printf "%s\n" "|") \
+				<(printf "%-4.4s\n" "Size}") <(printf "%s\n" "|") \
+				<(printf "%-8.8s\n" "Duration[-1]}") <(printf "%s\n" "|") \
+				<(printf "%-5.5s\n" "Fmt") <(printf "%s\n" "|") \
+				<(printf "%-5.5s\n" "Codec") <(printf "%s\n" "|") \
+				<(printf "%-32b" "Audio") <(printf "%s\n" "|") \
+				<(printf "%-8b\n" "Subtitle") | column -s $'\t' -t
+		printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+
+		# Titles stats
+		mapfile -t bd_titles < <(jq -r '.titles[] | .title' "$BDINFO_CACHE")
+		for title in "${bd_titles[@]}"; do
+
+			# Raw duration for exclude no interesting data (10s)
+			bd_title_raw_duration=$(bd_jqparse_title "$title" "msecs")
+			if [[ "$bd_title_raw_duration" -gt "1000" ]]; then
+
+				# Add title in the available files array
+				bd_title_pass+=( "$title" )
+
+				# Shared
+				bd_title_duration+=( "$(bd_jqparse_title "$title" "length" | awk -F"." '{ print $1 }')" )
+				bd_title_filesize+=( "$(bd_jqparse_title "$title" "filesize" | numfmt --to=iec)" )
+
+				# Video
+				bd_title_video_format+=( "$(jq -r ".titles[] | select(.title==$title) | .video[] | .format" "$BDINFO_CACHE" 2>/dev/null)" )
+				bd_title_video_codec+=( "$(jq -r ".titles[] | select(.title==$title) | .video[] | .codec" "$BDINFO_CACHE" 2>/dev/null)" )
+
+				# Audio
+				bd_track_audio_test=$(jq -r ".titles[] | select(.title==$title) | .audio[] | select(.track==1)" "$BDINFO_CACHE")
+				if [[ -n "$bd_track_audio_test" ]] ; then
+					mapfile -t bd_title_audio_tracks < <(jq -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+					for audio_track in "${bd_title_audio_tracks[@]}"; do
+						if [[ "${bd_title_audio_tracks[-1]}" != "$audio_track" ]]; then
+							temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")\n"
+						else
+							temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")"
+						fi
+					done
+				else
+					temp_bd_title_audio="~"
+				fi
+				bd_title_audio+=( "$temp_bd_title_audio" )
+				unset temp_bd_title_audio
+
+				# Subtitle
+				bd_track_subtitle_test=$(jq -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==1)" "$BDINFO_CACHE")
+				if [[ -n "$bd_track_subtitle_test" ]] ; then
+					mapfile -t bd_title_subtitle_tracks < <(jq -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+					for subtitle_track in "${bd_title_subtitle_tracks[@]}"; do
+						if [[ "${bd_title_subtitle_tracks[-1]}" != "$subtitle_track" ]]; then
+							if [[ "${temp_bd_title_subtitle: -1}" = " " ]]; then
+								temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track")\n"
+							else
+								temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track"), "
+							fi
+						else
+							temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track")"
+						fi
+					done
+				else
+					temp_bd_title_subtitle="~"
+				fi
+				bd_title_subtitle+=( "$temp_bd_title_subtitle" )
+				unset temp_bd_title_subtitle
+
+				# Print title stats
+				paste <(printf "%-3.3s\n" "${title}") <(printf "%s\n" ".") \
+						<(printf "%-4.4s\n" "${bd_title_filesize[-1]}") <(printf "%s\n" ".") \
+						<(printf "%-8.8s\n" "${bd_title_duration[-1]}") <(printf "%s\n" ".") \
+						<(printf "%-5.5s\n" "${bd_title_video_format[-1]}") <(printf "%s\n" ".") \
+						<(printf "%-5.5s\n" "${bd_title_video_codec[-1]}") <(printf "%s\n" ".") \
+						<(printf "%-32b" "${bd_title_audio[-1]}") <(printf "%s\n" ".") \
+						<(printf "%-8b\n" "${bd_title_subtitle[-1]}") | column -s $'\t' -t
+				printf '%*s' "$separator_string_length" | tr ' ' "."; echo
+
+			fi
+		done
+
+		echo " Select one or all files:"
+		echo
+		echo "  [a] > for all"
+		echo "  [n] > for n is title number of title"
+		echo "  [q] > for exit"
+		while true; do
+			read -r -e -p "  -> " bdtitlerep
+			if [[ "$bdtitlerep" = "q" ]]; then
+				Restart
+			fi
+			if [[ "$bdtitlerep" = "a" ]]; then
+				bd_title_pass_extract=( "${bd_title_pass[@]}" )
+				break 2
+			fi
+			for test in "${bd_title_pass[@]}"; do
+				if [[ "$test" = "$bdtitlerep" ]]; then
+					bd_title_pass_extract+=( "${bdtitlerep}" )
+					break 2
+				fi
+			done
+			Echo_Mess_Error "Please select a title number display in the table."
+		done
+
+	fi
+
+for title in "${bd_title_pass_extract[@]}"; do
 
 	# Extract chapters
-	bluray_info -m -g "$BD_disk" 2>/dev/null > BD.chapter
+	bluray_info -t "$title" -g "$BD_disk" 2>/dev/null > "${bd_disc_name}.${title}".chapter
 
 	# Remux
-	bluray_copy "$BD_disk" -m -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner -y -i - \
+	bluray_copy "$BD_disk" -t "$title" -o - 2>/dev/null | "$ffmpeg_bin" $FFMPEG_LOG_LVL -hide_banner -y -i - \
 				-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
-				"$BD_title".BD.Remux.mkv \
-				&& echo "  $BD_title.BD.Remux.mkv remux done" || Echo_Mess_Error "$BD_title.BD.Remux.mkv remux fail"
+				"${bd_disc_name}.${title}".Remux.mkv \
+				&& echo "  ${bd_disc_name}.${title}.Remux.mkv remux done" \
+				|| Echo_Mess_Error "${bd_disc_name}.${title}.Remux.mkv remux fail"
 
 	# Add chapters
-	mkvpropedit -q -c BD.chapter "$BD_title".BD.Remux.mkv 2>/dev/null \
-	&& echo "  $BD_title.BD.Remux.mkv add chapters done" || Echo_Mess_Error "$BD_title.BD.Remux.mkv add chapters fail"
+	mkvpropedit -q -c "${bd_disc_name}.${title}".chapter "${bd_disc_name}.${title}".Remux.mkv 2>/dev/null \
+		&& echo "  ${bd_disc_name}.${title}.Remux.mkv add chapters done" \
+		|| Echo_Mess_Error "${bd_disc_name}.${title}.Remux.mkv add chapters fail"
 
 	# Clean
-	rm "$BD_title".chapter 2>/dev/null
+	rm "${bd_disc_name}.${title}".chapter 2>/dev/null
+
+done
+
 fi
 }
 
@@ -2443,7 +2641,6 @@ Video_Custom_Video_Filter() {			# Option 1  	- Conf filter video
 # Local variables
 local nbvfilter
 
-# VAAPI filter
 # Desinterlace
 Display_Video_Custom_Info_choice
 if [ "$mediainfo_Interlaced" = "Interlaced" ]; then
@@ -2459,21 +2656,13 @@ echo "  [q] > for exit"
 read -r -e -p "-> " yn
 case $yn in
 	"y"|"Y")
-		nbvfilter=$((nbvfilter+1))
 		chdes="Yes"
-		if [ "$nbvfilter" -gt 1 ] ; then
-			if [[ "$codec" = "hevc_vaapi" ]]; then
-				vfilter+=",deinterlace_vaapi"
-			else
-				vfilter+=",yadif"
-			fi
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter="-vf format=nv12|vaapi,hwupload,deinterlace_vaapi"
 		else
-			if [[ "$codec" = "hevc_vaapi" ]]; then
-				vfilter="-vf deinterlace_vaapi"
-			else
-				vfilter="-vf yadif"
-			fi
+			vfilter="-vf yadif"
 		fi
+		nbvfilter=$((nbvfilter+1))
 	;;
 	"q"|"Q")
 		Restart
@@ -2482,18 +2671,6 @@ case $yn in
 		chdes="No change"
 	;;
 esac
-
-# VAAPI filter
-if [[ "$codec" = "hevc_vaapi" ]]; then
-
-	nbvfilter=$((nbvfilter+1))
-	if [ "$nbvfilter" -gt 1 ] ; then
-		vfilter+=",format=nv12|vaapi,hwupload"
-	else
-		vfilter="-vf format=nv12|vaapi,hwupload"
-	fi
-
-fi
 
 # Resolution
 Display_Video_Custom_Info_choice
@@ -2566,6 +2743,13 @@ case $yn in
 		chwidth="No change"
 	;;
 esac
+
+# VAAPI filter
+if [[ "$codec" = "hevc_vaapi" ]]; then
+	if [ -z "$nbvfilter" ] ; then
+		vfilter="-vf format=nv12|vaapi,hwupload"
+	fi
+fi
 
 if [[ "$codec" != "hevc_vaapi" ]]; then
 
@@ -2643,7 +2827,6 @@ if [[ "$codec" != "hevc_vaapi" ]]; then
 				Restart
 			;;
 		*)
-			nbvfilter=$((nbvfilter+1))
 			chsdr2hdr="Yes"
 			if [ "$nbvfilter" -gt 1 ] ; then
 				vfilter+=",zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
@@ -2676,7 +2859,6 @@ case $yn in
 		chfps="No change"
 	;;
 esac
-
 }
 Video_Custom_Audio() {					# Option 1  	- Conf audio, encode or not
 Display_Video_Custom_Info_choice

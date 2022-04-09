@@ -104,8 +104,9 @@ If you encounter bugs or have proposals, I'm open to discussion.
 * launch option 1 (optional)
 ##### Blu-ray:
 * Rip ISO & disc directory
-* No choose title, extract only main title
+* Choose title
 * Remux all stream in mkv
+* Chapters integration
 * https://github.com/beandog/bluray_info must be installed (see install help bellow)
 
 #### Option 1 details - video encoding, full custom options
