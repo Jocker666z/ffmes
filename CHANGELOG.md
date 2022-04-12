@@ -1,4 +1,15 @@
 # Changelog
+v0.101:
+* Video:
+	* add - bluray rip, add some menu info & fix
+	* fix - bluray rip, remove ffmpeg log level for see what happens during remux
+* Audio
+	* add - wavpack, add compression 5 & 8. For the warriors, because these compression options take an insane amount of time, for less improving compress.
+* Various:
+	* add - json parsing, if gojq available, now use this bin instead jq, speedup json parsing time by 8 (https://github.com/itchyny/gojq)
+	* fix - display, no more ffmpeg message displayed in various conditions of ffmes launch with arguments
+	* chg - bash code, improve clean & change
+
 v0.100a:
 * Various:
 	* chg - remove dead code

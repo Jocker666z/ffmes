@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.100a
+VERSION=v0.101
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -149,6 +149,7 @@ NBAEXT=$(echo "${LSTAUDIOEXT[@]##*.}" | uniq -u | wc -w)
 Media_Source_Info_Record() {			# Construct arrays with files stats
 # Local variables
 local source_files
+local source_files_extentions
 local ffprobe_fps_raw
 local video_index
 local audio_index
@@ -191,18 +192,17 @@ ffprobe_language=()
 ffprobe_AttachedPic=()
 ffprobe_default=()
 
-
 # File to list
 source_files="$1"
+# File extentions
+source_files_extentions="${source_files##*.}"
 
 # Get stats with ffprobe
 "$ffprobe_bin" -analyzeduration 1G -probesize 1G -loglevel panic \
 	-show_chapters -show_format -show_streams -print_format json=c=1 \
 	"$source_files" > "$FFMES_FFPROBE_CACHE_STATS"
 
-
 # Array stats
-
 ## Index of video, audio & subtitle
 video_index="0"
 audio_index="0"
@@ -210,7 +210,7 @@ subtitle_index="0"
 data_index="0"
 
 ## Map stream index
-mapfile -t StreamIndex < <(jq -r '.streams[] | .index' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null)
+mapfile -t StreamIndex < <("$json_parser" -r '.streams[] | .index' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null)
 for index in "${StreamIndex[@]}"; do
 
 		# Shared
@@ -275,6 +275,7 @@ for index in "${StreamIndex[@]}"; do
 			ffprobe_Channel+=( "$(ff_jqparse_stream "$index" "channels")" )
 			ffprobe_ChannelLayout+=( "$(ff_jqparse_stream "$index" "channel_layout")" )
 			ffprobe_Bitrate_raw=$(ff_jqparse_stream "$index" "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }')
+
 			if [[ "$ffprobe_Bitrate_raw" = "0" ]]; then
 				ffprobe_Bitrate+=( "" )
 			else
@@ -325,8 +326,10 @@ if ! [[ "$audio_list" = "1" ]]; then
 		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
 	fi
 
-	ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' | awk -F"." '{ print $1 }')
-	ffprobe_ChapterNumber=$(jq -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | grep -c "start_time")
+	ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' \
+							| awk -F"." '{ print $1 }')
+	ffprobe_ChapterNumber=$("$json_parser" -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+							| grep -c "start_time")
 	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
 		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
 	fi
@@ -334,9 +337,10 @@ fi
 
 ## Mediainfo stats
 if ! [[ "$audio_list" = "1" ]]; then
-	mediainfo_VideoSize=$(mediainfo --Inform="Video;%StreamSize%" "$source_files" | awk '{ foo = $1 / 1024 / 1024 ; print foo }')
+	mediainfo_VideoSize=$(mediainfo --Inform="Video;%StreamSize%" "$source_files" \
+							| awk '{ foo = $1 / 1024 / 1024 ; print foo }')
 	if [[ "$mediainfo_VideoSize" = 0 ]]; then
-		mediainfo_VideoSize=""
+		unset mediainfo_VideoSize
 	fi
 	mediainfo_Interlaced=$(mediainfo --Inform="Video;%ScanType/String%" "$source_files")
 	mediainfo_HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "$source_files")
@@ -346,11 +350,9 @@ else
 fi
 ## File size
 FilesSize=$(Calc_Files_Size "$source_files")
-## Extentions
-FilesExtention="${source_files##*.}"
 
 ## ffmpeg stats
-if [[ "$FilesExtention" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
+if [[ ${AUDIO_EXT_AVAILABLE[*]} =~ ${source_files_extentions} ]]; then
 	"$ffmpeg_bin" -i "$source_files" -af "volumedetect" -vn -sn -dn -f null - &> "$FFMES_FFMPEG_CACHE_STAT"
 
 	ffmpeg_meandb=$(< "$FFMES_FFMPEG_CACHE_STAT" grep "mean_volume:" | awk '{print $5}')
@@ -364,6 +366,82 @@ fi
 
 # Clean
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
+}
+
+## JSON PARSING
+ff_jqparse_stream() {
+local index
+local value
+index="$1"
+value="$2"
+
+"$json_parser" -r ".streams[] | select(.index==$index) | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+}
+ff_jqparse_tag() {
+local index
+local value
+index="$1"
+value="$2"
+
+"$json_parser" -r ".streams[] | select(.index==$index) | .tags | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+}
+ff_jqparse_disposition() {
+local index
+local value
+local test
+index="$1"
+value="$2"
+
+test=$("$json_parser" -r ".streams[] | select(.index==$index) | .disposition.$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g)
+if [[ "$value" = "default" ]] && [[ "$test" = "1" ]]; then
+	echo "default"
+elif [[ "$value" = "forced" ]] && [[ "$test" = "1" ]]; then
+	echo "forced"
+elif [[ "$value" = "attached_pic" ]] && [[ "$test" = "1" ]]; then
+	echo "attached pic"
+else
+	echo ""
+fi
+}
+ff_jqparse_format() {
+local value
+value="$1"
+
+"$json_parser" -r ".format | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+}
+bd_jqparse_main_info() {
+local value
+value="$1"
+
+"$json_parser" -r ".bluray.$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
+}
+bd_jqparse_title() {
+local title
+local value
+title="$1"
+value="$2"
+
+"$json_parser" -r ".titles[] | select(.title==$title) | .$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
+}
+bd_jqparse_title_audio() {
+local title
+local track
+title="$1"
+track="$2"
+
+# One line formated
+"$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | select(.track==$track) | .language,.codec,.format,.rate" "$BDINFO_CACHE" 2>/dev/null \
+	| sed ':b;N;$!bb;s/\n/, /g' | awk '$0=""$0"kHz"'
+}
+bd_jqparse_title_subtitles() {
+local title
+local track
+title="$1"
+track="$2"
+
+# One line formated
+"$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==$track) | .language" "$BDINFO_CACHE" 2>/dev/null \
+	| sed ':b;N;$!bb;s/\n/, /g'
 }
 
 ## CHECK FILES & BIN
@@ -480,6 +558,13 @@ for command in "${CORE_COMMAND_NEEDED[@]}"; do
 	fi
 done
 CheckCommandDisplay "ffmes"
+}
+CheckJQCommand() {
+if hash gojq &>/dev/null; then
+	json_parser=$(command -v gojq)
+else
+	json_parser=$(command -v jq)
+fi
 }
 CheckCueSplitCommand() {
 n=0;
@@ -794,7 +879,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 		<(printf "%-${SampleFormat_string_length}.${SampleFormat_string_length}s\n" "fmt") <(printf "%s\n" ".") \
 		<(printf "%-${SampleRate_string_length}.${SampleRate_string_length}s\n" "kHz") <(printf "%s\n" ".") \
 		<(printf "%-${Channel_string_length}.${Channel_string_length}s\n" "ch") <(printf "%s\n" "|") \
-		<(printf "%-${duration_string_length}.${duration_string_length}s\n" "m:s") <(printf "%s\n" "|") \
+		<(printf "%-${duration_string_length}.${duration_string_length}s\n" "h:m:s") <(printf "%s\n" "|") \
 		<(printf "%-${peakdb_string_length}.${peakdb_string_length}s\n" "Peak") <(printf "%s\n" ".") \
 		<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "Mean") <(printf "%s\n" ".") \
 		<(printf "%-${diffdb_string_lenght}.${diffdb_string_lenght}s\n" "Diff") <(printf "%s\n" "|") \
@@ -963,7 +1048,7 @@ done
 Echo_Separator_Large
 
 # Reset limit to audio files grab stats
-audio_list=""
+unset audio_list
 }
 Display_Video_Custom_Info_choice() {	# Option 1  	- Summary of configuration
 Display_Media_Stats_One "${LSTVIDEO[@]}"
@@ -1241,82 +1326,6 @@ nbvfilter=$((nbvfilter+1))
 chwidth="${WIDTH}x${HEIGHT%.*}"
 }
 
-## JSON PARSING
-ff_jqparse_stream() {
-local index
-local value
-index="$1"
-value="$2"
-
-jq -r ".streams[] | select(.index==$index) | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
-}
-ff_jqparse_tag() {
-local index
-local value
-index="$1"
-value="$2"
-
-jq -r ".streams[] | select(.index==$index) | .tags | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
-}
-ff_jqparse_disposition() {
-local index
-local value
-local test
-index="$1"
-value="$2"
-
-test=$(jq -r ".streams[] | select(.index==$index) | .disposition.$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g)
-if [[ "$value" = "default" ]] && [[ "$test" = "1" ]]; then
-	echo "default"
-elif [[ "$value" = "forced" ]] && [[ "$test" = "1" ]]; then
-	echo "forced"
-elif [[ "$value" = "attached_pic" ]] && [[ "$test" = "1" ]]; then
-	echo "attached pic"
-else
-	echo ""
-fi
-}
-ff_jqparse_format() {
-local value
-value="$1"
-
-jq -r ".format | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
-}
-bd_jqparse_main_info() {
-local value
-value="$1"
-
-jq -r ".bluray.$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
-}
-bd_jqparse_title() {
-local title
-local value
-title="$1"
-value="$2"
-
-jq -r ".titles[] | select(.title==$title) | .$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
-}
-bd_jqparse_title_audio() {
-local title
-local track
-title="$1"
-track="$2"
-
-# One line formated
-jq -r ".titles[] | select(.title==$title) | .audio[] | select(.track==$track) | .language,.codec,.format,.rate" "$BDINFO_CACHE" 2>/dev/null \
-	| sed ':b;N;$!bb;s/\n/, /g' | awk '$0=""$0"kHz"'
-}
-bd_jqparse_title_subtitles() {
-local title
-local track
-title="$1"
-track="$2"
-
-# One line formated
-jq -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==$track) | .language" "$BDINFO_CACHE" 2>/dev/null \
-	| sed ':b;N;$!bb;s/\n/, /g'
-}
-
 ## IN SCRIPT VARIOUS FUNCTIONS
 Restart() {								# Restart script & for keep argument
 Clean
@@ -1348,9 +1357,38 @@ if [[ -z "$VERBOSE" ]]; then
 	stty -igncr
 fi
 }
-Clean() {								# Clean Temp
-# files
-find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;			# consider if file exist in cache directory after 3 days, delete it
+Clean() {								# Clean variables & temp files
+# Variable reset
+## Common variables
+unset extcont
+## Video variables
+unset vstream
+unset subtitleconf
+unset videoformat
+unset soundconf
+### videoconf & this sub variable
+unset videoconf
+unset framerate
+unset vfilter
+unset vcodec
+unset preset
+unset profile
+unset tune
+unset vkb
+
+## Audio variables
+unset afilter
+unset astream
+unset acodec
+unset akb
+unset abitdeph
+unset asamplerate
+unset confchan
+
+# Files
+## Old files -consider if file exist in cache directory after 3 days, delete it
+find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;
+## Current temp files
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
 rm "$FFMES_FFMPEG_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_INTEGRITY" &>/dev/null
@@ -1366,14 +1404,14 @@ Restart
 }
 TestVAAPI() {							# VAAPI device test
 if [ -e "$VAAPI_device" ]; then
-	if "$ffmpeg_video_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h 2> /dev/null; then
+	if "$ffmpeg_video_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h &>/dev/null; then
 		if [[ "$chvcodec" = "hevc_vaapi" ]]; then
 			GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
 		else
 			GPUDECODE="-vaapi_device $VAAPI_device"
 		fi
 	else
-		GPUDECODE=""
+		unset GPUDECODE
 	fi
 fi
 }
@@ -2254,6 +2292,16 @@ local bd_track_subtitle_test
 local temp_bd_title_audio
 local temp_bd_title_subtitle
 
+# Arrays
+bd_title_pass_extract=()
+bd_title_pass=()
+bd_title_duration=()
+bd_title_filesize=()
+bd_title_video_format=()
+bd_title_video_codec=()
+bd_title_audio=()
+bd_title_subtitle=()
+
 clear
 echo
 echo " Blu-ray rip"
@@ -2289,7 +2337,7 @@ if [[ -n "$BD_disk" ]]; then
 
 	# Record global json - jq sub "space" by "_" in key
 	bluray_info -j "$BD_disk" 2>/dev/null \
-		| jq 'walk( if type == "object" then with_entries( .key |= ( gsub( " "; "_"))) else . end )' > "$BDINFO_CACHE"
+		| "$json_parser" 'walk( if type == "object" then with_entries( .key |= ( gsub( " "; "_"))) else . end )' > "$BDINFO_CACHE"
 
 	# Main stats
 	bd_disc_name=$(bd_jqparse_main_info "disc_name")
@@ -2326,7 +2374,7 @@ if [[ -n "$BD_disk" ]]; then
 		printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
 
 		# Titles stats
-		mapfile -t bd_titles < <(jq -r '.titles[] | .title' "$BDINFO_CACHE")
+		mapfile -t bd_titles < <("$json_parser" -r '.titles[] | .title' "$BDINFO_CACHE")
 		for title in "${bd_titles[@]}"; do
 
 			# Raw duration for exclude no interesting data (10s)
@@ -2341,13 +2389,13 @@ if [[ -n "$BD_disk" ]]; then
 				bd_title_filesize+=( "$(bd_jqparse_title "$title" "filesize" | numfmt --to=iec)" )
 
 				# Video
-				bd_title_video_format+=( "$(jq -r ".titles[] | select(.title==$title) | .video[] | .format" "$BDINFO_CACHE" 2>/dev/null)" )
-				bd_title_video_codec+=( "$(jq -r ".titles[] | select(.title==$title) | .video[] | .codec" "$BDINFO_CACHE" 2>/dev/null)" )
+				bd_title_video_format+=( "$("$json_parser" -r ".titles[] | select(.title==$title) | .video[] | .format" "$BDINFO_CACHE" 2>/dev/null)" )
+				bd_title_video_codec+=( "$("$json_parser" -r ".titles[] | select(.title==$title) | .video[] | .codec" "$BDINFO_CACHE" 2>/dev/null)" )
 
 				# Audio
-				bd_track_audio_test=$(jq -r ".titles[] | select(.title==$title) | .audio[] | select(.track==1)" "$BDINFO_CACHE")
+				bd_track_audio_test=$("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | select(.track==1)" "$BDINFO_CACHE")
 				if [[ -n "$bd_track_audio_test" ]] ; then
-					mapfile -t bd_title_audio_tracks < <(jq -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+					mapfile -t bd_title_audio_tracks < <("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
 					for audio_track in "${bd_title_audio_tracks[@]}"; do
 						if [[ "${bd_title_audio_tracks[-1]}" != "$audio_track" ]]; then
 							temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")\n"
@@ -2362,9 +2410,9 @@ if [[ -n "$BD_disk" ]]; then
 				unset temp_bd_title_audio
 
 				# Subtitle
-				bd_track_subtitle_test=$(jq -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==1)" "$BDINFO_CACHE")
+				bd_track_subtitle_test=$("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==1)" "$BDINFO_CACHE")
 				if [[ -n "$bd_track_subtitle_test" ]] ; then
-					mapfile -t bd_title_subtitle_tracks < <(jq -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+					mapfile -t bd_title_subtitle_tracks < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
 					for subtitle_track in "${bd_title_subtitle_tracks[@]}"; do
 						if [[ "${bd_title_subtitle_tracks[-1]}" != "$subtitle_track" ]]; then
 							if [[ "${temp_bd_title_subtitle: -1}" = " " ]]; then
@@ -2396,9 +2444,11 @@ if [[ -n "$BD_disk" ]]; then
 		done
 
 		echo " Select one or all files:"
+		echo " Note: * The main title is ${bd_main_title}"
+		echo "       * Some titles are duplicates, with a few variations"
 		echo
 		echo "  [a] > for all"
-		echo "  [n] > for n is title number of title"
+		echo "  [n] > for n as title number"
 		echo "  [q] > for exit"
 		while true; do
 			read -r -e -p "  -> " bdtitlerep
@@ -2420,27 +2470,27 @@ if [[ -n "$BD_disk" ]]; then
 
 	fi
 
-for title in "${bd_title_pass_extract[@]}"; do
+	for title in "${bd_title_pass_extract[@]}"; do
 
-	# Extract chapters
-	bluray_info -t "$title" -g "$BD_disk" 2>/dev/null > "${bd_disc_name}.${title}".chapter
+		# Extract chapters
+		bluray_info -t "$title" -g "$BD_disk" 2>/dev/null > "${bd_disc_name}.${title}".chapter
 
-	# Remux
-	bluray_copy "$BD_disk" -t "$title" -o - 2>/dev/null | "$ffmpeg_bin" $FFMPEG_LOG_LVL -hide_banner -y -i - \
-				-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
-				"${bd_disc_name}.${title}".Remux.mkv \
-				&& echo "  ${bd_disc_name}.${title}.Remux.mkv remux done" \
-				|| Echo_Mess_Error "${bd_disc_name}.${title}.Remux.mkv remux fail"
+		# Remux
+		bluray_copy "$BD_disk" -t "$title" -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner -y -i - \
+					-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
+					"${bd_disc_name}.${title}".Remux.mkv \
+					&& echo "  ${bd_disc_name}.${title}.Remux.mkv remux done" \
+					|| Echo_Mess_Error "${bd_disc_name}.${title}.Remux.mkv remux fail"
 
-	# Add chapters
-	mkvpropedit -q -c "${bd_disc_name}.${title}".chapter "${bd_disc_name}.${title}".Remux.mkv 2>/dev/null \
-		&& echo "  ${bd_disc_name}.${title}.Remux.mkv add chapters done" \
-		|| Echo_Mess_Error "${bd_disc_name}.${title}.Remux.mkv add chapters fail"
+		# Add chapters
+		mkvpropedit -q -c "${bd_disc_name}.${title}".chapter "${bd_disc_name}.${title}".Remux.mkv 2>/dev/null \
+			&& echo "  ${bd_disc_name}.${title}.Remux.mkv add chapters done" \
+			|| Echo_Mess_Error "${bd_disc_name}.${title}.Remux.mkv add chapters fail"
 
-	# Clean
-	rm "${bd_disc_name}.${title}".chapter 2>/dev/null
+		# Clean
+		rm "${bd_disc_name}.${title}".chapter 2>/dev/null
 
-done
+	done
 
 fi
 }
@@ -2448,6 +2498,7 @@ fi
 ## VIDEO
 Video_FFmpeg_video_cmd() {				# FFmpeg video encoding command
 # Local variables
+local TimestampTest
 local PERC
 local total_source_files_size
 local total_target_files_size
@@ -2631,7 +2682,7 @@ if [ "$mediainfo_Interlaced" = "Interlaced" ]; then
 else
 	echo " Video not seems interlaced, you want force deinterlace:"
 fi
-echo " Note: the detection is not 100% reliable, a visual check of the video will guarantee it."
+echo " Note: The detection is not 100% reliable, a visual check of the video will guarantee it"
 echo
 echo "  [y] > for yes "
 echo " *[↵] > for no change"
@@ -2747,8 +2798,7 @@ if [[ "$codec" != "hevc_vaapi" ]]; then
 	echo "  [4] > for 180°"
 	echo " *[↵] > for no change"
 	echo "  [q] > for exit"
-	while :
-	do
+	while :; do
 	read -r -e -p "-> " ynrotat
 	case $ynrotat in
 		[0-4])
@@ -2866,7 +2916,7 @@ elif [ "$qa" = "e" ]; then
 elif [ "$qa" = "r" ]; then
 	chsoundstream="Remove"
 	fileacodec="AREMOVE"
-	soundconf=""
+	unset soundconf
 
 # No audio change
 else
@@ -2896,25 +2946,25 @@ echo "  [q]      > | exit"
 read -r -e -p "-> " chacodec
 case $chacodec in
 	"opus")
-		codeca="libopus"
+		acodec="libopus"
 		chacodec="OPUS"
 		Audio_Opus_Config
 		Audio_Channels_Config
 	;;
 	"vorbis")
-		codeca="libvorbis"
+		acodec="libvorbis"
 		chacodec="OGG"
 		Audio_OGG_Config
 		Audio_Channels_Config
 	;;
 	"ac3")
-		codeca="ac3"
+		acodec="ac3"
 		chacodec="AC3"
 		Audio_AC3_Config
 		Audio_Channels_Config
 	;;
 	"flac")
-		codeca="flac"
+		acodec="flac"
 		chacodec="FLAC"
 		Audio_FLAC_Config
 		Audio_Channels_Config
@@ -2923,14 +2973,14 @@ case $chacodec in
 		Restart
 	;;
 	*)
-		codeca="libopus"
+		acodec="libopus"
 		chacodec="OPUS"
 		Audio_Opus_Config
 		Audio_Channels_Config
 	;;
 esac
 fileacodec="$chacodec"
-soundconf="$afilter -c:a $codeca $akb $asamplerate $confchan"
+soundconf="$afilter -c:a $acodec $akb $asamplerate $confchan"
 }
 Video_Custom_Stream() {					# Option 1,2	- Conf stream selection
 # Local variables
@@ -3181,7 +3231,7 @@ if [ "$chvcodec" = "H264" ]; then
 	elif [ "$reptune" = "canimation" ]; then
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9 -deblock -2:-2 -psy-rd 1.0:0.25 -aq 0.5 -qcomp 0.8"
 	elif [ "$reptune" = "no" ]; then
-		tune=""
+		unset tune
 	elif [ "$reptune" = "q" ]; then
 		Restart
 	else
@@ -3215,7 +3265,6 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	elif [ "$reptune" = "q" ]; then
 		Restart
 	else
-		tune=""
 		chtune="; tune default"
 	fi
 	# Menu display tune
@@ -3629,11 +3678,11 @@ Video_Custom_Audio_Codec
 
 # Construct ffmpeg encoding command
 for i in "${VINDEX[@]}"; do
-	if [[ "$codeca" = "libopus" ]]; then
-		stream+=( "-filter:a:${ffprobe_a_StreamIndex[i]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1 -c:a:${ffprobe_a_StreamIndex[i]} $codeca" )
+	if [[ "$acodec" = "libopus" ]]; then
+		stream+=( "-filter:a:${ffprobe_a_StreamIndex[i]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1 -c:a:${ffprobe_a_StreamIndex[i]} $acodec" )
 		mapLabel+=( "$i" )
 	else
-		stream+=( "-c:a:${ffprobe_a_StreamIndex[i]} $codeca" )
+		stream+=( "-c:a:${ffprobe_a_StreamIndex[i]} $acodec" )
 		mapLabel+=( "$i" )
 	fi
 done
@@ -4380,7 +4429,7 @@ local GREPVOLUME
 if [ "$PeakNorm" = "1" ]; then
 
 	TestDB=$("$ffmpeg_bin" -i "$files" -af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 | grep "max_volume" | awk '{print $5;}')
-	if [ -n "$afilter" ] && [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then			# Opus trick for peak normalization
+	if [ -n "$afilter" ] && [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then			# Opus trick for peak normalization
 		# Apply norm. if grep value is negative & greater default value
 		if [[ "$TestDB" = *"-"* ]] && (( $(echo "${TestDB/-/} > $PeakNormDB" | bc -l) )); then
 			GREPVOLUME="$(echo "${TestDB/-/}" | awk -v var="$PeakNormDB" '{print $1-var}')dB"
@@ -4392,8 +4441,6 @@ if [ "$PeakNorm" = "1" ]; then
 		if [[ "$TestDB" = *"-"* ]] && (( $(echo "${TestDB/-/} > $PeakNormDB" | bc -l) )); then
 			GREPVOLUME="$(echo "${TestDB/-/}" | awk -v var="$PeakNormDB" '{print $1-var}')dB"
 			afilter="-af volume=$GREPVOLUME"
-		else
-			afilter=""
 		fi
 	fi
 
@@ -4407,8 +4454,6 @@ if [ "$TestFalseStereo" = "1" ]; then
 	TESTRIGHT=$("$ffmpeg_bin" -i "$files" -map_channel 0.0.1 -f md5 - 2>/dev/null)
 	if [ "$TESTLEFT" = "$TESTRIGHT" ]; then
 		confchan="-channel_layout mono"
-	else
-		confchan=""
 	fi
 fi
 }
@@ -4430,8 +4475,9 @@ Audio_Opus_AAC_Auto_Bitrate() {			# Part of Audio_FFmpeg_cmd loop
 local TestBitrate
 if [ "$AdaptedBitrate" = "1" ]; then
 	TestBitrate=$(mediainfo --Output="General;%OverallBitRate%" "$files")
+	# If not integer = file not valid
 	if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]] ; then		# If not integer = file not valid
-		akb=""
+		unset akb
 	elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
 		akb="-b:a 64K"
 		asamplerate="-cutoff 15000"
@@ -4536,7 +4582,7 @@ Audio_Channels_Config() {				#
 if [ "$ffmes_option" -lt 20 ]; then          # if profile 0 or 1 display
 	Display_Video_Custom_Info_choice
 fi
-if [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
+if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	echo " Choose desired audio channels configuration:"
 	echo
 	echo "  [1] > for channel_layout 1.0 (Mono)"
@@ -4615,6 +4661,9 @@ else
 fi
 }
 Audio_PCM_Config() {					# Option 21 	- Audio to wav (PCM)
+# Local variables
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then		# If in video encoding
 	Display_Video_Custom_Info_choice
 else							# If not in video encoding
@@ -4677,176 +4726,177 @@ elif [ "$rpakb" = "10" ]; then
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "11" ]; then
 	acodec="-acodec u8"
-	asamplerate=""
 elif [ "$rpakb" = "12" ]; then
 	acodec="-acodec s8"
-	asamplerate=""
 elif [ "$rpakb" = "13" ]; then
 	acodec="-acodec pcm_s16le"
-	asamplerate=""
 elif [ "$rpakb" = "14" ]; then
 	acodec="-acodec pcm_s24le"
-	asamplerate=""
 elif [ "$rpakb" = "15" ]; then
 	acodec="-acodec pcm_s32le"
-	asamplerate=""
 else
 	acodec="-acodec pcm_s16le"
-	asamplerate=""
 fi
 }
 Audio_FLAC_Config() {					# Option 1,22 	- Conf audio/video flac, audio to flac
+# Local variables
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
 	Audio_Source_Info_Detail_Question
 fi
-	echo " Choose FLAC desired configuration:"
-	echo " Notes: * ffmpeg FLAC uses a compression level parameter that varies from 0 (fastest) to 12 (slowest)."
-	echo "          The compressed files are always perfect, lossless representations of the original data."
-	echo "          Although the compression process involves a tradeoff between speed and size, "
-	echo "          the decoding process is always quite fast and not dependent on the level of compression."
-	echo "        * If you choose and audio bit depth superior of source file, the encoding will fail."
-	echo "        * Option tagued [auto] = same value of source file."
-	echo "        * Max value of sample rate is 384kHz."
-	echo
-	echo " Choose a number:"
-	echo
-	echo "        | comp. | sample |   bit |"
-	echo "        | level |   rate | depth |"
-	echo "        |-------|--------|-------|"
-	echo "  [1] > |   12  |  44kHz |    16 |"
-	echo "  [2] > |   12  |  44kHz |    24 |"
-	echo "  [3] > |   12  |  44kHz |  auto |"
-	echo "  [4] > |   12  |  48kHz |    16 |"
-	echo "  [5] > |   12  |  48kHz |    24 |"
-	echo "  [6] > |   12  |  48kHz |  auto |"
-	echo "  [7] > |   12  |   auto |    16 |"
-	echo "  [8] > |   12  |   auto |    24 |"
-	echo " *[9] > |   12  |   auto |  auto |"
-	echo "  [q] > | for exit"
-	read -r -e -p "-> " rpakb
-	if [ "$rpakb" = "q" ]; then
-		Restart
-	elif echo "$rpakb" | grep -q 'c' ; then
-		akb="$rpakb"
-	elif [ "$rpakb" = "1" ]; then
-		akb="-compression_level 12 -sample_fmt s16"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "2" ]; then
-		akb="-compression_level 12 -sample_fmt s32"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "3" ]; then
-		akb="-compression_level 12"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "4" ]; then
-		akb="-compression_level 12 -sample_fmt s16"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "5" ]; then
-		akb="-compression_level 12 -sample_fmt s32"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "6" ]; then
-		akb="-compression_level 12"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "7" ]; then
-		akb="-compression_level 12 -sample_fmt s16"
-		asamplerate=""
-	elif [ "$rpakb" = "8" ]; then
-		akb="-compression_level 12 -sample_fmt s32"
-		asamplerate=""
-	elif [ "$rpakb" = "9" ]; then
-		akb="-compression_level 12"
-		asamplerate=""
-	else
-		akb="-compression_level 12"
-		asamplerate=""
-	fi
-	}
+
+echo " Choose FLAC desired configuration:"
+echo " Notes: * ffmpeg FLAC uses a compression level parameter that varies from 0 (fastest) to 12 (slowest)."
+echo "          The compressed files are always perfect, lossless representations of the original data."
+echo "          Although the compression process involves a tradeoff between speed and size, "
+echo "          the decoding process is always quite fast and not dependent on the level of compression."
+echo "        * If you choose and audio bit depth superior of source file, the encoding will fail."
+echo "        * Option tagued [auto] = same value of source file."
+echo "        * Max value of sample rate is 384kHz."
+echo
+echo " Choose a number:"
+echo
+echo "        | comp. | sample |   bit |"
+echo "        | level |   rate | depth |"
+echo "        |-------|--------|-------|"
+echo "  [1] > |   12  |  44kHz |    16 |"
+echo "  [2] > |   12  |  44kHz |    24 |"
+echo "  [3] > |   12  |  44kHz |  auto |"
+echo "  [4] > |   12  |  48kHz |    16 |"
+echo "  [5] > |   12  |  48kHz |    24 |"
+echo "  [6] > |   12  |  48kHz |  auto |"
+echo "  [7] > |   12  |   auto |    16 |"
+echo "  [8] > |   12  |   auto |    24 |"
+echo " *[9] > |   12  |   auto |  auto |"
+echo "  [q] > | for exit"
+read -r -e -p "-> " rpakb
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif echo "$rpakb" | grep -q 'c' ; then
+	akb="$rpakb"
+elif [ "$rpakb" = "1" ]; then
+	akb="-compression_level 12 -sample_fmt s16"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "2" ]; then
+	akb="-compression_level 12 -sample_fmt s32"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "3" ]; then
+	akb="-compression_level 12"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "4" ]; then
+	akb="-compression_level 12 -sample_fmt s16"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "5" ]; then
+	akb="-compression_level 12 -sample_fmt s32"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "6" ]; then
+	akb="-compression_level 12"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "7" ]; then
+	akb="-compression_level 12 -sample_fmt s16"
+elif [ "$rpakb" = "8" ]; then
+	akb="-compression_level 12 -sample_fmt s32"
+elif [ "$rpakb" = "9" ]; then
+	akb="-compression_level 12"
+else
+	akb="-compression_level 12"
+fi
+}
 Audio_WavPack_Config() {				# Option 23 	- audio to wavpack
+# Local variables
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
 	Audio_Source_Info_Detail_Question
 fi
-    echo " Choose WavPack desired configuration:"
-    echo " Notes: * WavPack uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
-	echo "          The value 3 allows a very good compression without having a huge encoding time."
-	echo "        * Option tagued [auto] = same value of source file."
-	echo "        * Max value of sample rate is 384kHz."
-    echo
-    echo " Choose a number:"
-    echo
-    echo "         | comp. | sample |   bit |"
-    echo "         | level |   rate | depth |"
-    echo "         |-------|--------|-------|"
-    echo "  [1]  > |    3  |  44kHz |    16 |"
-    echo "  [2]  > |    3  |  44kHz | 24/32 |"
-    echo "  [3]  > |    3  |  44kHz |  auto |"
-    echo "  [4]  > |    1  |  44kHz |  auto |"
-    echo "  [5]  > |    3  |  48kHz |    16 |"
-    echo "  [6]  > |    3  |  48kHz | 24/32 |"
-    echo "  [7]  > |    3  |  48kHz |  auto |"
-    echo "  [8]  > |    1  |  48kHz |  auto |"
-    echo "  [9]  > |    3  |   auto |    16 |"
-    echo "  [10] > |    3  |   auto | 24/32 |"
-    echo " *[11] > |    3  |   auto |  auto |"
-    echo "  [12] > |    1  |   auto |  auto |"
-	echo "  [q] >  | for exit"
-	read -r -e -p "-> " rpakb
-	if [ "$rpakb" = "q" ]; then
-		Restart
-	elif echo "$rpakb" | grep -q 'c' ; then
-		akb="$rpakb"
-	elif [ "$rpakb" = "1" ]; then
-		akb="-compression_level 3 -sample_fmt s16p"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "2" ]; then
-		akb="-compression_level 3 -sample_fmt s32p"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "3" ]; then
-		akb="-compression_level 3"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "4" ]; then
-		akb="-compression_level 1"
-		asamplerate="-ar 44100"
-	elif [ "$rpakb" = "5" ]; then
-		akb="-compression_level 3 -sample_fmt s16p"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "6" ]; then
-		akb="-compression_level 3 -sample_fmt s32p"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "7" ]; then
-		akb="-compression_level 3"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "8" ]; then
-		akb="-compression_level 1"
-		asamplerate="-ar 48000"
-	elif [ "$rpakb" = "9" ]; then
-		akb="-compression_level 3  -sample_fmt s16p"
-		asamplerate=""
-	elif [ "$rpakb" = "10" ]; then
-		akb="-compression_level 3 -sample_fmt s32p"
-		asamplerate=""
-	elif [ "$rpakb" = "11" ]; then
-		akb="-compression_level 3"
-		asamplerate=""
-	elif [ "$rpakb" = "12" ]; then
-		akb="-compression_level 1"
-		asamplerate=""
-	else
-		akb="-compression_level 3"
-		asamplerate=""
-	fi
-	}
+
+echo " Choose WavPack desired configuration:"
+echo " Notes: * WavPack uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
+echo "          The value 3 allows a very good compression without having a huge encoding time."
+echo "        * Option tagued [auto] = same value of source file."
+echo "        * Max value of sample rate is 384kHz."
+echo
+echo " Choose a number:"
+echo
+echo "         | comp. | sample |   bit |"
+echo "         | level |   rate | depth |"
+echo "         |-------|--------|-------|"
+echo "  [1]  > |    3  |  44kHz |    16 |"
+echo "  [2]  > |    3  |  44kHz | 24/32 |"
+echo "  [3]  > |    3  |  44kHz |  auto |"
+echo "  [4]  > |    1  |  44kHz |  auto |"
+echo "  [5]  > |    3  |  48kHz |    16 |"
+echo "  [6]  > |    3  |  48kHz | 24/32 |"
+echo "  [7]  > |    3  |  48kHz |  auto |"
+echo "  [8]  > |    1  |  48kHz |  auto |"
+echo "  [9]  > |    3  |   auto |    16 |"
+echo "  [10] > |    3  |   auto | 24/32 |"
+echo "  [11] > |    1  |   auto |  auto |"
+echo " *[12] > |    3  |   auto |  auto |"
+echo "  [13] > |    5  |   auto |  auto |"
+echo "  [14] > |    8  |   auto |  auto |"
+echo "  [q] >  | for exit"
+read -r -e -p "-> " rpakb
+if [ "$rpakb" = "q" ]; then
+	Restart
+elif [ "$rpakb" = "1" ]; then
+	akb="-compression_level 3 -sample_fmt s16p"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "2" ]; then
+	akb="-compression_level 3 -sample_fmt s32p"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "3" ]; then
+	akb="-compression_level 3"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "4" ]; then
+	akb="-compression_level 1"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "5" ]; then
+	akb="-compression_level 3 -sample_fmt s16p"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "6" ]; then
+	akb="-compression_level 3 -sample_fmt s32p"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "7" ]; then
+	akb="-compression_level 3"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "8" ]; then
+	akb="-compression_level 1"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "9" ]; then
+	akb="-compression_level 3  -sample_fmt s16p"
+elif [ "$rpakb" = "10" ]; then
+	akb="-compression_level 3 -sample_fmt s32p"
+elif [ "$rpakb" = "11" ]; then
+	akb="-compression_level 1"
+elif [ "$rpakb" = "12" ]; then
+	akb="-compression_level 3"
+elif [ "$rpakb" = "13" ]; then
+	akb="-compression_level 5"
+elif [ "$rpakb" = "14" ]; then
+	akb="-compression_level 8"
+else
+	akb="-compression_level 3"
+fi
+}
 Audio_Opus_Config() {					# Option 1,26 	- Conf audio/video opus, audio to opus (libopus)
+# Local variables
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
 	Audio_Source_Info_Detail_Question
 fi
+
 echo " Choose Opus (libopus) desired configuration:"
 echo " Note: * All options have cutoff at 48kHz"
 echo '       * With the "adaptive bitrate" option, ffmes will choose'
@@ -4909,7 +4959,7 @@ elif [ "$rpakb" = "9" ]; then
 	akb="-b:a 450K"
 elif [ "$rpakb" = "10" ]; then
 	akb="-b:a 510K"
-elif [ "$rpakb" = "X" ]  && [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
+elif [ "$rpakb" = "X" ]  && [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	AdaptedBitrate="1"
 else
 	if [[ "$AudioCodecType" = "libopus" ]]; then
@@ -4920,12 +4970,16 @@ else
 fi
 }
 Audio_OGG_Config() {					# Option 1,25 	- Conf audio/video libvorbis, audio to ogg (libvorbis)
+# Local variables
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
 	Audio_Source_Info_Detail_Question
 fi
+
 echo " Choose Ogg (libvorbis) desired configuration:"
 echo " Notes: * The reference is the variable bitrate (vbr), it allows to allocate more information to"
 echo "          compressdifficult passages and to save space on less demanding passages."
@@ -4957,7 +5011,6 @@ if [ "$rpakb" = "q" ]; then
 	Restart
 elif echo "$rpakb" | grep -q 'k' ; then
 	akb="-b:a $rpakb"
-	asamplerate=""
 elif [ "$rpakb" = "1" ]; then
 	akb="-q 2"
 	asamplerate="-cutoff 14000 -ar 44100"
@@ -4987,19 +5040,22 @@ elif [ "$rpakb" = "9" ]; then
 	asamplerate="-cutoff 22050 -ar 44100"
 elif [ "$rpakb" = "10" ]; then
 	akb="-q 10"
-	asamplerate=""
 else
 	akb="-q 10"
 	asamplerate="-cutoff 22050 -ar 44100"
 fi
 }
 Audio_MP3_Config() {					# Option 24 	- Audio to mp3 (libmp3lame)
+# Local variables
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
 	Audio_Source_Info_Detail_Question
 fi
+
 echo " Choose MP3 (libmp3lame) desired configuration:"
 echo
 echo " For crb:"
@@ -5038,16 +5094,17 @@ else
 fi
 }
 Audio_AAC_Config() {					# Option 1,27 	- Conf audio/video libvorbis, audio to m4a (aac)
+# Local variables
+local test_libfdk_aac
+local aac_codec_label
+local rpakb
+
 if [ "$ffmes_option" -lt 20 ]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
 	Audio_Source_Info_Detail_Question
 fi
-
-# Local variables
-local test_libfdk_aac
-local aac_codec_label
 
 # Test current ffmpeg configuration, libfdk_aac is non-free compilation
 test_libfdk_aac=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
@@ -5155,6 +5212,9 @@ else
 fi
 }
 Audio_AC3_Config() {					# Option 1 		- Conf audio/video AC3
+# Local variables
+local rpakb
+
 Display_Video_Custom_Info_choice
 echo " Choose AC3 desired configuration:"
 echo
@@ -5243,7 +5303,7 @@ case $qarm in
 		Audio_Channels_Config
 	;;
 	*)
-		if [[ "$codeca" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
+		if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 			afilter="-af aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 		fi
 		return
@@ -6297,14 +6357,14 @@ while [[ $# -gt 0 ]]; do
 		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
 		unset X265_LOG_LVL																			# Unset, for display x265 info log
 		FFMPEG_LOG_LVL="-loglevel info -stats"														# Set ffmpeg log level to stats
-		FFMPEG_PROGRESS=""
+		unset FFMPEG_PROGRESS
     ;;
     -vv|--fullverbose)
 		VERBOSE="1"																					# Set verbose, for dev/null and loading disable
 		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
 		unset X265_LOG_LVL																			# Unset, for display x265 info log
 		FFMPEG_LOG_LVL="-loglevel debug -stats"														# Set ffmpeg log level to debug
-		FFMPEG_PROGRESS=""
+		unset FFMPEG_PROGRESS
     ;;
     *)
 		Usage
@@ -6319,6 +6379,7 @@ CheckCoreCommand
 CheckCacheDirectory							# Check if cache directory exist
 CheckCustomBin
 CheckFFmpegVersion
+CheckJQCommand
 Display_Term_Size
 StartLoading "Listing of media files to be processed"
 SetGlobalVariables							# Set global variable

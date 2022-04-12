@@ -24,6 +24,8 @@ Source media files, supported extension:
 `bluray_copy bluray_info`
 ### Audio tag
 `flac monkeys-audio audiotools python-mutagen wavpack`
+### Optional
+`gojq` (faster than jq)
 
 ## Use
 ```
@@ -95,6 +97,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 
 --------------------------------------------------------------------------------------------------
 ### Video options
+
 #### Option 0 details - DVD & Blu-ray rip
 ##### DVD:
 * Rip DVD, include ISO and VIDEO_TS VOB
@@ -104,7 +107,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 * launch option 1 (optional)
 ##### Blu-ray:
 * Rip ISO & disc directory
-* Choose title
+* Choose title or all
 * Remux all stream in mkv
 * Chapters integration
 * https://github.com/beandog/bluray_info must be installed (see install help bellow)
