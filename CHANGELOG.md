@@ -1,4 +1,31 @@
 # Changelog
+v0.102:
+* Audio:
+	* add - flac, add compression option 5 & 0
+	* add - list of files at end, now display percentage of size change to each file
+	* chg - all audio encoding, new loop that consolidates the traceability of encoding arguments
+	* add - all audio encoding, no more multi regenerate stats if one file in encoding loop
+	* fix - tag, rename now fixed if track number have slash
+	* fix - cue split, no more display clean backup if no split run
+	* fix - false stereo detection, no displayed if channel option selected
+	* fix - false stereo detection, no displayed if peakdb option selected
+	* fix - peakdb normalization, no displayed if false stereo detection option selected
+	* fix - opus, apply hard codec limation to 256k for mono file
+	* remove - option: Silence detect & remove, at start & end (only wav & flac source)
+	* remove - sox from dependencies
+	* remove - variable FFMPEG_VIDEO_CUSTOM_BIN
+	* remove - normalization & false stereo detection in lossy option, no sense, too destructive
+* Audio tag:
+	* add - add vorbiscomment (vorbis-tools package) in dependencies for ogg tag
+	* add - add AtomicParsley (atomicparsley package) in dependencies for m4a (itune)
+	* chg - improve management, with label subtitution between different type of tag (ape, vorbis, ...)
+	* chg - aiff no more supported files
+	* remove - remove audiotools from dependencies
+* Various:
+	* chg - bash code, improve, clean & change
+	* chg - improve percentage display
+	* chg - in Calc_Files_Size in Mb, display only integer more than 1G
+
 v0.101:
 * Video:
 	* add - bluray rip, add some menu info & fix
@@ -8,7 +35,7 @@ v0.101:
 * Various:
 	* add - json parsing, if gojq available, now use this bin instead jq, speedup json parsing time by 8 (https://github.com/itchyny/gojq)
 	* fix - display, no more ffmpeg message displayed in various conditions of ffmes launch with arguments
-	* chg - bash code, improve clean & change
+	* chg - bash code, improve, clean & change
 
 v0.100a:
 * Various:

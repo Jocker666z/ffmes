@@ -13,7 +13,7 @@ Source media files, supported extension:
 
 ## Dependencies
 ### Essential 
-`ffmpeg ffprobe jq mkvtoolnix mediainfo sox uchardet coreutils findutils bc`
+`ffmpeg ffprobe jq mkvtoolnix mediainfo uchardet coreutils findutils bc`
 ### CUE Splitting
 `cuetools flac monkeys-audio shntool wavpack`
 ### DVD rip
@@ -23,7 +23,7 @@ Source media files, supported extension:
 ### Blu-Ray rip
 `bluray_copy bluray_info`
 ### Audio tag
-`flac monkeys-audio audiotools python-mutagen wavpack`
+`atomicparsley flac monkeys-audio python-mutagen vorbis-tools wavpack`
 ### Optional
 `gojq` (faster than jq)
 
@@ -193,7 +193,6 @@ Tesseract engine available:
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization (only files that have a value less than)
-	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 22 details - FLAC encoding
@@ -204,7 +203,6 @@ Tesseract engine available:
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization (only files that have a value less than)
-	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 23 details - WavPack encoding
@@ -215,18 +213,16 @@ Tesseract engine available:
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization (only files that have a value less than)
-	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 26 details - Opus encoding
 * Encoding options:
 	* Bitrate
 		* vbr, 64kb to 510kb
-		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
+		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files
 	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization (only files that have a value less than)
-	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 27 details - AAC encoding
@@ -235,15 +231,14 @@ Tesseract engine available:
 	* Bitrate
 		* vbr 1 to 5
 		* cbr 64kb to 560kb
-		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files.
+		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files
 	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization (only files that have a value less than)
-	* Silence detect & remove, at start & end (only wav & flac source)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 30 details - tag editor
-Tag for aiff, ape, flac, m4a, mp3, ogg, opus, wv files
+Tag for ape, flac, m4a, mp3, ogg, opus, wv files.
 
 Options:
 * Change or add tag disc number
@@ -276,12 +271,10 @@ Cut or split one audio by time. Examples of input:
 ## In script options (variables)
 ### Various
 * FFMPEG_CUSTOM_BIN: used for everything except video encoding; change default ffmpeg system bin for other location
-* FFMPEG_VIDEO_CUSTOM_BIN: used for video encoding; change default ffmpeg system bin for other location
 * FFPROBE_CUSTOM_BIN: change default ffprobe system bin for other location
-* SOX_CUSTOM_BIN: change default sox system bin for other location
 ### Video
 * NVENC (default=0)
-	* Description: Number of video encoding in same time, the countdown starts at 0 (0=1;1=2...)
+	* Description: number of video encoding in same time, the countdown starts at 0 (0=1;1=2...)
 ### Audio
 * ExtractCover (default=0)
 	* Description: action performed during encoding
@@ -297,6 +290,17 @@ Cut or split one audio by time. Examples of input:
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies installation
+### FFmpeg static bin
+* https://github.com/BtbN/FFmpeg-Builds/wiki/Latest#latest-autobuilds
+	* + compiled
+	* + vaapi
+	* - non-free codec
+	* - no official
+* https://johnvansickle.com/ffmpeg/
+	* + compiled
+	* + official
+	* - non-free codec
+
 ### bluray_info & bluray_copy
 
 Dependencies: `libbluray-dev`
@@ -312,7 +316,7 @@ su -c "make install" -m "root"
 ## Known errors
 * rename bug with mv and CIFS mount: add `cache=loose` in your mount option
 * CUE split fail with 24bits audio (shnsplit bug)
-* ffmpeg 4.4, 4.4.1 from debian-multimedia repository, encounter unrepeatable wavpack encoding error
+* ffmpeg 4.4, 4.4.1, 4.4.2 from debian-multimedia repository, encounter unrepeatable wavpack encoding error
 
 --------------------------------------------------------------------------------------------------
 ## Integration
@@ -341,7 +345,7 @@ Extensions=any;
 
 --------------------------------------------------------------------------------------------------
 ## Holy reading
-* Video codecs:
+* Video:
 	* https://github.com/leandromoreira/digital_video_introduction#how-does-a-video-codec-work
 	* https://slhck.info/video/2017/03/01/rate-control.html
 	* x264:
@@ -355,9 +359,12 @@ Extensions=any;
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding#Profiles
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding_tiers_and_levels
 		* https://x265.readthedocs.io/en/default/presets.html
-* Audio codecs:
+* Audio:
 	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison
 	* https://wiki.hydrogenaud.io/index.php/LAME
+	* https://digitalcardboard.com/blog/2009/08/25/the-sox-of-silence/
+* Tags:
+	* https://wiki.hydrogenaud.io/index.php?title=Tag_Mapping
 
 --------------------------------------------------------------------------------------------------
 ## Holy tools
