@@ -290,19 +290,7 @@ Cut or split one audio by time. Examples of input:
 
 --------------------------------------------------------------------------------------------------
 ## Dependencies installation
-### FFmpeg static bin
-* https://github.com/BtbN/FFmpeg-Builds/wiki/Latest#latest-autobuilds
-	* + compiled
-	* + vaapi
-	* - non-free codec
-	* - no official
-* https://johnvansickle.com/ffmpeg/
-	* + compiled
-	* + official
-	* - non-free codec
-
 ### bluray_info & bluray_copy
-
 Dependencies: `libbluray-dev`
 
 ```
@@ -365,6 +353,19 @@ Extensions=any;
 	* https://digitalcardboard.com/blog/2009/08/25/the-sox-of-silence/
 * Tags:
 	* https://wiki.hydrogenaud.io/index.php?title=Tag_Mapping
+
+### FFmpeg static
+* https://github.com/BtbN/FFmpeg-Builds/wiki/Latest#latest-autobuilds
+	* pro: compiled
+	* pro: lgpl compliant (include vaapi & more)
+	* con: non-free codec
+* https://johnvansickle.com/ffmpeg/
+	* pro: compiled
+	* pro: official
+	* con: non-free codec
+* https://github.com/markus-perl/ffmpeg-build-script
+	* pro: non-free codec
+	* con: not compiled
 
 --------------------------------------------------------------------------------------------------
 ## Holy tools
