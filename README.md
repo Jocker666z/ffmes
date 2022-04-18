@@ -302,9 +302,8 @@ su -c "make install" -m "root"
 
 --------------------------------------------------------------------------------------------------
 ## Known errors
-* rename bug with mv and CIFS mount: add `cache=loose` in your mount option
+* rename bug with mv and CIFS mount: check your samba server configuration (too agressive)
 * CUE split fail with 24bits audio (shnsplit bug)
-* ffmpeg 4.4, 4.4.1, 4.4.2 from debian-multimedia repository, encounter unrepeatable wavpack encoding error
 
 --------------------------------------------------------------------------------------------------
 ## Integration
