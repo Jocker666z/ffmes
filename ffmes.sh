@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.103
+VERSION=v0.103a
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -21,7 +21,6 @@ FFMES_FFMPEG_CACHE_STAT="$FFMES_CACHE/stat-ffmpeg-$(date +%Y%m%s%N).info"					# 
 FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"					# ffmpeg progress cache file
 FFMES_CACHE_TAG="$FFMES_CACHE/tag-$(date +%Y%m%s%N).info"									# tag-DATE.info, audio tag file
 FFMES_CACHE_INTEGRITY="$FFMES_CACHE/interity-$(date +%Y%m%s%N).info"						# integrity-DATE.info, list of files fail interity check
-FFMES_CACHE_UNTAGGED="$FFMES_CACHE/untagged-$(date +%Y%m%s%N).info"							# integrity-DATE.info, list of files untagged
 LSDVD_CACHE="$FFMES_CACHE/lsdvd-$(date +%Y%m%s%N).info"										# lsdvd cache
 BDINFO_CACHE="$FFMES_CACHE/bdinfo-$(date +%Y%m%s%N).info"									# bluray_info cache
 OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD player drives names
@@ -767,7 +766,6 @@ echo "  33 - generate png image of audio spectrum           |"
 echo "  34 - concatenate audio files                        |"
 echo "  35 - split or cut audio file by time                |"
 echo "  36 - audio file tester                              |"
-echo "  37 - find untagged audio files                      |"
 echo "  -----------------------------------------------------"
 CheckFiles
 echo "  -----------------------------------------------------"
@@ -1434,7 +1432,6 @@ find "$FFMES_CACHE/" -type f -mtime +3 -exec /bin/rm -f {} \;
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
 rm "$FFMES_FFMPEG_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_INTEGRITY" &>/dev/null
-rm "$FFMES_CACHE_UNTAGGED" &>/dev/null
 rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 rm "$FFMES_FFMPEG_PROGRESS" &>/dev/null
@@ -1603,7 +1600,7 @@ if (( "${#source_files[@]}" )); then
 fi
 }
 FFmpeg_instance_count() {				# Counting ffmpeg instance for parallel job
-ps -ef | grep ffmpeg | grep -v -i grep | wc -l
+pgrep -f ffmpeg | wc -l
 }
 
 ## LOADING & PROGRESS BAR
@@ -4377,7 +4374,6 @@ EnterKeyDisable
 StartLoading "Preparation of the encoding"
 ## Prepare arrays & variable
 for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
-	if [[ -z "$Untagged" ]]; then
 	# Audio filter array include: test volume & normalization
 	Audio_ffmpeg_cmd_Filter "${LSTAUDIO[i]}"
 	# Audio channel array include: channel test mono or stereo
@@ -4399,7 +4395,6 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 	else
 		filesOverwrite+=( "$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')" )
 	fi
-	fi
 done
 ## Stop loading
 StopLoading $?
@@ -4410,30 +4405,22 @@ echo
 Echo_Separator_Light
 for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 	# Cover extraction
-	if [[ -z "$Untagged" ]]; then
-		Audio_Cover_Extraction "${LSTAUDIO[i]}"
-	fi
+	Audio_Cover_Extraction "${LSTAUDIO[i]}"
 
 	# Stock files pass in loop
 	filesInLoop+=( "${LSTAUDIO[i]}" )
 
 	(
-	if [[ -n "$Untagged" ]]; then
-		ProgressBar "" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Search files without tag: $untagged_label" "1"
-		"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format "${LSTAUDIO[i]}" \
-			| grep -i "$untagged_type" 1>/dev/null || echo "  ${LSTAUDIO[i]}" >> "$FFMES_CACHE_UNTAGGED"
-	else
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" $FFMPEG_PROGRESS \
-			${FilesTargetAfilter[i]} \
-			${FilesTargetAstream[i]} \
-			$acodec \
-			${FilesTargetAkb[i]} \
-			${FilesTargetAbitdeph[i]} \
-			${FilesTargetAsamplerate[i]} \
-			${FilesTargetAconfchan[i]} \
-			"${LSTAUDIO[i]%.*}".$extcont \
-			| ProgressBar "${LSTAUDIO[i]}" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Encoding"
-	fi
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" $FFMPEG_PROGRESS \
+		${FilesTargetAfilter[i]} \
+		${FilesTargetAstream[i]} \
+		$acodec \
+		${FilesTargetAkb[i]} \
+		${FilesTargetAbitdeph[i]} \
+		${FilesTargetAsamplerate[i]} \
+		${FilesTargetAconfchan[i]} \
+		"${LSTAUDIO[i]%.*}".$extcont \
+		| ProgressBar "${LSTAUDIO[i]}" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Encoding"
 	) &
 	if [[ $(FFmpeg_instance_count) -ge $NPROC ]]; then
 		wait -n
@@ -4443,59 +4430,55 @@ done
 wait
 
 # Test results
-if [[ -z "$Untagged" ]]; then
+## Reset $extcont
+extcont="$ExtContSource"
+for (( i=0; i<=$(( ${#filesInLoop[@]} - 1 )); i++ )); do
 
-	# Check Target if valid (size test) and clean
-	extcont="$ExtContSource"	# Reset $extcont
-	for (( i=0; i<=$(( ${#filesInLoop[@]} - 1 )); i++ )); do
+	# File to test
+	if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
+		file_test="${filesInLoop[i]%.*}.new.$extcont"
+	else
+		file_test="${filesInLoop[i]%.*}.$extcont"
+	fi
 
-		# File to test
+	# Tests & populate file in arrays
+	## File test & error log generation
+	tmp_error=$(mktemp)
+	"$ffmpeg_bin" -v error -i "$file_test" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+	if [ -s "$tmp_error" ]; then
+		cp "$tmp_error" "${file_test%.*}-error.log"
+	fi
+	## File rejected
+	if [[ -f "${file_test%.*}-error.log" ]]; then
+		filesRejectRm="$file_test"
+		filesReject+=( "$file_test" )
+	## File passed
+	else
 		if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
-			file_test="${filesInLoop[i]%.*}.new.$extcont"
+			mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back."$extcont" 2>/dev/null
+			mv "${filesInLoop[i]%.*}".new."$extcont" "${filesInLoop[i]}" 2>/dev/null
+			filesPass+=( "${filesInLoop[i]}" )
+			filesSourcePass+=( "${filesInLoop[i]%.*}".back."$extcont" )
 		else
-			file_test="${filesInLoop[i]%.*}.$extcont"
+			filesPass+=( "${filesInLoop[i]%.*}"."$extcont" )
+			filesSourcePass+=( "${filesInLoop[i]}" )
 		fi
 
-		# Tests & populate file in arrays
-		## File test & error log generation
-		tmp_error=$(mktemp)
-		"$ffmpeg_bin" -v error -i "$file_test" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
-		if [ -s "$tmp_error" ]; then
-			cp "$tmp_error" "${file_test%.*}-error.log"
-		fi
-		## File rejected
-		if [[ -f "${file_test%.*}-error.log" ]]; then
-			filesRejectRm="$file_test"
-			filesReject+=( "$file_test" )
-		## File passed
-		else
-			if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
-				mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back."$extcont" 2>/dev/null
-				mv "${filesInLoop[i]%.*}".new."$extcont" "${filesInLoop[i]}" 2>/dev/null
-				filesPass+=( "${filesInLoop[i]}" )
-				filesSourcePass+=( "${filesInLoop[i]%.*}".back."$extcont" )
-			else
-				filesPass+=( "${filesInLoop[i]%.*}"."$extcont" )
-				filesSourcePass+=( "${filesInLoop[i]}" )
-			fi
+		# Make statistics of indidual processed files
+		file_source_files_size=$(Calc_Files_Size_bytes "${filesSourcePass[-1]}")
+		file_target_files_size=$(Calc_Files_Size_bytes "${filesPass[-1]}")
+		PERC=$(Calc_Percent "$file_source_files_size" "$file_target_files_size")
+		filesPassSizeReduction+=( "$PERC" )
 
-			# Make statistics of indidual processed files
-			file_source_files_size=$(Calc_Files_Size_bytes "${filesSourcePass[-1]}")
-			file_target_files_size=$(Calc_Files_Size_bytes "${filesPass[-1]}")
-			PERC=$(Calc_Percent "$file_source_files_size" "$file_target_files_size")
-			filesPassSizeReduction+=( "$PERC" )
+	fi
 
-		fi
+	# Progress
+	ProgressBar "$files" "$((i+1))" "${#filesInLoop[@]}" "Validation" "1"
 
-		# Progress
-		ProgressBar "$files" "$((i+1))" "${#filesInLoop[@]}" "Validation" "1"
+	# Remove rejected
+	rm "$filesRejectRm" 2>/dev/null
 
-		# Remove rejected
-		rm "$filesRejectRm" 2>/dev/null
-
-	done
-
-fi
+done
 
 # Enable the enter key
 EnterKeyEnable
@@ -4510,18 +4493,7 @@ total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
 PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
-if [[ -z "$Untagged" ]]; then
-	Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTAUDIO[@]}" "$total_target_files_size" "$total_source_files_size"
-else
-	Echo_Separator_Light
-	if [ -s "$FFMES_CACHE_UNTAGGED" ]; then
-		echo " $(wc -l < "$FFMES_CACHE_UNTAGGED") file(s) without tag $untagged_label:"
-		cat "$FFMES_CACHE_UNTAGGED"
-	else
-		echo " No file untagged."
-	fi
-	Display_End_Encoding_Message "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "" ""
-fi
+Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTAUDIO[@]}" "$total_target_files_size" "$total_source_files_size"
 }
 Audio_ffmpeg_cmd_Filter() {				# FFmpeg audio cmd - filter 
 if [ "$PeakNorm" = "1" ]; then
@@ -5569,7 +5541,7 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 		-lavfi showspectrumpic=s=$spekres:mode=separate:gain=1.4:color=2 "${LSTAUDIO[i]%.*}".png \
 		| ProgressBar "" "$((i+1))" "${#LSTAUDIO[@]}" "Spectrum creation" "1"
 	) &
-	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+	if [[ $(FFmpeg_instance_count) -gt $NPROC ]]; then
 		wait -n
 	fi
 
@@ -5930,6 +5902,7 @@ Audio_File_Tester() {					# Option 36 	- ffmpeg test player
 # Local variables
 local START
 local END
+local END
 
 # Start time counter
 START=$(date +%s)
@@ -5944,21 +5917,25 @@ Echo_Separator_Light
 # Disable the enter key
 EnterKeyDisable
 
-
-# Encoding
+# Test loop
 for files in "${LSTAUDIO[@]}"; do
 	# Stock files pass in loop
 	filesInLoop+=("$files")
 
 	# Test integrity
 	(
-	ProgressBar "" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Integrity check"
-	"$ffmpeg_bin" -v error -i "$files" $FFMPEG_LOG_LVL -f null - &>/dev/null \
-		|| echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+	tmp_error=$(mktemp)
+	"$ffmpeg_bin" -v error -i "$files" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+	if [ -s "$tmp_error" ]; then
+		cp "$tmp_error" "${files%.*}-error.log"
+		echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
+	fi
 	) &
-	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
+	if [[ $(FFmpeg_instance_count) -ge $NPROC ]]; then
 		wait -n
 	fi
+
+	ProgressBar "" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Integrity check" "1"
 
 done
 wait
@@ -6482,44 +6459,6 @@ done
 
 shopt -u nocasematch
 
-}
-Audio_Tag_Search_Untagged() {			# Option 37 	- Untagged find
-clear
-echo
-echo " Find untagged audio files"
-echo " Note: The search can be long."
-echo
-echo " *[album]  > find files without album tag"
-echo "  [artist] > find files without title tag"
-echo "  [title]  > find files without title tag"
-echo "  [date]   > find files without date tag"
-echo "  [q] > for exit"
-read -r -e -p "-> " untagged_q
-case "$untagged_q" in
-	"album"|"ALBUM")
-		untagged_type="TAG:album="
-		untagged_label="album"
-	;;
-	"artist"|"ARTIST")
-		untagged_type="TAG:artist="
-		untagged_label="artist"
-	;;
-	"title"|"TITLE")
-		untagged_type="TAG:track="
-		untagged_label="track"
-	;;
-	"date"|"DATE")
-		untagged_type="TAG:date="
-		untagged_label="date"
-	;;
-	"q"|"Q")
-		Restart
-	;;
-	*)
-		untagged_type="TAG:album="
-		untagged_label="album"
-	;;
-esac
 }
 
 # Arguments variables
@@ -7052,23 +6991,6 @@ case $ffmes_option in
 		Clean
 		# Reset
 		NPROC=$(nproc --all)
-		unset ProgressBarOption
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 37 ) # Untagged search
-	if (( "${#LSTAUDIO[@]}" )); then
-		Untagged="1"
-		ProgressBarOption="1"
-		NPROC=$(nproc --all | awk '{ print $1 * 10 }')
-		Audio_Tag_Search_Untagged
-		Audio_FFmpeg_cmd
-		Clean
-		# Reset
-		NPROC=$(nproc --all)
-		unset Untagged
 		unset ProgressBarOption
 	else
 		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"

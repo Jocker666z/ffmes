@@ -1,4 +1,12 @@
 # Changelog
+v0.103a:
+* Audio:
+	* fix - option 36, files validation with v0.103 validation action
+* Audio tag:
+	* remove - option 37, find untagged audio files
+* Various:
+	* chg - minor bash improve
+
 v0.103:
 * Video:
 	* add - mkv, now display size of streams of input, if file have proper statistics tags
