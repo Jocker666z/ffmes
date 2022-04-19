@@ -302,7 +302,9 @@ su -c "make install" -m "root"
 
 --------------------------------------------------------------------------------------------------
 ## Known errors
-* rename bug with mv and CIFS mount: check your samba server configuration (too agressive)
+* ffmpeg output error with CIFS mount solutions:
+	* in your `/etc/fstab`, add option `cache=none`
+	* or use NFS instead samba
 * CUE split fail with 24bits audio (shnsplit bug)
 
 --------------------------------------------------------------------------------------------------

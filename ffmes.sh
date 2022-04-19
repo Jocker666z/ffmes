@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.102
+VERSION=v0.103
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -148,6 +148,7 @@ Media_Source_Info_Record() {			# Construct arrays with files stats
 # Local variables
 local source_files
 local source_files_extentions
+local ffprobe_StreamSizeRaw
 local ffprobe_fps_raw
 local video_index
 local audio_index
@@ -158,6 +159,7 @@ StreamIndex=()
 ffprobe_StreamIndex=()
 ffprobe_StreamType=()
 ffprobe_Codec=()
+ffprobe_StreamSize=()
 ## Video
 ffprobe_v_StreamIndex=()
 ffprobe_Profile=()
@@ -221,6 +223,9 @@ for index in "${StreamIndex[@]}"; do
 		ffprobe_StreamIndex+=( "$index" )
 		ffprobe_Codec+=( "$(ff_jqparse_stream "$index" "codec_name")" )
 		ffprobe_StreamType+=( "$(ff_jqparse_stream "$index" "codec_type")" )
+		ffprobe_StreamSizeRaw=$(ff_jqparse_tag "$index" "NUMBER_OF_BYTES")
+		ffprobe_StreamSize+=( "$(Calc_Files_Size "$ffprobe_StreamSizeRaw" 2>/dev/null)" )
+
 		if ! [[ "$audio_list" = "1" ]]; then
 			ffprobe_language+=( "$(ff_jqparse_tag "$index" "language")" )
 			ffprobe_default+=( "$(ff_jqparse_disposition "$index" "default")" )
@@ -279,7 +284,6 @@ for index in "${StreamIndex[@]}"; do
 			ffprobe_Channel+=( "$(ff_jqparse_stream "$index" "channels")" )
 			ffprobe_ChannelLayout+=( "$(ff_jqparse_stream "$index" "channel_layout")" )
 			ffprobe_Bitrate_raw=$(ff_jqparse_stream "$index" "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }')
-
 			if [[ "$ffprobe_Bitrate_raw" = "0" ]]; then
 				ffprobe_Bitrate+=( "" )
 			else
@@ -341,11 +345,6 @@ fi
 
 ## Mediainfo stats
 if ! [[ "$audio_list" = "1" ]]; then
-	mediainfo_VideoSize=$(mediainfo --Inform="Video;%StreamSize%" "$source_files" \
-							| awk '{ foo = $1 / 1024 / 1024 ; print foo }')
-	if [[ "$mediainfo_VideoSize" = 0 ]]; then
-		unset mediainfo_VideoSize
-	fi
 	mediainfo_Interlaced=$(mediainfo --Inform="Video;%ScanType/String%" "$source_files")
 	mediainfo_HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "$source_files")
 else
@@ -1009,13 +1008,13 @@ for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 		# Video
 		else
 			echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}:\
+			$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
 			$(Display_Variable_Trick "${ffprobe_Codec[i]}")\
 			$(Display_Variable_Trick "${ffprobe_Profile[i]}" "3") \
 			$(Display_Variable_Trick "${ffprobe_Width[i]}x${ffprobe_Height[i]}")\
 			$(Display_Variable_Trick "${ffprobe_SAR[i]}" "4")\
 			$(Display_Variable_Trick "${ffprobe_DAR[i]}" "5")\
 			$(Display_Variable_Trick "${ffprobe_fps[i]}" "1" "fps")\
-			$(Display_Variable_Trick "${mediainfo_VideoSize[i]}" "1" "Mb")\
 			$(Display_Variable_Trick "${ffprobe_Pixfmt[i]}")\
 			$(Display_Variable_Trick "${ffprobe_FieldOrder[i]}" "2")\
 			$(Display_Variable_Trick "${ffprobe_ColorRange[i]}" "2")\
@@ -1030,6 +1029,7 @@ for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 	# Audio
 	if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
 		echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}: \
+		$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
 		$(Display_Variable_Trick "${ffprobe_Codec[i]}" "1") \
 		$(Display_Variable_Trick "${ffprobe_SampleFormat[i]}" "1") \
 		$(Display_Variable_Trick "${ffprobe_Bitrate[i]}" "1" "kb/s") \
@@ -1053,6 +1053,7 @@ for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 	# Data
 	if [[ "${ffprobe_StreamType[$i]}" = "data" ]]; then
 		echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}: \
+		$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
 		$(Display_Variable_Trick "${ffprobe_Codec[i]}")" \
 		| awk '{$2=$2};1' | awk '{print "  " $0}'
 	fi
@@ -1209,15 +1210,20 @@ done
 
 echo "$string_length_calc"
 }
-Calc_Files_Size() {						# Total size calculation in Mb
+Calc_Files_Size() {						# Total size calculation in Mb - Input must be in bytes
 local files
 local size
 local size_in_mb
+
 files=("$@")
 
 if (( "${#files[@]}" )); then
 	# Get size in bytes
-	size=$(wc -c "${files[@]}" | tail -1 | awk '{print $1;}')
+	if ! [[ "${files[-1]}" =~ ^[0-9]+$ ]]; then
+		size=$(wc -c "${files[@]}" | tail -1 | awk '{print $1;}')
+	else
+		size="${files[-1]}"
+	fi
 	# Mb convert
 	size_in_mb=$(bc <<< "scale=1; $size / 1024 / 1024" | sed 's!\.0*$!!')
 else
@@ -1559,7 +1565,14 @@ if (( "${#source_files[@]}" )); then
 		if [[ "${source_files[$i]##*.}" =~ ${VIDEO_EXT_AVAILABLE[*]} ]] \
 		|| [[ "${source_files[$i]##*.}" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
 
-			if ! "$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" -max_muxing_queue_size 9999 -f null - &>/dev/null; then
+			## File test & error log generation
+			tmp_error=$(mktemp)
+			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+			if [ -s "$tmp_error" ]; then
+				cp "$tmp_error" "${source_files[$i]%.*}-error.log"
+			fi
+			## File rejected
+			if [[ -f "${source_files[$i]%.*}-error.log" ]]; then
 				# Audio & video source file fail array
 				filesReject+=( "${source_files[$i]}" )
 				rm "${source_files[$i]}" 2>/dev/null
@@ -1567,7 +1580,7 @@ if (( "${#source_files[@]}" )); then
 				# Audio & video source file pass array
 				filesPass+=("${source_files[$i]}")
 				if [[ "$media_type" = "video" ]];then
-					# If mkv regenerate stats
+					# If mkv regenerate stats tag
 					if [ "${source_files[$i]##*.}" = "mkv" ]; then
 						mkvpropedit --add-track-statistics-tags "${source_files[$i]}" >/dev/null 2>&1
 					fi
@@ -1588,6 +1601,9 @@ if (( "${#source_files[@]}" )); then
 	done
 
 fi
+}
+FFmpeg_instance_count() {				# Counting ffmpeg instance for parallel job
+ps -ef | grep ffmpeg | grep -v -i grep | wc -l
 }
 
 ## LOADING & PROGRESS BAR
@@ -4125,7 +4141,7 @@ for files in "${LSTVIDEO[@]}"; do
 			elif [ "$PCM_EXTRACT" = "1" ]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
 					$FFMPEG_PROGRESS \
-					-map 0:"${VINDEX[i]}" -acodec pcm_s24le \
+					-map 0:"${VINDEX[i]}" -c:a pcm_s24le \
 					"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
 					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 
@@ -4357,47 +4373,50 @@ ExtContSource="$extcont"
 EnterKeyDisable
 
 # Prepare encoding command
-if [[ -z "$Untagged" ]]; then
+## Start Loading
 StartLoading "Preparation of the encoding"
-	for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
-		# Audio filter array include: test volume & normalization
-		Audio_ffmpeg_cmd_Filter "${LSTAUDIO[i]}"
-		# Audio channel array include: channel test mono or stereo
-		Audio_ffmpeg_cmd_Channel "${LSTAUDIO[i]}"
-		# Audio bitrate array include: OPUS & AAC auto adapted bitrate
-		Audio_ffmpeg_cmd_Bitrate "${LSTAUDIO[i]}"
-		# Audio sampling rate array include: FLAC & WavPack limitation
-		Audio_ffmpeg_cmd_Sample_Rate "${LSTAUDIO[i]}"
-		# Audio bit depth array include: FLAC & WavPack bit depht source detection (if not set)
-		Audio_ffmpeg_cmd_Bit_Depth "${LSTAUDIO[i]}"
-		# Audio stream array include: map audio & cover 
-		Audio_ffmpeg_cmd_Stream
-	done
+## Prepare arrays & variable
+for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+	if [[ -z "$Untagged" ]]; then
+	# Audio filter array include: test volume & normalization
+	Audio_ffmpeg_cmd_Filter "${LSTAUDIO[i]}"
+	# Audio channel array include: channel test mono or stereo
+	Audio_ffmpeg_cmd_Channel "${LSTAUDIO[i]}"
+	# Audio bitrate array include: OPUS & AAC auto adapted bitrate
+	Audio_ffmpeg_cmd_Bitrate "${LSTAUDIO[i]}"
+	# Audio sampling rate array include: FLAC & WavPack limitation
+	Audio_ffmpeg_cmd_Sample_Rate "${LSTAUDIO[i]}"
+	# Audio bit depth array include: FLAC & WavPack bit depht source detection (if not set)
+	Audio_ffmpeg_cmd_Bit_Depth "${LSTAUDIO[i]}"
+	# Audio stream array include: map audio & cover 
+	Audio_ffmpeg_cmd_Stream
+	# If source extention same as target
+	## Reset $extcont
+	extcont="$ExtContSource"
+	if [[ "${LSTAUDIO[i]##*.}" = "$extcont" ]]; then
+		extcont="new.$extcont"
+		filesOverwrite+=( "${LSTAUDIO[i]}" )
+	else
+		filesOverwrite+=( "$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')" )
+	fi
+	fi
+done
+## Stop loading
 StopLoading $?
 Display_Remove_Previous_Line
-fi
 
 # Encoding
 echo
 Echo_Separator_Light
 for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+	# Cover extraction
 	if [[ -z "$Untagged" ]]; then
-		# Reset $extcont
-		extcont="$ExtContSource"
-		# Cover extract
 		Audio_Cover_Extraction "${LSTAUDIO[i]}"
-		# If source extention same as target
-		if [[ "${LSTAUDIO[i]##*.}" = "$extcont" ]]; then
-			extcont="new.$extcont"
-			filesOverwrite+=( "${LSTAUDIO[i]}" )
-		else
-			filesOverwrite+=( "$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')" )
-		fi
 	fi
+
 	# Stock files pass in loop
 	filesInLoop+=( "${LSTAUDIO[i]}" )
 
-	# Encoding / Test integrity / Untagged test
 	(
 	if [[ -n "$Untagged" ]]; then
 		ProgressBar "" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Search files without tag: $untagged_label" "1"
@@ -4416,7 +4435,7 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 			| ProgressBar "${LSTAUDIO[i]}" "${#filesInLoop[@]}" "${#LSTAUDIO[@]}" "Encoding"
 	fi
 	) &
-	if [[ $(jobs -r -p | wc -l) -ge $NPROC ]]; then
+	if [[ $(FFmpeg_instance_count) -ge $NPROC ]]; then
 		wait -n
 	fi
 
@@ -4438,8 +4457,14 @@ if [[ -z "$Untagged" ]]; then
 		fi
 
 		# Tests & populate file in arrays
+		## File test & error log generation
+		tmp_error=$(mktemp)
+		"$ffmpeg_bin" -v error -i "$file_test" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+		if [ -s "$tmp_error" ]; then
+			cp "$tmp_error" "${file_test%.*}-error.log"
+		fi
 		## File rejected
-		if ! "$ffmpeg_bin" -v error -t 1 -i "$file_test" -max_muxing_queue_size 9999 -f null - &>/dev/null ; then
+		if [[ -f "${file_test%.*}-error.log" ]]; then
 			filesRejectRm="$file_test"
 			filesReject+=( "$file_test" )
 		## File passed
@@ -4855,47 +4880,47 @@ read -r -e -p "-> " rpakb
 if [ "$rpakb" = "q" ]; then
 	Restart
 elif [ "$rpakb" = "1" ]; then
-	acodec="-acodec u8"
+	acodec="-c:a u8"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "2" ]; then
-	acodec="-acodec s8"
+	acodec="-c:a s8"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "3" ]; then
-	acodec="-acodec pcm_s16le"
+	acodec="-c:a pcm_s16le"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "4" ]; then
-	acodec="-acodec pcm_s24le"
+	acodec="-c:a pcm_s24le"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "5" ]; then
-	acodec="-acodec pcm_s32le"
+	acodec="-c:a pcm_s32le"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "6" ]; then
-	acodec="-acodec u8"
+	acodec="-c:a u8"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "7" ]; then
-	acodec="-acodec s8"
+	acodec="-c:a s8"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "8" ]; then
-	acodec="-acodec pcm_s16le"
+	acodec="-c:a pcm_s16le"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "9" ]; then
-	acodec="-acodec pcm_s24le"
+	acodec="-c:a pcm_s24le"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "10" ]; then
-	acodec="-acodec pcm_s32le"
+	acodec="-c:a pcm_s32le"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "11" ]; then
-	acodec="-acodec u8"
+	acodec="-c:a u8"
 elif [ "$rpakb" = "12" ]; then
-	acodec="-acodec s8"
+	acodec="-c:a s8"
 elif [ "$rpakb" = "13" ]; then
-	acodec="-acodec pcm_s16le"
+	acodec="-c:a pcm_s16le"
 elif [ "$rpakb" = "14" ]; then
-	acodec="-acodec pcm_s24le"
+	acodec="-c:a pcm_s24le"
 elif [ "$rpakb" = "15" ]; then
-	acodec="-acodec pcm_s32le"
+	acodec="-c:a pcm_s32le"
 else
-	acodec="-acodec pcm_s16le"
+	acodec="-c:a pcm_s16le"
 fi
 }
 Audio_FLAC_Config() {					# Option 1,22 	- Conf audio/video flac, audio to flac
@@ -6848,7 +6873,7 @@ case $ffmes_option in
 		Audio_Channels_Question
 		Audio_Peak_Normalization_Question
 		Audio_False_Stereo_Question
-		acodec="-acodec $AudioCodecType"
+		acodec="-c:a $AudioCodecType"
 		extcont="flac"
 		Audio_FFmpeg_cmd
 		Remove_File_Source
@@ -6867,7 +6892,7 @@ case $ffmes_option in
 		Audio_Channels_Question
 		Audio_Peak_Normalization_Question
 		Audio_False_Stereo_Question
-		acodec="-acodec $AudioCodecType"
+		acodec="-c:a $AudioCodecType"
 		extcont="wv"
 		Audio_FFmpeg_cmd
 		Remove_File_Source
@@ -6883,7 +6908,7 @@ case $ffmes_option in
 		AudioCodecType="libmp3lame"
 		Audio_Multiple_Extention_Check
 		Audio_MP3_Config
-		acodec="-acodec $AudioCodecType"
+		acodec="-c:a $AudioCodecType"
 		confchan="-ac 2"
 		extcont="mp3"
 		Audio_FFmpeg_cmd
@@ -6901,7 +6926,7 @@ case $ffmes_option in
 		Audio_Multiple_Extention_Check
 		Audio_OGG_Config
 		Audio_Channels_Question
-		acodec="-acodec $AudioCodecType"
+		acodec="-c:a $AudioCodecType"
 		extcont="ogg"
 		Audio_FFmpeg_cmd
 		Remove_File_Source
@@ -6918,7 +6943,7 @@ case $ffmes_option in
 		Audio_Multiple_Extention_Check
 		Audio_Opus_Config
 		Audio_Channels_Question
-		acodec="-acodec $AudioCodecType"
+		acodec="-c:a $AudioCodecType"
 		extcont="opus"
 		Audio_FFmpeg_cmd
 		Remove_File_Source
@@ -6935,7 +6960,7 @@ case $ffmes_option in
 		Audio_Multiple_Extention_Check
 		Audio_AAC_Config
 		Audio_Channels_Question
-		acodec="-acodec $AudioCodecType"
+		acodec="-c:a $AudioCodecType"
 		extcont="m4a"
 		Audio_FFmpeg_cmd
 		Remove_File_Source

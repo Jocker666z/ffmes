@@ -1,4 +1,15 @@
 # Changelog
+v0.103:
+* Video:
+	* add - mkv, now display size of streams of input, if file have proper statistics tags
+* Audio:
+	* add - all audio encoding, ffmpeg parallel job now limit by ffmpeg instance number, for limit system overflow
+	* chg - all audio encoding, finish new loop
+	* chg - files validation, all duration now tested
+* Various:
+	* add - function Calc_Files_Size, now accepts integer numbers as input (in bytes)
+	* chg - files validation, now generate log file with error
+
 v0.102:
 * Audio:
 	* add - flac, add compression option 5 & 0
