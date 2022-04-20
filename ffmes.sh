@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.103b
+VERSION=v0.103c
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -152,6 +152,9 @@ local ffprobe_Bitrate_raw
 local video_index
 local audio_index
 local subtitle_index
+local ffprobe_Interlaced_raw
+local Interlaced_frames_progressive
+local Interlaced_frames_TFF
 
 # Array
 StreamIndex=()
@@ -216,18 +219,6 @@ ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
 ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' \
 						| awk -F"." '{ print $1 }')
 if ! [[ "$audio_list" = "1" ]]; then
-	# If ffprobe_fps[0] active consider video, if not consider audio
-	# Total Frames made by calculation instead of count, less accurate but more speed up
-	if [[ -n "${ffprobe_fps[0]}" ]]; then
-		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
-	fi
-
-	ffprobe_ChapterNumber=$("$json_parser" -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
-							| grep -c "start_time")
-	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
-		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
-	fi
-
 	# Interlaced test
 	ffprobe_Interlaced_raw=$(ffmpeg -v info -hide_banner -nostats \
 			-filter:v idet -frames:v 1000 -an -f rawvideo -y /dev/null -i vid.mp4 2>&1 \
@@ -384,6 +375,21 @@ for index in "${StreamIndex[@]}"; do
 		fi
 
 done
+
+# ffprobe variable - end
+if ! [[ "$audio_list" = "1" ]]; then
+	# If ffprobe_fps[0] active consider video, if not consider audio
+	# Total Frames made by calculation instead of count, less accurate but more speed up
+	if [[ -n "${ffprobe_fps[0]}" ]]; then
+		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
+	fi
+
+	ffprobe_ChapterNumber=$("$json_parser" -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+							| grep -c "start_time")
+	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
+		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
+	fi
+fi
 
 # Clean
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
@@ -2617,7 +2623,9 @@ for (( i=0; i<=$(( ${#LSTVIDEO[@]} - 1 )); i++ )); do
 	filesInLoop+=( "${LSTVIDEO[i]%.*}.$videoformat.$extcont" )
 
 	# For progress bar
-	Media_Source_Info_Record "${LSTVIDEO[i]}"
+	if [[ "$i" -gt 1 ]]; then
+		Media_Source_Info_Record "${LSTVIDEO[i]}"
+	fi
 	(
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G \
 			$GPUDECODE -y -i "${LSTVIDEO[i]}" $FFMPEG_PROGRESS \

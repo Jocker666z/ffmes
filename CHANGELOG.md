@@ -1,4 +1,10 @@
 # Changelog
+v0.103c:
+* Video:
+	* fix - option 1, ETA
+* Various:
+	* chg - minor bash improve
+
 v0.103b:
 * Video:
 	* remove - option 3, encode audio stream only
