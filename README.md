@@ -13,7 +13,9 @@ Source media files, supported extension:
 
 ## Dependencies
 ### Essential 
-`ffmpeg ffprobe jq mkvtoolnix mediainfo uchardet coreutils findutils bc`
+`ffmpeg ffprobe jq mkvtoolnix uchardet coreutils findutils bc`
+### Optional
+`gojq` (faster than jq)
 ### CUE Splitting
 `cuetools flac monkeys-audio shntool wavpack`
 ### DVD rip
@@ -24,8 +26,6 @@ Source media files, supported extension:
 `bluray_copy bluray_info`
 ### Audio tag
 `atomicparsley flac monkeys-audio python-mutagen vorbis-tools wavpack`
-### Optional
-`gojq` (faster than jq)
 
 ## Use
 ```
@@ -63,19 +63,17 @@ If you encounter bugs or have proposals, I'm open to discussion.
 ### Main menu options
 * Video:
 	* 0, DVD & Blu-ray rip
-	* 1, video encoding
+	* 1, video encoding with custom options
 	* 2, copy stream to mkv with map option
-	* 3, encode audio stream only
-	* 4, add audio stream with night normalization
+	* 3, add audio stream with night normalization
 * Video tools:
-	* 10, view detailed video file informations
-	* 11, add audio stream or subtitle in video file
-	* 12, concatenate video files
-	* 13, extract stream(s) of video file
-	* 14, split or cut video file by time
-	* 15, split mkv by chapter
-	* 16, change color of DVD subtitle (idx/sub)
-	* 17, convert DVD subtitle (idx/sub) to srt
+	* 10, add audio stream or subtitle in video file
+	* 11, concatenate video files
+	* 12, extract stream(s) of video file
+	* 13, split or cut video file by time
+	* 14, split mkv by chapter
+	* 15, change color of DVD subtitle (idx/sub)
+	* 16, convert DVD subtitle (idx/sub) to srt
 * Audio:
 	* 20, CUE splitter to flac
 	* 21, audio to wav (PCM)
@@ -87,13 +85,11 @@ If you encounter bugs or have proposals, I'm open to discussion.
 	* 27, audio to aac
 * Audio tools:
 	* 30, audio tag editor
-	* 31, view one audio file stats
-	* 32, compare audio files stats
-	* 33, generate png image of audio spectrum
-	* 34, concatenate audio files 
-	* 35, split or cut audio file by time
-	* 36, audio file tester
-	* 37, find untagged audio files
+	* 31, compare audio files stats
+	* 32, generate png image of audio spectrum
+	* 33, concatenate audio files 
+	* 34, split or cut audio file by time
+	* 35, audio file tester
 
 --------------------------------------------------------------------------------------------------
 ### Video options
@@ -112,7 +108,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 * Chapters integration
 * https://github.com/beandog/bluray_info must be installed (see install help bellow)
 
-#### Option 1 details - video encoding, full custom options
+#### Option 1 details - video encoding, custom options
 * Video:
 	* Stream copy or encoding
 	* Encoding options:
@@ -151,17 +147,17 @@ Encode the selected audio streams of video files (or all of them).
 From inplace matroska video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
 The new stream is in opus, stereo, 320kb.
 
-#### Option 14 details - split or cut video file by time
+#### Option 13 details - split or cut video file by time
 Cut or split one video by time. Examples of input:
 
 * [s.20]        > remove video after 20 second
 * [e.01:11:20]  > remove video before 1 hour 11 minutes 20 second
 * [p.00:02:00]  > split video in parts of 2 minutes
 
-#### Option 15 details - split mkv by chapter
+#### Option 14 details - split mkv by chapter
 Cut one matroska video per chapter, mkvtoolnix package must be installed.
 
-#### Option 16 details - change color of DVD subtitle (idx/sub)
+#### Option 15 details - change color of DVD subtitle (idx/sub)
 You must run the option in a directory containing one or more pairs of idx/sub files with the same filename.
 
 Colors palette available:
@@ -170,7 +166,7 @@ Colors palette available:
 * yellow font / black border
 * yellow font / white border
 
-#### Option 17 details - convert DVD subtitle (idx/sub) to srt
+#### Option 16 details - convert DVD subtitle (idx/sub) to srt
 You must have installed tesseract-ocr with your language support, but also ogmrip package (includes subp2tiff and subptools binaries).
 
 Language supported: english, french, deutsch, spanish, portuguese, italian, japanese, chinese simplified, arabic, korean, russian.

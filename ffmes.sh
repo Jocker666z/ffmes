@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.103a
+VERSION=v0.103b
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -26,7 +26,7 @@ BDINFO_CACHE="$FFMES_CACHE/bdinfo-$(date +%Y%m%s%N).info"									# bluray_info 
 OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD player drives names
 
 # General variables
-CORE_COMMAND_NEEDED=(ffmpeg ffprobe mediainfo mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
+CORE_COMMAND_NEEDED=(ffmpeg ffprobe mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
 NPROC=$(nproc --all)																		# Set number of thread
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log level
 FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
@@ -147,8 +147,8 @@ Media_Source_Info_Record() {			# Construct arrays with files stats
 # Local variables
 local source_files
 local source_files_extentions
-local ffprobe_StreamSizeRaw
 local ffprobe_fps_raw
+local ffprobe_Bitrate_raw
 local video_index
 local audio_index
 local subtitle_index
@@ -159,6 +159,7 @@ ffprobe_StreamIndex=()
 ffprobe_StreamType=()
 ffprobe_Codec=()
 ffprobe_StreamSize=()
+ffprobe_StreamSize_Raw=()
 ## Video
 ffprobe_v_StreamIndex=()
 ffprobe_Profile=()
@@ -207,6 +208,55 @@ else
 		"$source_files" > "$FFMES_FFPROBE_CACHE_STATS"
 fi
 
+# Variable stats
+## ffprobe stats
+ffprobe_StartTime=$(ff_jqparse_format "start_time")
+ffprobe_Duration=$(ff_jqparse_format "duration")
+ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
+ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' \
+						| awk -F"." '{ print $1 }')
+if ! [[ "$audio_list" = "1" ]]; then
+	# If ffprobe_fps[0] active consider video, if not consider audio
+	# Total Frames made by calculation instead of count, less accurate but more speed up
+	if [[ -n "${ffprobe_fps[0]}" ]]; then
+		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
+	fi
+
+	ffprobe_ChapterNumber=$("$json_parser" -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+							| grep -c "start_time")
+	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
+		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
+	fi
+
+	# Interlaced test
+	ffprobe_Interlaced_raw=$(ffmpeg -v info -hide_banner -nostats \
+			-filter:v idet -frames:v 1000 -an -f rawvideo -y /dev/null -i vid.mp4 2>&1 \
+			| grep "Multi frame detection")
+	Interlaced_frames_progressive=$(echo "$ffprobe_Interlaced_raw" \
+									| awk '{for(i=1; i<=NF; i++) if($i~/Progressive:/) print $(i+1)}')
+	Interlaced_frames_TFF=$(echo "$ffprobe_Interlaced_raw" \
+							| awk '{for(i=1; i<=NF; i++) if($i~/TFF:/) print $(i+1)}')
+	if [[ "$frames_TFF" -gt "$frames_progressive" ]];then
+		ffprobe_Interlaced="1"
+	fi
+fi
+
+## File size
+FilesSize=$(Calc_Files_Size "$source_files")
+
+## ffmpeg db stats
+if [[ ${AUDIO_EXT_AVAILABLE[*]} =~ ${source_files_extentions} ]]; then
+	"$ffmpeg_bin" -i "$source_files" -af "volumedetect" -vn -sn -dn -f null - &> "$FFMES_FFMPEG_CACHE_STAT"
+
+	ffmpeg_meandb=$(< "$FFMES_FFMPEG_CACHE_STAT" grep "mean_volume:" | awk '{print $5}')
+	ffmpeg_peakdb_raw=$(< "$FFMES_FFMPEG_CACHE_STAT" grep "max_volume:" | awk '{print $5}')
+	if [[ "$ffmpeg_peakdb_raw" = "-0.0" ]]; then
+		ffmpeg_peakdb_raw="0.0"
+	fi
+	ffmpeg_peakdb="$ffmpeg_peakdb_raw"
+	ffmpeg_diffdb=$( bc <<< "$ffmpeg_peakdb - $ffmpeg_meandb" 2>/dev/null)
+fi
+
 # Array stats
 ## Index of video, audio & subtitle
 video_index="0"
@@ -222,8 +272,23 @@ for index in "${StreamIndex[@]}"; do
 		ffprobe_StreamIndex+=( "$index" )
 		ffprobe_Codec+=( "$(ff_jqparse_stream "$index" "codec_name")" )
 		ffprobe_StreamType+=( "$(ff_jqparse_stream "$index" "codec_type")" )
-		ffprobe_StreamSizeRaw=$(ff_jqparse_tag "$index" "NUMBER_OF_BYTES")
-		ffprobe_StreamSize+=( "$(Calc_Files_Size "$ffprobe_StreamSizeRaw" 2>/dev/null)" )
+		ffprobe_StreamSize_Raw+=( "$(ff_jqparse_tag "$index" "NUMBER_OF_BYTES")" )
+		ffprobe_StreamSize+=( "$(Calc_Files_Size "${ffprobe_StreamSize_Raw[-1]}" 2>/dev/null)" )
+		ffprobe_Bitrate_raw=$(ff_jqparse_stream "$index" "bit_rate" \
+								| awk '{ foo = $1 / 1000 ; print foo }' \
+								| awk -F"." '{ print $1 }')
+		if [[ "$ffprobe_Bitrate_raw" = "0" ]] && [[ "$audio_list" != "1" ]]; then
+			ffprobe_Bitrate_raw=$(Calc_byte_2_kbs "${ffprobe_StreamSize_Raw[-1]}" "$ffprobe_Duration" )
+			if [[ -z "$ffprobe_Bitrate_raw" ]]; then
+				ffprobe_Bitrate+=( "" )
+			else
+				ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
+			fi
+		elif [[ "$audio_list" = "1" ]]; then
+			ffprobe_Bitrate+=( "$ffprobe_OverallBitrate" )
+		else
+			ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
+		fi
 
 		if ! [[ "$audio_list" = "1" ]]; then
 			ffprobe_language+=( "$(ff_jqparse_tag "$index" "language")" )
@@ -256,7 +321,13 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_FieldOrder+=( "$(ff_jqparse_stream "$index" "field_order")" )
 				ffprobe_fps_raw=$(ff_jqparse_stream "$index" "r_frame_rate")
 				ffprobe_fps+=( "$(bc <<< "scale=2; $ffprobe_fps_raw" 2>/dev/null | sed 's!\.0*$!!')" )
-				ffprobe_AttachedPic+=( "$(ff_jqparse_disposition "$index" "attached_pic")" )
+				ffprobe_AttachedPic+=( "$(ff_jqparse_disposition "$index" "attached_pic")" )1
+				# HDR detection
+				if [ "${ffprobe_ColorSpace[-1]}" = "bt2020nc" ] \
+					&& [ "${ffprobe_ColorTransfert[-1]}" = "smpte2084" ] \
+					&& [ "${ffprobe_ColorPrimaries[-1]}" = "bt2020" ]; then 
+					ffprobe_hdr="1"
+				fi
 			else
 				ffprobe_v_StreamIndex+=( "" )
 				ffprobe_Profile+=( "" )
@@ -282,18 +353,11 @@ for index in "${StreamIndex[@]}"; do
 			ffprobe_SampleRate+=( "$(ff_jqparse_stream "$index" "sample_rate" | awk '{ foo = $1 / 1000 ; print foo }')" )
 			ffprobe_Channel+=( "$(ff_jqparse_stream "$index" "channels")" )
 			ffprobe_ChannelLayout+=( "$(ff_jqparse_stream "$index" "channel_layout")" )
-			ffprobe_Bitrate_raw=$(ff_jqparse_stream "$index" "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }')
-			if [[ "$ffprobe_Bitrate_raw" = "0" ]]; then
-				ffprobe_Bitrate+=( "" )
-			else
-				ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
-			fi
 		else
 			ffprobe_a_StreamIndex+=( "" )
 			ffprobe_SampleFormat+=( "" )
 			ffprobe_SampleRate+=( "" )
 			ffprobe_ChannelLayout+=( "" )
-			ffprobe_Bitrate+=( "" )
 		fi
 
 		# Subtitle specific
@@ -320,51 +384,6 @@ for index in "${StreamIndex[@]}"; do
 		fi
 
 done
-
-# Variable stats
-## ffprobe stats
-ffprobe_StartTime=$(ff_jqparse_format "start_time")
-ffprobe_Duration=$(ff_jqparse_format "duration")
-ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
-if ! [[ "$audio_list" = "1" ]]; then
-	# If ffprobe_fps[0] active consider video, if not consider audio
-	# Total Frames made by calculation instead of count, less accurate but more speed up
-	if [[ -n "${ffprobe_fps[0]}" ]]; then
-		ffprobe_TotalFrames=$(bc <<< "scale=0; ; ( $ffprobe_Duration * ${ffprobe_fps[0]} )")
-	fi
-
-	ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' \
-							| awk -F"." '{ print $1 }')
-	ffprobe_ChapterNumber=$("$json_parser" -r '.chapters[]' "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
-							| grep -c "start_time")
-	if [[ "$ffprobe_ChapterNumber" -gt "1" ]]; then
-		ffprobe_ChapterNumberFormated="$ffprobe_ChapterNumber chapters"
-	fi
-fi
-
-## Mediainfo stats
-if ! [[ "$audio_list" = "1" ]]; then
-	mediainfo_Interlaced=$(mediainfo --Inform="Video;%ScanType/String%" "$source_files")
-	mediainfo_HDR=$(mediainfo --Inform="Video;%HDR_Format/String%" "$source_files")
-else
-	mediainfo_Bitrate="$(mediainfo --Output="General;%OverallBitRate%" "$files" \
-						| awk '{ kbyte=$1/1024; print kbyte }' 2>/dev/null | sed 's/\..*$//')"
-fi
-## File size
-FilesSize=$(Calc_Files_Size "$source_files")
-
-## ffmpeg db stats
-if [[ ${AUDIO_EXT_AVAILABLE[*]} =~ ${source_files_extentions} ]]; then
-	"$ffmpeg_bin" -i "$source_files" -af "volumedetect" -vn -sn -dn -f null - &> "$FFMES_FFMPEG_CACHE_STAT"
-
-	ffmpeg_meandb=$(< "$FFMES_FFMPEG_CACHE_STAT" grep "mean_volume:" | awk '{print $5}')
-	ffmpeg_peakdb_raw=$(< "$FFMES_FFMPEG_CACHE_STAT" grep "max_volume:" | awk '{print $5}')
-	if [[ "$ffmpeg_peakdb_raw" = "-0.0" ]]; then
-		ffmpeg_peakdb_raw="0.0"
-	fi
-	ffmpeg_peakdb="$ffmpeg_peakdb_raw"
-	ffmpeg_diffdb=$( bc <<< "$ffmpeg_peakdb - $ffmpeg_meandb" 2>/dev/null)
-fi
 
 # Clean
 rm "$FFMES_FFPROBE_CACHE_STATS" &>/dev/null
@@ -736,19 +755,17 @@ echo
 echo "  / ffmes $VERSION / $ffmpeg_version_label"
 echo "  -----------------------------------------------------"
 echo "   0 - DVD & Blu-ray rip                              |"
-echo "   1 - video encoding                                 |-Video"
+echo "   1 - video encoding with custom options             |-Video"
 echo "   2 - copy stream to mkv with map option             |"
-echo "   3 - encode audio stream only                       |"
-echo "   4 - add audio stream with night normalization      |"
+echo "   3 - add audio stream with night normalization      |"
 echo "  -----------------------------------------------------"
-echo "  10 - view detailed video file informations          |"
-echo "  11 - add audio stream or subtitle in video file     |-Video Tools"
-echo "  12 - concatenate video files                        |"
-echo "  13 - extract stream(s) of video file                |"
-echo "  14 - split or cut video file by time                |"
-echo "  15 - split mkv by chapter                           |"
-echo "  16 - change color of DVD subtitle (idx/sub)         |"
-echo "  17 - convert DVD subtitle (idx/sub) to srt          |"
+echo "  10 - add audio stream or subtitle in video file     |"
+echo "  11 - concatenate video files                        |-Video Tools"
+echo "  12 - extract stream(s) of video file                |"
+echo "  13 - split or cut video file by time                |"
+echo "  14 - split mkv by chapter                           |"
+echo "  15 - change color of DVD subtitle (idx/sub)         |"
+echo "  16 - convert DVD subtitle (idx/sub) to srt          |"
 echo "  -----------------------------------------------------"
 echo "  20 - CUE splitter to flac                           |"
 echo "  21 - audio to wav (PCM)                             |-Audio"
@@ -760,12 +777,11 @@ echo "  26 - audio to opus (libopus)                        |"
 echo "  27 - audio to aac                                   |"
 echo "  -----------------------------------------------------"
 echo "  30 - audio tag editor                               |"
-echo "  31 - view one audio file stats                      |-Audio Tools"
-echo "  32 - compare audio files stats                      |"
-echo "  33 - generate png image of audio spectrum           |"
-echo "  34 - concatenate audio files                        |"
-echo "  35 - split or cut audio file by time                |"
-echo "  36 - audio file tester                              |"
+echo "  31 - view audio files stats                         |-Audio Tools"
+echo "  32 - generate png image of audio spectrum           |"
+echo "  33 - concatenate audio files                        |"
+echo "  34 - split or cut audio file by time                |"
+echo "  35 - audio file tester                              |"
 echo "  -----------------------------------------------------"
 CheckFiles
 echo "  -----------------------------------------------------"
@@ -907,7 +923,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
 				# In table if term is wide enough, or in ligne
 				paste <(printf "%-${codec_string_length}.${codec_string_length}s\n" "${ffprobe_Codec[i]}") <(printf "%s\n" ".") \
-					<(printf "%-${bitrate_string_length}.${bitrate_string_length}s\n" "$mediainfo_Bitrate") <(printf "%s\n" ".") \
+					<(printf "%-${bitrate_string_length}.${bitrate_string_length}s\n" "${ffprobe_Bitrate[i]}") <(printf "%s\n" ".") \
 					<(printf "%-${SampleFormat_string_length}.${SampleFormat_string_length}s\n" "${ffprobe_SampleFormat[i]}") <(printf "%s\n" ".") \
 					<(printf "%-${SampleRate_string_length}.${SampleRate_string_length}s\n" "${ffprobe_SampleRate[i]}") <(printf "%s\n" ".") \
 					<(printf "%-${Channel_string_length}.${Channel_string_length}s\n" "${ffprobe_Channel[i]}") <(printf "%s\n" "|") \
@@ -938,7 +954,7 @@ else
 				$FilesSize Mb" \
 				| awk '{$2=$2};1' | awk '{print "  " $0}'
 				echo "$(Display_Variable_Trick "${ffprobe_Codec[i]}" "1")\
-				$(Display_Variable_Trick "$mediainfo_Bitrate" "1" "kb/s")\
+				$(Display_Variable_Trick "${ffprobe_Bitrate[i]}" "1" "kb/s")\
 				$(Display_Variable_Trick "${ffprobe_SampleFormat[i]}" "1")\
 				$(Display_Variable_Trick "${ffprobe_SampleRate[i]}" "1" "kHz")\
 				${ffprobe_Channel[i]} channel(s)" \
@@ -1009,6 +1025,7 @@ for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
 			$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
 			$(Display_Variable_Trick "${ffprobe_Codec[i]}")\
 			$(Display_Variable_Trick "${ffprobe_Profile[i]}" "3") \
+			$(Display_Variable_Trick "${ffprobe_Bitrate[i]}" "1" "kb/s") \
 			$(Display_Variable_Trick "${ffprobe_Width[i]}x${ffprobe_Height[i]}")\
 			$(Display_Variable_Trick "${ffprobe_SAR[i]}" "4")\
 			$(Display_Variable_Trick "${ffprobe_DAR[i]}" "5")\
@@ -1207,6 +1224,22 @@ for string in "${string_length[@]}"; do
 done
 
 echo "$string_length_calc"
+}
+Calc_byte_2_kbs() {						# Average kb/s of a file - Input must be in bytes & second
+local size_bytes
+local duration_s
+local kbs
+
+size_bytes="$1"
+duration_s="$2"
+
+if [ -n "$size_bytes" ] && [ -n "$duration_s" ]; then
+	if [[ "$size_bytes" =~ ^[0-9]+$ ]]; then
+		kbs=$(bc <<< "scale=0; ($size_bytes * 8) / 1024 / $duration_s")
+
+		echo "$kbs"
+	fi
+fi
 }
 Calc_Files_Size() {						# Total size calculation in Mb - Input must be in bytes
 local files
@@ -1452,20 +1485,6 @@ if [ -e "$VAAPI_device" ]; then
 	else
 		unset GPUDECODE
 	fi
-fi
-}
-TestHDR(){
-# HDR double check
-if test -n "$mediainfo_HDR"; then
-	HDR="1"
-else
-	for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
-		if [ "${ffprobe_ColorSpace[$i]}" = "bt2020nc" ] \
-		&& [ "${ffprobe_ColorTransfert[$i]}" = "smpte2084" ] \
-		&& [ "${ffprobe_ColorPrimaries[$i]}" = "bt2020" ]; then 
-				HDR="1"
-		fi
-	done
 fi
 }
 Remove_Audio_Split_Backup_Dir() {		# Remove CUE/AUDIO backup directory, question+action
@@ -2732,7 +2751,7 @@ local nbvfilter
 
 # Desinterlace
 Display_Video_Custom_Info_choice
-if [ "$mediainfo_Interlaced" = "Interlaced" ]; then
+if [ "$ffprobe_Interlaced" = "1" ]; then
 	echo " Video SEEMS interlaced, you want deinterlace:"
 else
 	echo " Video not seems interlaced, you want force deinterlace:"
@@ -2894,35 +2913,34 @@ if [[ "$codec" != "hevc_vaapi" ]]; then
 	done
 
 	# HDR / SDR - Display only if HDR source
-	TestHDR
-	if test -n "$HDR"; then
-	Display_Video_Custom_Info_choice
-	echo " Apply HDR to SDR filter:"
-	echo " Note: * This option is necessary to keep an acceptable colorimetry,"
-	echo "         if the source video is in HDR and you don't want to keep it."
-	echo "       * if you want to keep the HDR, do no here, HDR option is in libx265 parameters."
-	echo "       * for no fail, in stream selection, remove attached pic if present."
-	echo
-	echo "  [n] > for no"
-	echo " *[↵] > for yes"
-	echo "  [q] > for exit"
-	read -r -e -p "-> " yn
-	case $yn in
-		"n"|"N")
-				chsdr2hdr="No change"
-			;;
-		"q"|"Q")
-				Restart
-			;;
-		*)
-			chsdr2hdr="Yes"
-			if [ "$nbvfilter" -gt 1 ] ; then
-				vfilter+=",zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
-			else
-				vfilter="-vf zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
-			fi
-			;;
-	esac
+	if test -n "$ffprobe_hdr"; then
+		Display_Video_Custom_Info_choice
+		echo " Apply HDR to SDR filter:"
+		echo " Note: * This option is necessary to keep an acceptable colorimetry,"
+		echo "         if the source video is in HDR and you don't want to keep it."
+		echo "       * if you want to keep the HDR, do no here, HDR option is in libx265 parameters."
+		echo "       * for no fail, in stream selection, remove attached pic if present."
+		echo
+		echo "  [n] > for no"
+		echo " *[↵] > for yes"
+		echo "  [q] > for exit"
+		read -r -e -p "-> " yn
+		case $yn in
+			"n"|"N")
+					chsdr2hdr="No change"
+				;;
+			"q"|"Q")
+					Restart
+				;;
+			*)
+				chsdr2hdr="Yes"
+				if [ "$nbvfilter" -gt 1 ] ; then
+					vfilter+=",zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+				else
+					vfilter="-vf zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
+				fi
+				;;
+		esac
 	fi
 
 fi
@@ -3680,122 +3698,7 @@ else
 	vkb="-crf 30 -b:v 0"
 fi
 }
-Video_Custom_Audio_Only() {				# Option 3  	- Encode audio stream only
-# Local variable
-local rpstreamch_parsed
-local audio_stream_config
-local subtitleconf
-
-# Array
-VINDEX=()
-stream=()
-mapLabel=()
-
-Display_Media_Stats_One "${LSTVIDEO[@]}"
-
-echo " Select one or several audio stream:"
-echo
-echo "  [0 3 1] > Example of input format for select stream"
-echo " *[↵]     > for all"
-echo "  [q]     > for exit"
-while true; do
-	read -r -e -p "-> " rpstreamch
-	rpstreamch_parsed="${rpstreamch// /}"					# For test
-	if [ -z "$rpstreamch" ]; then							# If -map 0
-		# Construct index array
-		VINDEX=( "${ffprobe_a_StreamIndex[@]}" )
-		break
-
-	elif [[ "$rpstreamch_parsed" == "q" ]]; then			# Quit
-		Restart
-
-	elif ! [[ "$rpstreamch_parsed" =~ ^-?[0-9]+$ ]]; then	# Not integer retry
-		Echo_Mess_Error "Map option must be an integer"
-
-	elif [[ "$rpstreamch_parsed" =~ ^-?[0-9]+$ ]]; then		# If valid integer continue
-		# Construct index array
-		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
-
-		# Test if selected stream is audio
-		for i in "${VINDEX[@]}"; do
-			if ! [[ "${ffprobe_StreamType[i]}" = "audio" ]]; then
-				Echo_Mess_Error "The stream $i is not audio stream"
-			else
-				break 2
-			fi
-		done
-
-	fi
-done
-
-# Codec choice
-chvidstream="Copy"
-ENCODA="1"
-extcont="${LSTVIDEO[0]##*.}"
-Video_Custom_Audio_Codec
-
-# Construct ffmpeg encoding command
-for i in "${VINDEX[@]}"; do
-	if [[ "$acodec" = "libopus" ]]; then
-		stream+=( "-filter:a:${ffprobe_a_StreamIndex[i]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1 -c:a:${ffprobe_a_StreamIndex[i]} $acodec" )
-		mapLabel+=( "$i" )
-	else
-		stream+=( "-c:a:${ffprobe_a_StreamIndex[i]} $acodec" )
-		mapLabel+=( "$i" )
-	fi
-done
-
-# ffmpeg audio command argument
-audio_stream_config="${stream[*]}"
-
-# Variable for display summary
-vstream="${mapLabel[*]}"
-
-# Reset display
-Display_Video_Custom_Info_choice
-
-# Start time counter
-START=$(date +%s)
-
-# Encoding
-for files in "${LSTVIDEO[@]}"; do
-
-	# Subtitle correction
-	if [ "${files##*.}" = mkv ]; then
-		subtitleconf="-c:s copy"
-	elif [ "${files##*.}" = mp4 ]; then
-		subtitleconf="-c:s mov_text"
-	fi
-
-	filename_id="${files%.*}-${chacodec}.${files##*.}"
-
-	# Encoding
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
-		$FFMPEG_PROGRESS \
-		-map 0 -c:v copy $subtitleconf -c:a copy \
-		$audio_stream_config \
-		$akb $asamplerate $confchan \
-		"$filename_id" \
-		| ProgressBar "$files" "" "" "Encoding"
-
-	# Check Target if valid
-	Test_Target_File "0" "video" "$filename_id"
-
-done
-
-# End time counter
-END=$(date +%s)
-
-# Make statistics of processed files
-Calc_Elapsed_Time "$START" "$END"											# Get elapsed time
-total_source_files_size=$(Calc_Files_Size "${LSTVIDEO[@]}")					# Source file(s) size
-total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")				# Target(s) size
-PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")	# Size difference between source and target
-
-# End encoding messages "pass_files" "total_files" "target_size" "source_size"
-Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
-}
-Video_Add_OPUS_NightNorm() {			# Option 4		- Add audio stream with night normalization in opus/stereo/320kb
+Video_Add_OPUS_NightNorm() {			# Option 3		- Add audio stream with night normalization in opus/stereo/320kb
 # Local variables
 local subtitleconf
 # Array
@@ -4570,7 +4473,8 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	files="$1"
 
 	# Test bitrate
-	TestBitrate=$(mediainfo --Output="General;%OverallBitRate%" "$files")
+	TestBitrate=$(ffprobe -hide_banner -v quiet -show_entries format=bit_rate \
+					-of default=noprint_wrappers=1:nokey=1 "$files")
 
 	# If opus mono & source > 320k - apply hard codec limitation
 	if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
@@ -5898,7 +5802,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	Remove_Audio_Split_Backup_Dir
 fi
 }
-Audio_File_Tester() {					# Option 36 	- ffmpeg test player
+Audio_File_Tester() {					# Option 36 	- ffmpeg file test
 # Local variables
 local START
 local END
@@ -6465,14 +6369,14 @@ shopt -u nocasematch
 while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
-    -h|--help)																						# Help
+    -h|--help)																				# Help
 		Usage
 		exit
     ;;
-    -ca|--compare_audio)																			# Compare current audio files informations. 
+    -ca|--compare_audio)																	# Compare current audio files informations. 
 		shift
 		force_compare_audio="1"
-		ffmes_option="32"
+		ffmes_option="31"
 	;;
     -i|--input)
 		shift
@@ -6665,18 +6569,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 3 ) # Video, audio only
-	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
-		Video_Custom_Audio_Only
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
-	fi
-	;;
-
- 4 ) # Audio night normalization
+ 3 ) # Audio night normalization
 	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
 		Video_Add_OPUS_NightNorm
 		Clean
@@ -6685,16 +6578,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 10 ) # tools -> view stats
-	if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
-	echo
-	mediainfo "${LSTVIDEO[0]}"
-	else
-		Echo_Mess_Error "$MESS_NO_VIDEO_FILE" "1"
-	fi
-	;;
-
- 11 ) # video -> mkv|copy|add audio|add sub
+ 10 ) # video -> mkv|copy|add audio|add sub
 	if [[ "${#LSTVIDEO[@]}" -eq "1" ]] && [[ "${#LSTSUB[@]}" -gt 0 || "${#LSTAUDIO[@]}" -gt 0 ]]; then
 		#if [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
 			videoformat="addcopy"
@@ -6708,7 +6592,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 12 ) # Concatenate video
+ 11 ) # Concatenate video
 	if [ "${#LSTVIDEO[@]}" -gt "1" ] && [ "$NBVEXT" -eq "1" ]; then
 		Video_Concatenate
 		Video_Custom_Video
@@ -6728,7 +6612,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 13 ) # Extract stream video
+ 12 ) # Extract stream video
 	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
 		Video_Extract_Stream
 		Clean
@@ -6737,7 +6621,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 14 ) # Cut video
+ 13 ) # Cut video
 	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
 		Video_Cut_File
 		Clean
@@ -6746,7 +6630,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 15 ) # Split by chapter mkv
+ 14 ) # Split by chapter mkv
 	if [ "${#LSTVIDEO[@]}" -eq "1" ] && [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
 		Video_Split_By_Chapter
 		Clean
@@ -6755,7 +6639,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 16 ) # Change color palette of DVD subtitle
+ 15 ) # Change color palette of DVD subtitle
 	if [[ "${LSTSUBEXT[*]}" = *"idx"* ]]; then
 		DVDSubColor
 		Clean
@@ -6764,7 +6648,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 17 ) # Convert DVD subtitle to srt
+ 16 ) # Convert DVD subtitle to srt
 	CheckSubtitleCommand
 	if [[ "${LSTSUBEXT[*]}" = *"idx"* ]]; then
 		DVDSub2Srt
@@ -6927,17 +6811,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 31 ) # tools -> one file view stats
-	if (( "${#LSTAUDIO[@]}" )); then
-		Audio_Multiple_Extention_Check
-		echo
-		mediainfo "${LSTAUDIO[0]}"
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 32 ) # tools -> multi file view stats
+ 31 ) # tools -> multi file view stats
 	if (( "${#LSTAUDIO[@]}" )); then
 		Display_Audio_Stats_List "${LSTAUDIO[@]}"
 		Clean
@@ -6949,7 +6823,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 33 ) # audio -> generate png of audio spectrum
+ 32 ) # audio -> generate png of audio spectrum
 	if (( "${#LSTAUDIO[@]}" )); then
 		Audio_Multiple_Extention_Check
 		Audio_Generate_Spectrum_Img
@@ -6959,7 +6833,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 34 ) # Concatenate audio
+ 33 ) # Concatenate audio
 	if [ "${#LSTAUDIO[@]}" -gt "1" ] && [ "$NBAEXT" -eq "1" ]; then
 		Audio_Concatenate_Files
 		Remove_File_Source
@@ -6974,7 +6848,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 35 ) # Cut audio
+ 34 ) # Cut audio
 	if [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		Audio_Cut_File
 		Clean
@@ -6983,7 +6857,7 @@ case $ffmes_option in
 	fi
 	;;
 
- 36 ) # File check
+ 35 ) # File check
 	if [[ "${#LSTAUDIO[@]}" -ge "1" ]]; then
 		ProgressBarOption="1"
 		NPROC=$(nproc --all | awk '{ print $1 * 4 }')

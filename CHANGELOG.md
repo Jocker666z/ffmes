@@ -1,4 +1,14 @@
 # Changelog
+v0.103b:
+* Video:
+	* remove - option 3, encode audio stream only
+	* remove - option 10, view detailed video file informations
+* Audio:
+	* remove - option 31, view one audio file stats
+* Various:
+	* chg - replace mediainfo by ffprobe & ffmpeg for interlaced test & get bitrate
+	* remove - mediainfo from dependencies
+
 v0.103a:
 * Audio:
 	* fix - option 36, files validation with v0.103 validation action
