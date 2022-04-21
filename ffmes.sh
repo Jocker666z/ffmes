@@ -1543,7 +1543,7 @@ if [ "$SourceNotRemoved" = "1" ] ; then
 			# Rename if extention same as source
 			for i in "${!filesInLoop[@]}"; do
 				# If file overwrite
-				if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; thene
+				if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
 					mv "${filesInLoop[i]%.*}".back.$extcont "${filesInLoop[i]}" 2>/dev/null
 				fi
 			done
