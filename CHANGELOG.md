@@ -1,4 +1,11 @@
 # Changelog
+v0.103d:
+* Tag:
+	* fix - DISCNUMBER tag with metaflac & vorbiscomment
+	* fix - Year tag with apev2
+* Various:
+	* chg - minor bash improve
+
 v0.103c:
 * Video:
 	* fix - option 1, ETA

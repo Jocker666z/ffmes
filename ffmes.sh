@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2086,SC2183,SC2026,SC2001,SC2059
 # ffmes - ffmpeg media encode script
 # Bash tool handling media files and DVD. Mainly with ffmpeg. Batch or single file.
@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.103c
+VERSION=v0.103d
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -809,7 +809,7 @@ if (( "${#filesPass[@]}" )); then
 	Echo_Separator_Light
 	echo " File(s) created:"
 	if (( "${#filesPassSizeReduction[@]}" )); then
-		for (( i=0; i<=$(( ${#filesPass[@]} - 1 )); i++ )); do
+		for i in "${!filesPass[@]}"; do
 			filesPassLabel+=( "(${filesPassSizeReduction[i]}%) ~ ${filesPass[i]}" )
 		done
 		Display_List_Truncate "${filesPassLabel[@]}"
@@ -831,7 +831,7 @@ else
 	echo " ${pass_files}/${total_files} file(s) have been processed."
 fi
 if [[ -n "$source_size" && -n "$target_size" ]]; then
-	echo " Created file(s) size: ${target_size}Mb, a difference of $PERC% from the source(s) (${source_size}Mb)."
+	echo " Created file(s) size: ${target_size}Mb, a difference of ${PERC}% from the source(s) (${source_size}Mb)."
 elif [[ -z "$source_size" && -n "$target_size" ]]; then
 	echo " Created file(s) size: ${target_size}Mb."
 fi
@@ -925,7 +925,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 		# Get stats
 		Media_Source_Info_Record "$files"
 
-		for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
+		for i in "${!ffprobe_StreamIndex[@]}"; do
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
 				# In table if term is wide enough, or in ligne
 				paste <(printf "%-${codec_string_length}.${codec_string_length}s\n" "${ffprobe_Codec[i]}") <(printf "%s\n" ".") \
@@ -953,7 +953,7 @@ else
 		# Get stats
 		Media_Source_Info_Record "$files"
 
-		for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
+		for i in "${!ffprobe_StreamIndex[@]}"; do
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
 				Display_Line_Truncate "  $files"
 				echo "$(Display_Variable_Trick "$ffprobe_DurationFormated" "1" "kHz")\
@@ -1006,7 +1006,7 @@ echo "  Duration: $ffprobe_DurationFormated, Start: $ffprobe_StartTime, Bitrate:
 		| awk '{$2=$2};1' | awk '{print "  " $0}'
 
 
-for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
+for i in "${!ffprobe_StreamIndex[@]}"; do
 
 	# Video
 	if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
@@ -1353,7 +1353,7 @@ local WIDTH
 local HEIGHT
 
 WIDTH="$1"
-for (( i=0; i<=$(( ${#ffprobe_StreamIndex[@]} - 1 )); i++ )); do
+for i in "${!ffprobe_StreamIndex[@]}"; do
 	if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
 		if [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]]; then
 			source_width="${ffprobe_Width[i]}"
@@ -1583,7 +1583,7 @@ fi
 if (( "${#source_files[@]}" )); then
 
 	Echo_Separator_Light
-	for (( i=0; i<=$(( ${#source_files[@]} - 1 )); i++ )); do
+	for i in "${!source_files[@]}"; do
 		if [[ "${source_files[$i]##*.}" =~ ${VIDEO_EXT_AVAILABLE[*]} ]] \
 		|| [[ "${source_files[$i]##*.}" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
 
@@ -2596,7 +2596,7 @@ EnterKeyDisable
 
 # Test timestamp
 if ! [[ "$ENCODV" = "1" ]]; then
-	for (( i=0; i<=$(( ${#LSTVIDEO[@]} - 1 )); i++ )); do
+	for i in "${!LSTVIDEO[@]}"; do
 		# Progress
 		ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
 
@@ -2617,7 +2617,7 @@ if ! [[ "$ENCODV" = "1" ]]; then
 fi
 
 # Encoding
-for (( i=0; i<=$(( ${#LSTVIDEO[@]} - 1 )); i++ )); do
+for i in "${!LSTVIDEO[@]}"; do
 
 	# Target files pass in loop for validation test
 	filesInLoop+=( "${LSTVIDEO[i]%.*}.$videoformat.$extcont" )
@@ -4284,7 +4284,7 @@ EnterKeyDisable
 ## Start Loading
 StartLoading "Preparation of the encoding"
 ## Prepare arrays & variable
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 	# Audio filter array include: test volume & normalization
 	Audio_ffmpeg_cmd_Filter "${LSTAUDIO[i]}"
 	# Audio channel array include: channel test mono or stereo
@@ -4314,7 +4314,7 @@ Display_Remove_Previous_Line
 # Encoding
 echo
 Echo_Separator_Light
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 	# Cover extraction
 	Audio_Cover_Extraction "${LSTAUDIO[i]}"
 
@@ -4336,14 +4336,13 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 	if [[ $(FFmpeg_instance_count) -ge $NPROC ]]; then
 		wait -n
 	fi
-
 done
 wait
 
 # Test results
 ## Reset $extcont
 extcont="$ExtContSource"
-for (( i=0; i<=$(( ${#filesInLoop[@]} - 1 )); i++ )); do
+for i in "${!filesInLoop[@]}"; do
 
 	# File to test
 	if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
@@ -5446,7 +5445,7 @@ START=$(date +%s)
 
 echo
 Echo_Separator_Light
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 
 	(
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" \
@@ -5886,7 +5885,7 @@ tag_value="$2"
 tag_option="$3"
 tag_cut="$4"
 
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 	StartLoading "" "Tag: ${LSTAUDIO[$i]}"
 
 	# Parsing
@@ -5957,7 +5956,7 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 		tag_label="${tag_label//track/Track}"
 		tag_label="${tag_label//album/Album}"
 		tag_label="${tag_label//artist/Artist}"
-		tag_label="${tag_label//date/Date}"
+		tag_label="${tag_label//date/Year}"
 		tag_label="${tag_label//title/Title}"
 		tag_label="${tag_label//disk/Disc}"
 		# Tag
@@ -5975,7 +5974,7 @@ for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
 		tag_label="${tag_label//artist/ARTIST}"
 		tag_label="${tag_label//date/DATE}"
 		tag_label="${tag_label//title/TITLE}"
-		tag_label="${tag_label//DISCNUMBER/TITLE}"
+		tag_label="${tag_label//disk/DISCNUMBER}"
 		# Tag
 		if [[ "${LSTAUDIO[$i]##*.}" = "flac" ]]; then
 			metaflac --remove-tag="$tag_label" --set-tag="$tag_label"="$tag_value" "${LSTAUDIO[$i]}" &>/dev/null
@@ -6027,7 +6026,7 @@ local ParsedArtist
 # Argument
 rename_option="$1"
 
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 	StartLoading "" "Rename: ${LSTAUDIO[$i]}"
 
 	# Integer test extract tracknumber with slash
@@ -6145,7 +6144,7 @@ StartLoading "Grab current tags" ""
 mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 # Get tag with ffprobe
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 	(
 	"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format "${LSTAUDIO[$i]}" > "$FFMES_CACHE_TAG-[$i]"
 	) &
@@ -6156,7 +6155,7 @@ done
 wait
 
 # Populate array with tag
-for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+for i in "${!LSTAUDIO[@]}"; do
 	TAG_DISC+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:disc=" | awk -F'=' '{print $NF}')" )
 	if [[ -z "${TAG_DISC[-1]}" ]]; then
 		TAG_DISC[-1]=$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:disk=" | awk -F'=' '{print $NF}')
@@ -6231,7 +6230,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
 else
 	printf '%*s' "$TERM_WIDTH_TRUNC" | tr ' ' "-"; echo
-	for (( i=0; i<=$(( ${#LSTAUDIO[@]} - 1 )); i++ )); do
+	for i in "${!LSTAUDIO[@]}"; do
 		Display_Line_Truncate "${LSTAUDIO[$i]}"
 		echo " disk: ${TAG_DISC[$i]}, track: ${TAG_TRACK[$i]}"
 		echo " title: ${TAG_TITLE[$i]}"
