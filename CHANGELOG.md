@@ -1,5 +1,9 @@
 # Changelog
-v0.103d:
+21/04/22:
+* Various:
+	* chg - minor bash improve
+
+21/04/22:
 * Tag:
 	* fix - DISCNUMBER tag with metaflac & vorbiscomment
 	* fix - Year tag with apev2

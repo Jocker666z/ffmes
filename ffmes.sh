@@ -9,7 +9,7 @@
 # licence : GNU GPL-2.0
 
 # Version
-VERSION=v0.103d
+VERSION=v0.103e
 
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
@@ -1541,8 +1541,9 @@ if [ "$SourceNotRemoved" = "1" ] ; then
 				rm -f "$f" 2>/dev/null
 			done
 			# Rename if extention same as source
-			for (( i=0; i<=$(( ${#filesInLoop[@]} -1 )); i++ )); do
-				if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then										# If file overwrite
+			for i in "${!filesInLoop[@]}"; do
+				# If file overwrite
+				if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; thene
 					mv "${filesInLoop[i]%.*}".back.$extcont "${filesInLoop[i]}" 2>/dev/null
 				fi
 			done
