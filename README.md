@@ -313,7 +313,7 @@ su -c "make install" -m "root"
 Active=true
 Name=ffmes %N
 Comment=ffmes %N
-Exec=terminator --working-directory='"%P"' -x ~/.local/bin/ffmes -i '"%F"'
+Exec=terminator --working-directory=%P -x ~/.local/bin/ffmes -i %F
 Selection=any
 Quote=double
 Extensions=any;
