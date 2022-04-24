@@ -349,7 +349,7 @@ Extensions=any;
 	* https://wiki.hydrogenaud.io/index.php/LAME
 	* https://digitalcardboard.com/blog/2009/08/25/the-sox-of-silence/
 * Tags:
-	* https://wiki.hydrogenaud.io/index.php?title=Tag_Mapping
+	* https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html
 
 ### FFmpeg static
 * https://github.com/BtbN/FFmpeg-Builds/wiki/Latest#latest-autobuilds
