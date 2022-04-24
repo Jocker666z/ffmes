@@ -1,4 +1,7 @@
 # Changelog
+
+* Remove - versioning
+
 v0.103d:
 * Various:
 	* chg - minor bash improve

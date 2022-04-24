@@ -8,9 +8,6 @@
 #
 # licence : GNU GPL-2.0
 
-# Version
-VERSION=v0.103d
-
 # Paths
 export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
 FFMES_BIN=$(basename "${0}")																# Set script name for prevent error when rename script
@@ -732,7 +729,7 @@ fi
 ## DISPLAY
 Usage() {
 cat <<- EOF
-ffmes $VERSION - GNU GPL-2.0 Copyright - <https://github.com/Jocker666z/ffmes>
+ffmes - GNU GPL-2.0 Copyright - <https://github.com/Jocker666z/ffmes>
 Bash tool handling media files and DVD. Mainly with ffmpeg.
 In batch or single file.
 
@@ -758,7 +755,7 @@ EOF
 Display_Main_Menu() {					# Main menu
 clear
 echo
-echo "  / ffmes $VERSION / $ffmpeg_version_label"
+echo "  / ffmes / $ffmpeg_version_label"
 echo "  -----------------------------------------------------"
 echo "   0 - DVD & Blu-ray rip                              |"
 echo "   1 - video encoding with custom options             |-Video"
