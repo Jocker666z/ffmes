@@ -95,15 +95,15 @@ LSTVOB=()
 LSTM3U=()
 
 # Populate arrays
-if test -n "$ARGUMENT"; then
+if test -n "$InputFileArg"; then
 	if [[ ${VIDEO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
-		LSTVIDEO+=("$ARGUMENT")
+		LSTVIDEO+=("$InputFileArg")
 		mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	elif [[ ${AUDIO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
-		LSTAUDIO+=("$ARGUMENT")
+		LSTAUDIO+=("$InputFileArg")
 		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	elif [[ ${ISO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
-		LSTISO+=("$ARGUMENT")
+		LSTISO+=("$InputFileArg")
 	fi
 
 else
@@ -1405,8 +1405,8 @@ chwidth="${WIDTH}x${HEIGHT%.*}"
 ## IN SCRIPT VARIOUS FUNCTIONS
 Restart() {								# Restart script & for keep argument
 Clean
-if [ -n "$ARGUMENT" ]; then									# If target is file
-	bash "$FFMES_PATH"/"$FFMES_BIN" -i "$ARGUMENT" && exit
+if [ -n "$ffmes_args" ]; then
+	bash "$FFMES_PATH"/"$FFMES_BIN" "$ffmes_args" && exit
 else
 	bash "$FFMES_PATH"/"$FFMES_BIN" && exit
 fi
@@ -6374,8 +6374,8 @@ shopt -u nocasematch
 
 # Arguments variables
 while [[ $# -gt 0 ]]; do
-    key="$1"
-    case "$key" in
+    ffmes_args="$1"
+    case "$ffmes_args" in
     -h|--help)																				# Help
 		Usage
 		exit
@@ -6403,7 +6403,7 @@ while [[ $# -gt 0 ]]; do
 				echo
 				exit
 			else
-				ARGUMENT="$InputFileDir"
+				InputFileArg="$InputFileDir"
 			fi
 		elif ! [ -f "$InputFileDir" ]; then
 			Echo_Mess_Error "\"$1\" does not exist" "1"

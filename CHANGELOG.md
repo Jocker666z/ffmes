@@ -1,5 +1,7 @@
 # Changelog
-
+24/04/2022
+* add - now keep all arguments if ffmes restart
+* chg - now test audio result in paralell
 * Remove - versioning
 
 v0.103d:
