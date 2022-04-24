@@ -1589,7 +1589,7 @@ if (( "${#source_files[@]}" )); then
 			tmp_error=$(mktemp)
 			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
 			if [ -s "$tmp_error" ]; then
-				cp "$tmp_error" "${source_files[$i]%.*}-error.log"
+				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
 			fi
 			## File rejected
 			if [[ -f "${source_files[$i]%.*}-error.log" ]]; then
@@ -4245,6 +4245,7 @@ fi
 ## AUDIO
 Audio_FFmpeg_cmd() {					# FFmpeg audio encoding loop
 # Local variables
+local filesToTest_realpath
 local PERC
 local file_source_files_size
 local file_target_files_size
@@ -4252,11 +4253,10 @@ local total_source_files_size
 local total_target_files_size
 local START
 local END
-local file_test
-local filesRejectRm
 # Array
 filesInLoop=()
 filesOverwrite=()
+filesToTest=()
 filesPass=()
 filesSourcePass=()
 filesReject=()
@@ -4338,54 +4338,56 @@ done
 wait
 
 # Test results
-## Reset $extcont
+# Reset $extcont
 extcont="$ExtContSource"
+# File to test array
 for i in "${!filesInLoop[@]}"; do
-
-	# File to test
 	if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
-		file_test="${filesInLoop[i]%.*}.new.$extcont"
+		filesToTest+=( "${filesInLoop[i]%.*}.new.${extcont}" )
 	else
-		file_test="${filesInLoop[i]%.*}.$extcont"
+		filesToTest+=( "${filesInLoop[i]%.*}.$extcont" )
 	fi
+done
+# Tests & error log generation
+for i in "${!filesToTest[@]}"; do
+	(
+	"$ffmpeg_bin" -v error -i "${filesToTest[i]}" \
+		-max_muxing_queue_size 9999 -f null - 2>"${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log"
+	) &
+	if [[ $(FFmpeg_instance_count) -ge $NPROC ]]; then
+		wait -n
+	fi
+	ProgressBar "$files" "$((i+1))" "${#filesToTest[@]}" "Validation" "1"
+done
+wait
 
-	# Tests & populate file in arrays
-	## File test & error log generation
-	tmp_error=$(mktemp)
-	"$ffmpeg_bin" -v error -i "$file_test" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
-	if [ -s "$tmp_error" ]; then
-		cp "$tmp_error" "${file_test%.*}-error.log"
-	fi
-	## File rejected
-	if [[ -f "${file_test%.*}-error.log" ]]; then
-		filesRejectRm="$file_test"
-		filesReject+=( "$file_test" )
-	## File passed
+# Check error files
+for i in "${!filesInLoop[@]}"; do
+	# File reject
+	if [ -s "${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log" ]; then
+		filesToTest_realpath=$(realpath "${filesToTest[i]}")
+		mv "${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log" \
+			"${filesToTest_realpath%/*}/${filesToTest[i]##*/}.error.log" 2>/dev/null
+		rm "${filesToTest[i]}" 2>/dev/null
+		filesReject+=( "${filesToTest[i]}" )
+	# File pass
 	else
-		if [[ "${filesInLoop[i]%.*}" = "${filesOverwrite[i]%.*}" ]]; then
-			mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}".back."$extcont" 2>/dev/null
-			mv "${filesInLoop[i]%.*}".new."$extcont" "${filesInLoop[i]}" 2>/dev/null
-			filesPass+=( "${filesInLoop[i]}" )
-			filesSourcePass+=( "${filesInLoop[i]%.*}".back."$extcont" )
+		rm "${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log" 2>/dev/null
+		if [[ "${filesToTest[i]}" = "${filesInLoop[i]%.*}.new.${extcont}" ]]; then
+			mv "${filesInLoop[i]}" "${filesInLoop[i]%.*}.back.${extcont}" 2>/dev/null
+			mv "${filesInLoop[i]%.*}.new.${extcont}" "${filesInLoop[i]}" 2>/dev/null
+			filesSourcePass+=( "${filesInLoop[i]%.*}.back.${extcont}" )
 		else
-			filesPass+=( "${filesInLoop[i]%.*}"."$extcont" )
 			filesSourcePass+=( "${filesInLoop[i]}" )
 		fi
+		filesPass+=( "${filesInLoop[i]%.*}"."$extcont" )
 
 		# Make statistics of indidual processed files
 		file_source_files_size=$(Calc_Files_Size_bytes "${filesSourcePass[-1]}")
 		file_target_files_size=$(Calc_Files_Size_bytes "${filesPass[-1]}")
 		PERC=$(Calc_Percent "$file_source_files_size" "$file_target_files_size")
 		filesPassSizeReduction+=( "$PERC" )
-
 	fi
-
-	# Progress
-	ProgressBar "$files" "$((i+1))" "${#filesInLoop[@]}" "Validation" "1"
-
-	# Remove rejected
-	rm "$filesRejectRm" 2>/dev/null
-
 done
 
 # Enable the enter key
