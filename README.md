@@ -305,18 +305,8 @@ su -c "make install" -m "root"
 
 --------------------------------------------------------------------------------------------------
 ## Integration
-### Nemo action - gnome-terminal
-`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
-```
-[Nemo Action]
-Active=true
-Name=ffmes %N
-Comment=ffmes %N
-Exec=gnome-terminal -- bash -c "cd '%P' && ~/.local/bin/ffmes -i '%F'; bash"
-Selection=any
-Extensions=any;
-```
 ### Nemo action - terminator
+[Nemo Action]
 `nano ~/.local/share/nemo/actions/ffmes.nemo_action`
 ```
 [Nemo Action]
@@ -325,6 +315,7 @@ Name=ffmes %N
 Comment=ffmes %N
 Exec=terminator --working-directory='"%P"' -x ~/.local/bin/ffmes -i '"%F"'
 Selection=any
+Quote=double
 Extensions=any;
 ```
 
