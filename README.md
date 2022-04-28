@@ -29,7 +29,16 @@ Source media files, supported extension:
 
 ## Use
 ```
-Usage: ffmes options
+Usage:
+  Select all currents: ffmes
+  Select file:         ffmes -i [INPUTFILE]
+  Select directory:    ffmes -i [INPUTDIR]
+
+In batch:
+  Video batch, processes one subdirectories.
+  Audio batch, processes five subdirectories.
+
+Options:
                           Without option treat current directory.
   -ca|--compare_audio     Compare current audio files stats.
   -i|--input <file>       Treat one file.
@@ -42,9 +51,9 @@ Usage: ffmes options
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
                           Positive input used as negative.
-                          Default: 1 (-1 db)
+                          Default: $PeakNormDB (-$PeakNormDB db)
   -v|--verbose            Display ffmpeg log level as info.
-  -vv|--fullverbose       Display ffmpeg log level as debug
+  -vv|--fullverbose       Display ffmpeg log level as debug.
 ```
 Examples:
 * `ffmes` with audio/video in directory
