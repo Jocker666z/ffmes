@@ -51,7 +51,7 @@ Options:
   -s|--select <number>    Preselect option (by-passing main menu).
   -pk|--peaknorm <number> Peak db normalization.
                           Positive input used as negative.
-                          Default: $PeakNormDB (-$PeakNormDB db)
+                          Default: 1 (-1 db)
   -v|--verbose            Display ffmpeg log level as info.
   -vv|--fullverbose       Display ffmpeg log level as debug.
 ```
