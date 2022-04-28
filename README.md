@@ -304,22 +304,6 @@ su -c "make install" -m "root"
 * CUE split fail with 24bits audio (shnsplit bug)
 
 --------------------------------------------------------------------------------------------------
-## Integration
-### Nemo action - terminator
-[Nemo Action]
-`nano ~/.local/share/nemo/actions/ffmes.nemo_action`
-```
-[Nemo Action]
-Active=true
-Name=ffmes %N
-Comment=ffmes %N
-Exec=terminator --working-directory=%P -e ~/.local/bin/ffmes -i %F
-Selection=any
-Quote=double
-Extensions=any;
-```
-
---------------------------------------------------------------------------------------------------
 ## Holy reading
 * Video:
 	* https://github.com/leandromoreira/digital_video_introduction#how-does-a-video-codec-work

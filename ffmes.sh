@@ -730,10 +730,18 @@ fi
 Usage() {
 cat <<- EOF
 ffmes - GNU GPL-2.0 Copyright - <https://github.com/Jocker666z/ffmes>
-Bash tool handling media files and DVD. Mainly with ffmpeg.
-In batch or single file.
+Bash tool handling media files, DVD & Blu-ray. Mainly with ffmpeg.
 
-Usage: ffmes [options]
+Usage:
+  Select all currents: ffmes
+  Select file:         ffmes -i [INPUTFILE]
+  Select directory:    ffmes -i [INPUTDIR]
+
+In batch:
+  Video batch, processes one subdirectories.
+  Audio batch, processes five subdirectories.
+
+Options:
                           Without option treat current directory.
   -ca|--compare_audio     Compare current audio files stats.
   -i|--input <file>       Treat one file.
@@ -749,7 +757,6 @@ Usage: ffmes [options]
                           Default: $PeakNormDB (-$PeakNormDB db)
   -v|--verbose            Display ffmpeg log level as info.
   -vv|--fullverbose       Display ffmpeg log level as debug.
-
 EOF
 }
 Display_Main_Menu() {					# Main menu
