@@ -224,7 +224,7 @@ if ! [[ "$audio_list" = "1" ]]; then
 									| awk '{for(i=1; i<=NF; i++) if($i~/Progressive:/) print $(i+1)}')
 	Interlaced_frames_TFF=$(echo "$ffprobe_Interlaced_raw" \
 							| awk '{for(i=1; i<=NF; i++) if($i~/TFF:/) print $(i+1)}')
-	if [[ "$frames_TFF" -gt "$frames_progressive" ]];then
+	if [[ "$Interlaced_frames_TFF" -gt "$Interlaced_frames_progressive" ]];then
 		ffprobe_Interlaced="1"
 	fi
 fi
@@ -1100,7 +1100,7 @@ if [ "$ENCODV" = "1" ]; then
 	if [[ "$codec" != "hevc_vaapi" ]]; then
 		echo "   * Rotation: $chrotation"
 		# Display only if HDR source
-		if test -n "$ffprobe_hdr"; then
+		if [[ -n "$ffprobe_hdr" ]]; then
 			echo "   * HDR to SDR: $chsdr2hdr"
 		fi
 	fi
@@ -1350,64 +1350,6 @@ fi
 
 printf '%02d:%02d:%02d\n' $((second/3600)) $((second%3600/60)) $((second%60))
 }
-Calc_Video_Resolution() {				# Option 1  	- Conf/Calc change Resolution 
-# Local variables
-local RATIO
-local WIDTH
-local HEIGHT
-
-WIDTH="$1"
-for i in "${!ffprobe_StreamIndex[@]}"; do
-	if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
-		if [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]]; then
-			source_width="${ffprobe_Width[i]}"
-			source_heigh="${ffprobe_Height[i]}"
-		fi
-	fi
-done
-
-# Ratio calculation
-RATIO=$(bc -l <<< "${source_width} / $WIDTH")
-
-# Height calculation, display decimal only if not integer
-HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
-
-# Scale filter
-if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
-	if [ "$nbvfilter" -gt 0 ]; then
-		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+=",scale_vaapi=w=$WIDTH:h=-2"
-		else
-			vfilter+=",scale=$WIDTH:-2"
-		fi
-	else
-		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+="-vf format=nv12|vaapi,hwupload,scale_vaapi=w=$WIDTH:h=-2"
-		else
-			vfilter="-vf scale=$WIDTH:-2"
-		fi
-	fi
-else
-	if [ "$nbvfilter" -gt 0 ]; then
-		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+=",scale_vaapi=w=$WIDTH:h=-1"
-		else
-			vfilter+=",scale=$WIDTH:-1"
-		fi
-	else
-		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+="-vf format=nv12|vaapi,hwupload,scale_vaapi=w=$WIDTH:h=-1"
-		else
-			vfilter="-vf scale=$WIDTH:-1"
-		fi
-	fi
-fi
-
-nbvfilter=$((nbvfilter+1))
-
-# Displayed width x height
-chwidth="${WIDTH}x${HEIGHT%.*}"
-}
 
 ## IN SCRIPT VARIOUS FUNCTIONS
 Restart() {								# Restart script & for keep argument
@@ -1451,6 +1393,7 @@ unset videoformat
 unset soundconf
 ### videoconf & this sub variable
 unset videoconf
+unset framerate
 unset vfilter
 unset vcodec
 unset preset
@@ -2580,7 +2523,7 @@ fi
 }
 
 ## VIDEO
-Video_FFmpeg_video_cmd() {				# FFmpeg video encoding command
+Video_FFmpeg_cmd() {					# FFmpeg video encoding command
 # Local variables
 local TimestampTest
 local PERC
@@ -2662,7 +2605,7 @@ PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTVIDEO[@]}" "$total_target_files_size" "$total_source_files_size"
 }
-Video_Custom_Video() {					# Option 1  	- Conf codec video
+Video_Custom_Video() {					# Option 1  	- Conf video codec & filters
 # Get Stats of source
 Display_Video_Custom_Info_choice
 
@@ -2702,31 +2645,42 @@ elif [ "$qv" = "e" ]; then
 		"x264")
 			codec="libx264 -x264-params colorprim=bt709:transfer=bt709:colormatrix=bt709:fullrange=off -pix_fmt yuv420p"
 			chvcodec="H264"
-			Video_Custom_Video_Filter
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
+			Video_Custom_Filter_rotation
 			Video_x264_5_Config
 		;;
 		"x265")
 			codec="libx265"
 			chvcodec="HEVC"
-			Video_Custom_Video_Filter
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
+			Video_Custom_Filter_rotation
+			Video_Custom_Filter_hdr
 			Video_x264_5_Config
 		;;
 		"hevc_vaapi")
 			codec="hevc_vaapi"
 			chvcodec="HEVC_VAAPI"
-			Video_Custom_Video_Filter
+			vfilter+=( "format=nv12|vaapi,hwupload" )
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
 			Video_hevc_vaapi_Config
 		;;
 		"av1")
 			codec="libaom-av1"
 			chvcodec="AV1"
-			Video_Custom_Video_Filter
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
+			Video_Custom_Filter_rotation
 			Video_av1_Config
 		;;
 		"mpeg4")
 			codec="mpeg4 -vtag xvid"
 			chvcodec="XVID"
-			Video_Custom_Video_Filter
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
+			Video_Custom_Filter_rotation
 			Video_MPEG4_Config
 		;;
 		"q"|"Q")
@@ -2735,7 +2689,10 @@ elif [ "$qv" = "e" ]; then
 		*)
 			codec="libx265"
 			chvcodec="HEVC"
-			Video_Custom_Video_Filter
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
+			Video_Custom_Filter_rotation
+			Video_Custom_Filter_hdr
 			Video_x264_5_Config
 		;;
 	esac
@@ -2749,19 +2706,20 @@ else
 	chvidstream="Copy"
 	chvcodec="vcopy"
 	codec="copy"
+fi
 
+
+# Construc final filter variable
+if (( "${#vfilter[@]}" )); then
+	vfilter_final="-vf $(IFS=',';echo "${vfilter[*]}";IFS=$' \t\n')"
 fi
 
 # Set video configuration variable
 vcodec="$codec"
 filevcodec="$chvcodec"
-videoconf="$vfilter -c:v $vcodec $preset $profile $tune $vkb"
+videoconf="$vfilter_final -c:v $vcodec $preset $profile $tune $vkb"
 }
-Video_Custom_Video_Filter() {			# Option 1  	- Conf filter video
-# Local variables
-local nbvfilter
-
-# Desinterlace
+Video_Custom_Filter_deinterlace() {		# Option 1  	- Conf filter video, deinterlace
 Display_Video_Custom_Info_choice
 if [ "$ffprobe_Interlaced" = "1" ]; then
 	echo " Video SEEMS interlaced, you want deinterlace:"
@@ -2778,11 +2736,10 @@ case $yn in
 	"y"|"Y")
 		chdes="Yes"
 		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter="-vf format=nv12|vaapi,hwupload,deinterlace_vaapi"
+			vfilter+=( "deinterlace_vaapi" )
 		else
-			vfilter="-vf yadif"
+			vfilter+=( "yadif" )
 		fi
-		nbvfilter=$((nbvfilter+1))
 	;;
 	"q"|"Q")
 		Restart
@@ -2791,8 +2748,14 @@ case $yn in
 		chdes="No change"
 	;;
 esac
+}
+Video_Custom_Filter_resolution() {		# Option 1  	- Conf filter video, resolution
+# Local variables
+local ch_width
+local RATIO
+local WIDTH
+local HEIGHT
 
-# Resolution
 Display_Video_Custom_Info_choice
 echo " Resolution change:"
 echo
@@ -2824,22 +2787,22 @@ case $yn in
 		echo "  [q] > for exit"
 		while :
 		do
-		read -r -e -p "-> " WIDTH
-		case $WIDTH in
-			1) Calc_Video_Resolution 640; break;;
-			2) Calc_Video_Resolution 720; break;;
-			3) Calc_Video_Resolution 768; break;;
-			4) Calc_Video_Resolution 1024; break;;
-			5) Calc_Video_Resolution 1280; break;;
-			6) Calc_Video_Resolution 1680; break;;
-			7) Calc_Video_Resolution 1920; break;;
-			8) Calc_Video_Resolution 2048; break;;
-			9) Calc_Video_Resolution 2560; break;;
-			10) Calc_Video_Resolution 3840; break;;
-			11) Calc_Video_Resolution 4096; break;;
-			12) Calc_Video_Resolution 5120; break;;
-			13) Calc_Video_Resolution 7680; break;;
-			14) Calc_Video_Resolution 8192; break;;
+		read -r -e -p "-> " ch_width
+		case $ch_width in
+			1) WIDTH="640"; break;;
+			2) WIDTH="720"; break;;
+			3) WIDTH="768"; break;;
+			4) WIDTH="1024"; break;;
+			5) WIDTH="1280"; break;;
+			6) WIDTH="1680"; break;;
+			7) WIDTH="1920"; break;;
+			8) WIDTH="2048"; break;;
+			9) WIDTH="2560"; break;;
+			10) WIDTH="3840"; break;;
+			11) WIDTH="4096"; break;;
+			12) WIDTH="5120"; break;;
+			13) WIDTH="7680"; break;;
+			14) WIDTH="8192"; break;;
 			"c"|"C")
 				chwidth="No change"
 				break
@@ -2864,96 +2827,112 @@ case $yn in
 	;;
 esac
 
-# VAAPI filter
-if [[ "$codec" = "hevc_vaapi" ]]; then
-	if [ -z "$nbvfilter" ] ; then
-		vfilter="-vf format=nv12|vaapi,hwupload"
-	fi
-fi
+if [[ -n "$WIDTH" ]]; then
 
-if [[ "$codec" != "hevc_vaapi" ]]; then
-
-	# Rotation
-	Display_Video_Custom_Info_choice
-	echo " Rotate the video?"
-	echo
-	echo "  [0] > for 90° CounterCLockwise and Vertical Flip"
-	echo "  [1] > for 90° Clockwise"
-	echo "  [2] > for 90° CounterClockwise"
-	echo "  [3] > for 90° Clockwise and Vertical Flip"
-	echo "  [4] > for 180°"
-	echo " *[↵] > for no change"
-	echo "  [q] > for exit"
-	while :; do
-	read -r -e -p "-> " ynrotat
-	case $ynrotat in
-		[0-4])
-			if [ "$nbvfilter" -gt 1 ] ; then
-				vfilter+=",transpose=$ynrotat"
-			else
-				vfilter="-vf transpose=$ynrotat"
+	for i in "${!ffprobe_StreamIndex[@]}"; do
+		if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
+			if [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]]; then
+				source_width="${ffprobe_Width[i]}"
+				source_heigh="${ffprobe_Height[i]}"
 			fi
-			nbvfilter=$((nbvfilter+1))
-
-			if [ "$ynrotat" = "0" ]; then
-				chrotation="90° CounterCLockwise and Vertical Flip"
-			elif [ "$ynrotat" = "1" ]; then
-				chrotation="90° Clockwise"
-			elif [ "$ynrotat" = "2" ]; then
-				chrotation="90° CounterClockwise"
-			elif [ "$ynrotat" = "3" ]; then
-				chrotation="90° Clockwise and Vertical Flip"
-			elif [ "$ynrotat" = "4" ]; then
-				chrotation="180°"
-			fi
-			break
-		;;
-		[5-9])
-			echo
-			Echo_Mess_Invalid_Answer
-			echo
-		;;
-		"q"|"Q")
-			Restart
-			break
-		;;
-		*)
-			chrotation="No change"
-			break
-		;;
-	esac
+		fi
 	done
 
-	# HDR / SDR - Display only if HDR source
-	if test -n "$ffprobe_hdr"; then
-		Display_Video_Custom_Info_choice
-		echo " Apply HDR to SDR filter:"
-		echo " Note: * This option is necessary to keep an acceptable colorimetry,"
-		echo "         if the source video is in HDR and you don't want to keep it."
-		echo "       * For prevent fail, remove attached pic."
-		echo
-		echo "  [n] > for no"
-		echo " *[↵] > for yes"
-		echo "  [q] > for exit"
-		read -r -e -p "-> " yn
-		case $yn in
-			"n"|"N")
-					chsdr2hdr="No change"
-				;;
-			"q"|"Q")
-					Restart
-				;;
-			*)
-				chsdr2hdr="Yes"
-				if [ "$nbvfilter" -gt 1 ] ; then
-					vfilter+=",zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
-				else
-					vfilter="-vf zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
-				fi
-				;;
-		esac
+	# Ratio calculation
+	RATIO=$(bc -l <<< "${source_width} / $WIDTH")
+
+	# Height calculation, display decimal only if not integer
+	HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
+
+	# Scale filter
+	if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter+=( "scale_vaapi=w=$WIDTH:h=-2" )
+		else
+			vfilter+=( "scale=$WIDTH:-2" )
+		fi
+	else
+		if [[ "$codec" = "hevc_vaapi" ]]; then
+			vfilter+=( "scale_vaapi=w=$WIDTH:h=-1" )
+		else
+			vfilter+=( "scale=$WIDTH:-1" )
+		fi
 	fi
 
+	# Displayed width x height
+	chwidth="${WIDTH}x${HEIGHT%.*}"
+fi
+}
+Video_Custom_Filter_rotation() {		# Option 1  	- Conf filter video, rotation
+Display_Video_Custom_Info_choice
+echo " Rotate the video?"
+echo
+echo "  [0] > for 90° CounterCLockwise and Vertical Flip"
+echo "  [1] > for 90° Clockwise"
+echo "  [2] > for 90° CounterClockwise"
+echo "  [3] > for 90° Clockwise and Vertical Flip"
+echo "  [4] > for 180°"
+echo " *[↵] > for no change"
+echo "  [q] > for exit"
+while :; do
+read -r -e -p "-> " ynrotat
+case $ynrotat in
+	[0-4])
+		vfilter+=( "transpose=$ynrotat" )
+
+		if [ "$ynrotat" = "0" ]; then
+			chrotation="90° CounterCLockwise and Vertical Flip"
+		elif [ "$ynrotat" = "1" ]; then
+			chrotation="90° Clockwise"
+		elif [ "$ynrotat" = "2" ]; then
+			chrotation="90° CounterClockwise"
+		elif [ "$ynrotat" = "3" ]; then
+			chrotation="90° Clockwise and Vertical Flip"
+		elif [ "$ynrotat" = "4" ]; then
+			chrotation="180°"
+		fi
+		break
+	;;
+	[5-9])
+		echo
+		Echo_Mess_Invalid_Answer
+		echo
+	;;
+	"q"|"Q")
+		Restart
+		break
+	;;
+	*)
+		chrotation="No change"
+		break
+	;;
+esac
+done
+}
+Video_Custom_Filter_hdr() {				# Option 1  	- Conf filter video, HDR
+if [[ -n "$ffprobe_hdr" ]]; then
+	Display_Video_Custom_Info_choice
+	echo " Apply HDR to SDR filter:"
+	echo " Note: * This option is necessary to keep an acceptable colorimetry,"
+	echo "         if the source video is in HDR and you don't want to keep it."
+	echo "       * For prevent fail, remove attached pic."
+	echo
+	echo "  [n] > for no"
+	echo " *[↵] > for yes"
+	echo "  [q] > for exit"
+	read -r -e -p "-> " yn
+	case $yn in
+		"n"|"N")
+				chsdr2hdr="No change"
+			;;
+		"q"|"Q")
+				Restart
+			;;
+		*)
+			chsdr2hdr="Yes"
+			vfilter+=( "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p" )
+			;;
+	esac
 fi
 }
 Video_Custom_Audio() {					# Option 1  	- Conf audio, encode or not
@@ -6505,7 +6484,7 @@ case $ffmes_option in
 			Video_Custom_Audio
 			Video_Custom_Container
 			Video_Custom_Stream
-			Video_FFmpeg_video_cmd
+			Video_FFmpeg_cmd
 			Remove_File_Source
 			Clean
 		;;
@@ -6534,7 +6513,7 @@ case $ffmes_option in
 		Video_Custom_Audio
 		Video_Custom_Container
 		Video_Custom_Stream
-		Video_FFmpeg_video_cmd
+		Video_FFmpeg_cmd
 		Remove_File_Source
 		Remove_File_Target
 		Clean
@@ -6552,7 +6531,7 @@ case $ffmes_option in
 		videoformat="avcopy"
 		Video_Multiple_Extention_Check
 		Video_Custom_Stream
-		Video_FFmpeg_video_cmd
+		Video_FFmpeg_cmd
 		Remove_File_Source
 		Clean
 	else
@@ -6590,7 +6569,7 @@ case $ffmes_option in
 		Video_Custom_Audio
 		Video_Custom_Container
 		Video_Custom_Stream
-		Video_FFmpeg_video_cmd
+		Video_FFmpeg_cmd
 		Remove_File_Source
 		Clean
 	else
