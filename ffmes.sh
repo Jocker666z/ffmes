@@ -1099,7 +1099,8 @@ if [ "$ENCODV" = "1" ]; then
 	echo "   * Resolution: $chwidth"
 	if [[ "$codec" != "hevc_vaapi" ]]; then
 		echo "   * Rotation: $chrotation"
-		if test -n "$HDR"; then						# display only if HDR source
+		# Display only if HDR source
+		if test -n "$ffprobe_hdr"; then
 			echo "   * HDR to SDR: $chsdr2hdr"
 		fi
 	fi
@@ -2931,8 +2932,7 @@ if [[ "$codec" != "hevc_vaapi" ]]; then
 		echo " Apply HDR to SDR filter:"
 		echo " Note: * This option is necessary to keep an acceptable colorimetry,"
 		echo "         if the source video is in HDR and you don't want to keep it."
-		echo "       * if you want to keep the HDR, do no here, HDR option is in libx265 parameters."
-		echo "       * for no fail, in stream selection, remove attached pic if present."
+		echo "       * For prevent fail, remove attached pic."
 		echo
 		echo "  [n] > for no"
 		echo " *[↵] > for yes"
