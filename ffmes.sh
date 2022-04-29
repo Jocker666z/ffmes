@@ -1104,7 +1104,6 @@ if [ "$ENCODV" = "1" ]; then
 			echo "   * HDR to SDR: $chsdr2hdr"
 		fi
 	fi
-	echo "   * Frame rate: $chfps"
 	echo "   * Codec: $chvcodec${chpreset}${chtune}${chprofile}"
 	echo "   * Bitrate: $vkb"
 fi
@@ -1452,7 +1451,6 @@ unset videoformat
 unset soundconf
 ### videoconf & this sub variable
 unset videoconf
-unset framerate
 unset vfilter
 unset vcodec
 unset preset
@@ -2757,7 +2755,7 @@ fi
 # Set video configuration variable
 vcodec="$codec"
 filevcodec="$chvcodec"
-videoconf="$framerate $vfilter -c:v $vcodec $preset $profile $tune $vkb"
+videoconf="$vfilter -c:v $vcodec $preset $profile $tune $vkb"
 }
 Video_Custom_Video_Filter() {			# Option 1  	- Conf filter video
 # Local variables
@@ -2957,27 +2955,6 @@ if [[ "$codec" != "hevc_vaapi" ]]; then
 	fi
 
 fi
-
-# Frame rate
-Display_Video_Custom_Info_choice
-echo " Change frame rate to 24 images per second?"
-echo
-echo "  [y] > for yes "
-echo " *[↵] > for no change"
-echo "  [q] > for exit"
-read -r -e -p "-> " yn
-case $yn in
-	"y"|"Y")
-		framerate="-r 24"
-		chfps="24 fps"
-	;;
-	"q"|"Q")
-		Restart
-	;;
-	*)
-		chfps="No change"
-	;;
-esac
 }
 Video_Custom_Audio() {					# Option 1  	- Conf audio, encode or not
 Display_Video_Custom_Info_choice

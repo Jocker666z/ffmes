@@ -125,7 +125,6 @@ If you encounter bugs or have proposals, I'm open to discussion.
 		* change resolution
 		* rotate video (except hevc_vaapi)
 		* HDR to SDR (except hevc_vaapi)
-		* fix frame rate to 24fps
 		* codecs:
 			* libx264: profile (8bits), tune, preset & bitrate (video stream total size, crf & cbr)
 			* libx265: profile (8>12bits), tune, HDR, preset & bitrate (video stream total size, crf & cbr)
