@@ -1642,7 +1642,7 @@ local _done
 local _done
 local _left
 
-# arguments
+# Arguments
 sourcefile=$(Display_Line_Progress_Truncate "${1##*/}")
 CurrentFilesNB="$2"
 TotalFilesNB="$3"
@@ -1652,9 +1652,6 @@ if [[ -n "$5" ]]; then
 else
 	unset ProgressBarOption
 fi
-
-# Reset loop pass
-#unset loop_pass
 
 # ffmpeg detailed progress bar
 if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$ffmes_option" -lt "20" ]] \
@@ -2568,11 +2565,15 @@ for i in "${!LSTVIDEO[@]}"; do
 		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 	fi
 	(
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G \
-			$GPUDECODE -y -i "${LSTVIDEO[i]}" $FFMPEG_PROGRESS \
-			-threads 0 $vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
-			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
-			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		-analyzeduration 1G -probesize 1G \
+		$GPUDECODE \
+		-y -i "${LSTVIDEO[i]}" \
+		$FFMPEG_PROGRESS \
+		-threads 0 \
+		$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+		-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
+		| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 		wait -n
@@ -4142,7 +4143,9 @@ if [[ -n "$CutSegment" ]]; then
 	fi
 
 	# Segment
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL \
+		-analyzeduration 1G -probesize 1G \
+		-y -i "${LSTVIDEO[0]}" \
 		$FFMPEG_PROGRESS \
 		-f segment -segment_time "$CutSegment" \
 		-c copy -map 0 -map_metadata 0 -reset_timestamps 1 \
@@ -4155,7 +4158,9 @@ if [[ -n "$CutSegment" ]]; then
 
 # Cut
 else
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL \
+		-analyzeduration 1G -probesize 1G \
+		-y -i "${LSTVIDEO[0]}" \
 		$FFMPEG_PROGRESS \
 		-ss "$CutStart" -to "$CutEnd" \
 		-c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}" \
