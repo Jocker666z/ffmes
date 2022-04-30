@@ -702,30 +702,6 @@ if [ -z "$TESTARGUMENT" ] && [ -z "$DVD_DEVICE" ] && [ "${#LSTVIDEO[@]}" -eq "0"
 fi
 }
 
-# ONE LINE MESSAGES
-Echo_Separator_Light() {				# Horizontal separator light
-printf '%*s' "$TERM_WIDTH" | tr ' ' "-"; echo
-}
-Echo_Separator_Large() {				# Horizontal separator large
-printf '%*s' "$TERM_WIDTH" | tr ' ' "="; echo
-}
-Echo_Mess_Invalid_Answer() {			# Horizontal separator large
-Echo_Mess_Error "Invalid answer, please try again"
-}
-Echo_Mess_Error() {						# Error message preformated
-local error_label
-error_label="$1"
-error_option="$2"
-
-if [[ -z "$error_option" ]]; then
-	echo "  [!] ${error_label}."
-elif [[ "$error_option" = "1" ]]; then
-	echo
-	echo "  [!] ${error_label}."
-	echo
-fi
-}
-
 ## DISPLAY
 Usage() {
 cat <<- EOF
@@ -1212,6 +1188,28 @@ if [[ -n "$variable" ]]; then
 
 	fi
 
+fi
+}
+Echo_Separator_Light() {				# Horizontal separator light
+printf '%*s' "$TERM_WIDTH" | tr ' ' "-"; echo
+}
+Echo_Separator_Large() {				# Horizontal separator large
+printf '%*s' "$TERM_WIDTH" | tr ' ' "="; echo
+}
+Echo_Mess_Invalid_Answer() {			# Horizontal separator large
+Echo_Mess_Error "Invalid answer, please try again"
+}
+Echo_Mess_Error() {						# Error message preformated
+local error_label
+error_label="$1"
+error_option="$2"
+
+if [[ -z "$error_option" ]]; then
+	echo "  [!] ${error_label}."
+elif [[ "$error_option" = "1" ]]; then
+	echo
+	echo "  [!] ${error_label}."
+	echo
 fi
 }
 
@@ -2751,189 +2749,201 @@ case $yn in
 esac
 }
 Video_Custom_Filter_resolution() {		# Option 1  	- Conf filter video, resolution
-# Local variables
-local ch_width
-local RATIO
-local WIDTH
-local HEIGHT
+if [[ "${#LSTVIDEO[@]}" = "1" ]]; then
+	# Local variables
+	local ch_width
+	local RATIO
+	local WIDTH
+	local HEIGHT
 
-Display_Video_Custom_Info_choice
-echo " Resolution change:"
-echo
-echo "  [y] > for yes"
-echo " *[↵] > for no change"
-echo "  [q] > for exit"
-read -r -e -p "-> " yn
-case $yn in
-	"y"|"Y")
-		Display_Video_Custom_Info_choice
-		echo " Choose the desired width:"
-		echo " Notes: Original ratio is respected."
-		echo
-		echo "  [1] > 640px  - VGA"
-		echo "  [2] > 720px  - DV NTSC/VGA"
-		echo "  [3] > 768px  - PAL"
-		echo "  [4] > 1024px - XGA"
-		echo "  [5] > 1280px - 720p, WXGA"
-		echo "  [6] > 1680px - WSXGA+"
-		echo "  [7] > 1920px - 1080p, WUXGA+"
-		echo "  [8] > 2048px - 2K"
-		echo "  [9] > 2560px - WQXGA+"
-		echo " [10] > 3840px - UHD-1"
-		echo " [11] > 4096px - 4K"
-		echo " [12] > 5120px - 4K WHXGA, Ultra wide"
-		echo " [13] > 7680px - UHD-2"
-		echo " [14] > 8192px - 8K"
-		echo "  [c] > for no change"
-		echo "  [q] > for exit"
-		while :
-		do
-		read -r -e -p "-> " ch_width
-		case $ch_width in
-			1) WIDTH="640"; break;;
-			2) WIDTH="720"; break;;
-			3) WIDTH="768"; break;;
-			4) WIDTH="1024"; break;;
-			5) WIDTH="1280"; break;;
-			6) WIDTH="1680"; break;;
-			7) WIDTH="1920"; break;;
-			8) WIDTH="2048"; break;;
-			9) WIDTH="2560"; break;;
-			10) WIDTH="3840"; break;;
-			11) WIDTH="4096"; break;;
-			12) WIDTH="5120"; break;;
-			13) WIDTH="7680"; break;;
-			14) WIDTH="8192"; break;;
-			"c"|"C")
-				chwidth="No change"
-				break
-			;;
-			"q"|"Q")
-				Restart
-				break
-			;;
-			*)
-				echo
-				Echo_Mess_Invalid_Answer
-				echo
-			;;
-		esac
-		done
-	;;
-	"q"|"Q")
-		Restart
-	;;
-	*)
-		chwidth="No change"
-	;;
-esac
-
-if [[ -n "$WIDTH" ]]; then
-
-	for i in "${!ffprobe_StreamIndex[@]}"; do
-		if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
-			if [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]]; then
-				source_width="${ffprobe_Width[i]}"
-				source_heigh="${ffprobe_Height[i]}"
-			fi
-		fi
-	done
-
-	# Ratio calculation
-	RATIO=$(bc -l <<< "${source_width} / $WIDTH")
-
-	# Height calculation, display decimal only if not integer
-	HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
-
-	# Scale filter
-	if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
-		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+=( "scale_vaapi=w=$WIDTH:h=-2" )
-		else
-			vfilter+=( "scale=$WIDTH:-2" )
-		fi
-	else
-		if [[ "$codec" = "hevc_vaapi" ]]; then
-			vfilter+=( "scale_vaapi=w=$WIDTH:h=-1" )
-		else
-			vfilter+=( "scale=$WIDTH:-1" )
-		fi
-	fi
-
-	# Displayed width x height
-	chwidth="${WIDTH}x${HEIGHT%.*}"
-fi
-}
-Video_Custom_Filter_rotation() {		# Option 1  	- Conf filter video, rotation
-Display_Video_Custom_Info_choice
-echo " Rotate the video?"
-echo
-echo "  [0] > for 90° CounterCLockwise and Vertical Flip"
-echo "  [1] > for 90° Clockwise"
-echo "  [2] > for 90° CounterClockwise"
-echo "  [3] > for 90° Clockwise and Vertical Flip"
-echo "  [4] > for 180°"
-echo " *[↵] > for no change"
-echo "  [q] > for exit"
-while :; do
-read -r -e -p "-> " ynrotat
-case $ynrotat in
-	[0-4])
-		vfilter+=( "transpose=$ynrotat" )
-
-		if [ "$ynrotat" = "0" ]; then
-			chrotation="90° CounterCLockwise and Vertical Flip"
-		elif [ "$ynrotat" = "1" ]; then
-			chrotation="90° Clockwise"
-		elif [ "$ynrotat" = "2" ]; then
-			chrotation="90° CounterClockwise"
-		elif [ "$ynrotat" = "3" ]; then
-			chrotation="90° Clockwise and Vertical Flip"
-		elif [ "$ynrotat" = "4" ]; then
-			chrotation="180°"
-		fi
-		break
-	;;
-	[5-9])
-		echo
-		Echo_Mess_Invalid_Answer
-		echo
-	;;
-	"q"|"Q")
-		Restart
-		break
-	;;
-	*)
-		chrotation="No change"
-		break
-	;;
-esac
-done
-}
-Video_Custom_Filter_hdr() {				# Option 1  	- Conf filter video, HDR
-if [[ -n "$ffprobe_hdr" ]]; then
 	Display_Video_Custom_Info_choice
-	echo " Apply HDR to SDR filter:"
-	echo " Note: * This option is necessary to keep an acceptable colorimetry,"
-	echo "         if the source video is in HDR and you don't want to keep it."
-	echo "       * For prevent fail, remove attached pic."
+	echo " Resolution change:"
 	echo
-	echo "  [n] > for no"
-	echo " *[↵] > for yes"
+	echo "  [y] > for yes"
+	echo " *[↵] > for no change"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " yn
 	case $yn in
-		"n"|"N")
-				chsdr2hdr="No change"
-			;;
+		"y"|"Y")
+			Display_Video_Custom_Info_choice
+			echo " Choose the desired width:"
+			echo " Notes: Original ratio is respected."
+			echo
+			echo "  [1] > 640px  - VGA"
+			echo "  [2] > 720px  - DV NTSC/VGA"
+			echo "  [3] > 768px  - PAL"
+			echo "  [4] > 1024px - XGA"
+			echo "  [5] > 1280px - 720p, WXGA"
+			echo "  [6] > 1680px - WSXGA+"
+			echo "  [7] > 1920px - 1080p, WUXGA+"
+			echo "  [8] > 2048px - 2K"
+			echo "  [9] > 2560px - WQXGA+"
+			echo " [10] > 3840px - UHD-1"
+			echo " [11] > 4096px - 4K"
+			echo " [12] > 5120px - 4K WHXGA, Ultra wide"
+			echo " [13] > 7680px - UHD-2"
+			echo " [14] > 8192px - 8K"
+			echo "  [c] > for no change"
+			echo "  [q] > for exit"
+			while :
+			do
+			read -r -e -p "-> " ch_width
+			case $ch_width in
+				1) WIDTH="640"; break;;
+				2) WIDTH="720"; break;;
+				3) WIDTH="768"; break;;
+				4) WIDTH="1024"; break;;
+				5) WIDTH="1280"; break;;
+				6) WIDTH="1680"; break;;
+				7) WIDTH="1920"; break;;
+				8) WIDTH="2048"; break;;
+				9) WIDTH="2560"; break;;
+				10) WIDTH="3840"; break;;
+				11) WIDTH="4096"; break;;
+				12) WIDTH="5120"; break;;
+				13) WIDTH="7680"; break;;
+				14) WIDTH="8192"; break;;
+				"c"|"C")
+					chwidth="No change"
+					break
+				;;
+				"q"|"Q")
+					Restart
+					break
+				;;
+				*)
+					echo
+					Echo_Mess_Invalid_Answer
+					echo
+				;;
+			esac
+			done
+		;;
 		"q"|"Q")
-				Restart
-			;;
+			Restart
+		;;
 		*)
-			chsdr2hdr="Yes"
-			vfilter+=( "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p" )
-			;;
+			chwidth="No change"
+		;;
 	esac
+
+	if [[ -n "$WIDTH" ]]; then
+
+		for i in "${!ffprobe_StreamIndex[@]}"; do
+			if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
+				if [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]]; then
+					source_width="${ffprobe_Width[i]}"
+					source_heigh="${ffprobe_Height[i]}"
+				fi
+			fi
+		done
+
+		# Ratio calculation
+		RATIO=$(bc -l <<< "${source_width} / $WIDTH")
+
+		# Height calculation, display decimal only if not integer
+		HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
+
+		# Scale filter
+		if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
+			if [[ "$codec" = "hevc_vaapi" ]]; then
+				vfilter+=( "scale_vaapi=w=$WIDTH:h=-2" )
+			else
+				vfilter+=( "scale=$WIDTH:-2" )
+			fi
+		else
+			if [[ "$codec" = "hevc_vaapi" ]]; then
+				vfilter+=( "scale_vaapi=w=$WIDTH:h=-1" )
+			else
+				vfilter+=( "scale=$WIDTH:-1" )
+			fi
+		fi
+
+		# Displayed width x height
+		chwidth="${WIDTH}x${HEIGHT%.*}"
+	fi
+else
+	chwidth="No change in batch"
+fi
+}
+Video_Custom_Filter_rotation() {		# Option 1  	- Conf filter video, rotation
+if [[ "${#LSTVIDEO[@]}" = "1" ]]; then
+	Display_Video_Custom_Info_choice
+	echo " Rotate the video?"
+	echo
+	echo "  [0] > for 90° CounterCLockwise and Vertical Flip"
+	echo "  [1] > for 90° Clockwise"
+	echo "  [2] > for 90° CounterClockwise"
+	echo "  [3] > for 90° Clockwise and Vertical Flip"
+	echo "  [4] > for 180°"
+	echo " *[↵] > for no change"
+	echo "  [q] > for exit"
+	while :; do
+	read -r -e -p "-> " ynrotat
+	case $ynrotat in
+		[0-4])
+			vfilter+=( "transpose=$ynrotat" )
+
+			if [ "$ynrotat" = "0" ]; then
+				chrotation="90° CounterCLockwise and Vertical Flip"
+			elif [ "$ynrotat" = "1" ]; then
+				chrotation="90° Clockwise"
+			elif [ "$ynrotat" = "2" ]; then
+				chrotation="90° CounterClockwise"
+			elif [ "$ynrotat" = "3" ]; then
+				chrotation="90° Clockwise and Vertical Flip"
+			elif [ "$ynrotat" = "4" ]; then
+				chrotation="180°"
+			fi
+			break
+		;;
+		[5-9])
+			echo
+			Echo_Mess_Invalid_Answer
+			echo
+		;;
+		"q"|"Q")
+			Restart
+			break
+		;;
+		*)
+			chrotation="No change"
+			break
+		;;
+	esac
+	done
+else
+	chrotation="No change in batch"
+fi
+}
+Video_Custom_Filter_hdr() {				# Option 1  	- Conf filter video, HDR
+if [[ "${#LSTVIDEO[@]}" = "1" ]]; then
+	if [[ -n "$ffprobe_hdr" ]]; then
+		Display_Video_Custom_Info_choice
+		echo " Apply HDR to SDR filter:"
+		echo " Note: * This option is necessary to keep an acceptable colorimetry,"
+		echo "         if the source video is in HDR and you don't want to keep it."
+		echo "       * For prevent fail, remove attached pic."
+		echo
+		echo "  [n] > for no"
+		echo " *[↵] > for yes"
+		echo "  [q] > for exit"
+		read -r -e -p "-> " yn
+		case $yn in
+			"n"|"N")
+					chsdr2hdr="No change"
+				;;
+			"q"|"Q")
+					Restart
+				;;
+			*)
+				chsdr2hdr="Yes"
+				vfilter+=( "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p" )
+				;;
+		esac
+	fi
+else
+	chsdr2hdr="No change in batch"
 fi
 }
 Video_Custom_Audio() {					# Option 1  	- Conf audio, encode or not
@@ -4598,7 +4608,7 @@ fi
 # Array
 FilesTargetAstream+=( "$astream" )
 }
-Audio_Cover_Extraction() {				# Part of Audio_FFmpeg_cmd loop - cover extraction
+Audio_Cover_Extraction() {				# FFmpeg audio cmd - cover extraction
 # Argument = file
 files="$1"
 
@@ -5278,7 +5288,7 @@ else
 	akb="-b:a 640k"
 fi
 }
-Audio_Source_Info_Detail_Question() {	# Option 32
+Audio_Source_Info_Detail_Question() {	# Option 31
 if [[ "${#LSTAUDIO[@]}" != "1" ]]; then
 	if [[ "${#LSTAUDIO[@]}" -gt "50" ]]; then
 		read -r -p " View the stats of the ${#LSTAUDIO[@]} files in the loop (can be long, it's recursive)? [y/N]" qarm
@@ -5366,7 +5376,7 @@ if [ "$NBAEXT" -gt "1" ]; then
 	fi
 fi
 }
-Audio_Generate_Spectrum_Img() {			# Option 33 	- PNG of audio spectrum
+Audio_Generate_Spectrum_Img() {			# Option 32 	- PNG of audio spectrum
 # Local variables
 local total_target_files_size
 local START
@@ -5438,7 +5448,7 @@ total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTAUDIO[@]}" "$total_target_files_size" ""
 }
-Audio_Concatenate_Files() {				# Option 34 	- Concatenate audio files
+Audio_Concatenate_Files() {				# Option 33 	- Concatenate audio files
 # Local variables
 local total_source_files_size
 local total_target_files_size
@@ -5497,7 +5507,7 @@ else
 
 fi
 }
-Audio_Cut_File() {						# Option 35 	- Cut audio file
+Audio_Cut_File() {						# Option 34 	- Cut audio file
 # Local variables
 local total_source_files_size
 local total_target_files_size
@@ -5639,7 +5649,7 @@ PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
 }
-Audio_CUE_Split() {						# Option 22 	- CUE Splitter to flac
+Audio_CUE_Split() {						# Option 20 	- CUE Splitter to flac
 # Local variables
 local CHARSET_DETECT
 local empty_line_detect
@@ -5773,7 +5783,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	Remove_Audio_Split_Backup_Dir
 fi
 }
-Audio_File_Tester() {					# Option 36 	- ffmpeg file test
+Audio_File_Tester() {					# Option 35 	- ffmpeg file test
 # Local variables
 local START
 local END

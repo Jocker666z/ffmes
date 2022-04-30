@@ -110,6 +110,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 * Remux all stream in mkv
 * Chapters integration
 * launch option 1 (optional)
+
 ##### Blu-ray:
 * Rip ISO & disc directory
 * Choose title or all
@@ -141,7 +142,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 			* flac (libflac): compression
 		* Channels layout for ac3, flac, vorbis: 1.0, 2.0, 2.1, 3.0, 3.1, 4.0, 4.1, 5.1
 		* Channels layout for opus: 1.0, 2.0, 3.0, 5.1
-* Container selection
+* Container:
 	* mkv & mp4 support
 * Map streams selection
 
