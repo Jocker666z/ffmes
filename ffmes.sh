@@ -1394,7 +1394,8 @@ unset soundconf
 ### videoconf & this sub variable
 unset videoconf
 unset framerate
-unset vfilter
+vfilter=()
+unset vfilter_final
 unset vcodec
 unset preset
 unset profile
@@ -2957,8 +2958,8 @@ elif [ "$qa" = "e" ]; then
 # Remove audio stream
 elif [ "$qa" = "r" ]; then
 	chsoundstream="Remove"
-	fileacodec="AREMOVE"
-	unset soundconf
+	fileacodec="aremove"
+	soundconf="-an"
 
 # No audio change
 else
