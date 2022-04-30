@@ -15,7 +15,6 @@ FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# Set ffmes path for 
 FFMES_CACHE="/tmp/ffmes"																	# Cache directory
 FFMES_FFPROBE_CACHE_STATS="$FFMES_CACHE/stat-ffprobe-$(date +%Y%m%s%N).info"				# ffprobe cache file
 FFMES_FFMPEG_CACHE_STAT="$FFMES_CACHE/stat-ffmpeg-$(date +%Y%m%s%N).info"					# ffmpeg cache file
-FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"					# ffmpeg progress cache file
 FFMES_CACHE_TAG="$FFMES_CACHE/tag-$(date +%Y%m%s%N).info"									# tag-DATE.info, audio tag file
 FFMES_CACHE_INTEGRITY="$FFMES_CACHE/interity-$(date +%Y%m%s%N).info"						# integrity-DATE.info, list of files fail interity check
 LSDVD_CACHE="$FFMES_CACHE/lsdvd-$(date +%Y%m%s%N).info"										# lsdvd cache
@@ -26,7 +25,6 @@ OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD playe
 CORE_COMMAND_NEEDED=(ffmpeg ffprobe mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
 NPROC=$(nproc --all)																		# Set number of thread
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log level
-FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"						# FFmpeg arguments for progress bar
 
 # Custom binary location
 FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
@@ -470,8 +468,6 @@ track="$2"
 
 ## CHECK FILES & BIN
 CheckFFmpegVersion() {
-local ffmpeg_stats_period
-local ffmpeg_video_stats_period
 local ffmpeg_vaapi_encoder
 local ffmpeg_test_aac_codec
 
@@ -484,18 +480,9 @@ ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
 
 # ffmpeg capabilities
-ffmpeg_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
-ffmpeg_video_stats_period=$("$ffmpeg_bin" -hide_banner -h full | grep "stats_period")
 ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -encoders | grep "hevc_vaapi")
 ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
 
-# If ffmpeg version < 4.4 not use -stats_period
-if [ -z "$ffmpeg_stats_period" ]; then
-	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
-fi
-if [ -z "$ffmpeg_video_stats_period" ]; then
-	FFMPEG_PROGRESS="-progress $FFMES_FFMPEG_PROGRESS"
-fi
 # If no VAAPI response unset
 if [ -z "$ffmpeg_vaapi_encoder" ]; then
 	unset VAAPI_device
@@ -1418,7 +1405,6 @@ rm "$FFMES_FFMPEG_CACHE_STAT" &>/dev/null
 rm "$FFMES_CACHE_INTEGRITY" &>/dev/null
 rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
-rm "$FFMES_FFMPEG_PROGRESS" &>/dev/null
 rm "$BDINFO_CACHE" &>/dev/null
 }
 ffmesUpdate() {							# Option 99  	- ffmes update to lastest version (hidden option)
@@ -1668,7 +1654,7 @@ else
 fi
 
 # Reset loop pass
-unset loop_pass
+#unset loop_pass
 
 # ffmpeg detailed progress bar
 if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$ffmes_option" -lt "20" ]] \
@@ -1791,6 +1777,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 		if [[ "$_progress" = "100" ]]; then
 			# Loop pass
 			loop_pass="1"
+			rm "$FFMES_FFMPEG_PROGRESS" &>/dev/null
 			echo
 			break
 		fi
@@ -1804,6 +1791,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 			# Loop fail
 			loop_pass="1"
 			echo -e -n "\r\e[0K ]${_done// /▇}${_left// / }[ ${_progress}% - [!] ffmpeg fail"
+			rm "$FFMES_FFMPEG_PROGRESS" &>/dev/null
 			echo
 			break
 		fi
@@ -1812,6 +1800,7 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 			# Loop fail
 			loop_pass="1"
 			echo -e -n "\r\e[0K ]${_done// /▇}${_left// / }[ ${_progress}% - [!] ffmpeg fail"
+			rm "$FFMES_FFMPEG_PROGRESS" &>/dev/null
 			echo
 			break
 		fi
@@ -1839,7 +1828,6 @@ elif [[ -z "$VERBOSE" ]] && [[ -z "$loop_pass" ]]; then
 	if [[ "$_progress" = "100" ]]; then
 		echo
 	fi
-
 fi
 }
 
@@ -2014,7 +2002,12 @@ for title in "${qtitle[@]}"; do
 	if test -n "$PCM"; then
 		pcm_dvd="-c:a pcm_s16le"
 	fi
+
+	# For progress bar
+	FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+	FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 	# FFmpeg - clean mkv
+	FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
 	Media_Source_Info_Record "${RipFileName}.VOB"
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts+igndts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB \
 		$FFMPEG_PROGRESS \
@@ -2569,8 +2562,10 @@ for i in "${!LSTVIDEO[@]}"; do
 	filesInLoop+=( "${LSTVIDEO[i]%.*}.$videoformat.$extcont" )
 
 	# For progress bar
-	if [[ "$i" -gt 1 ]]; then
+	if [[ "${#LSTVIDEO[@]}" = "1" ]] || [[ "$NVENC" = "0" ]]; then
 		Media_Source_Info_Record "${LSTVIDEO[i]}"
+		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 	fi
 	(
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} -analyzeduration 1G -probesize 1G \
@@ -3731,6 +3726,10 @@ for files in "${LSTVIDEO[@]}"; do
 
 	for i in ${!VINDEX[*]}; do
 
+		# For progress bar
+		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+	
 		# Encoding new track
 		"$ffmpeg_bin"  $FFMPEG_LOG_LVL -y -i "$files" \
 			$FFMPEG_PROGRESS \
@@ -4008,6 +4007,10 @@ for files in "${LSTVIDEO[@]}"; do
 				;;
 			esac
 
+			# For progress bar
+			FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+			FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+
 			# Extract
 			if [ "$MKVEXTRACT" = "1" ]; then
 				mkvextract "$files" tracks "${VINDEX[i]}":"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
@@ -4125,6 +4128,10 @@ START=$(date +%s)
 echo
 Echo_Separator_Light
 
+# For progress bar
+FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+
 # Segment
 if [[ -n "$CutSegment" ]]; then
 	# Create file path & directory for segmented files
@@ -4135,7 +4142,8 @@ if [[ -n "$CutSegment" ]]; then
 	fi
 
 	# Segment
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" $FFMPEG_PROGRESS \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" \
+		$FFMPEG_PROGRESS \
 		-f segment -segment_time "$CutSegment" \
 		-c copy -map 0 -map_metadata 0 -reset_timestamps 1 \
 		"$split_output"/"${split_output_files%.*}"_segment_%04d."${LSTVIDEO[0]##*.}" \
@@ -4147,7 +4155,8 @@ if [[ -n "$CutSegment" ]]; then
 
 # Cut
 else
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" $FFMPEG_PROGRESS \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -analyzeduration 1G -probesize 1G -y -i "${LSTVIDEO[0]}" \
+		$FFMPEG_PROGRESS \
 		-ss "$CutStart" -to "$CutEnd" \
 		-c copy -map 0 -map_metadata 0 "${LSTVIDEO[0]%.*}".cut."${LSTVIDEO[0]##*.}" \
 		| ProgressBar "${LSTVIDEO[0]}" "" "" "Cut"
@@ -4293,8 +4302,16 @@ for i in "${!LSTAUDIO[@]}"; do
 	# Stock files pass in loop
 	filesInLoop+=( "${LSTAUDIO[i]}" )
 
+	# For progress bar
+	if [[ "${#LSTAUDIO[@]}" = "1" ]] || [[ "$NPROC" = "1" ]]; then
+		Media_Source_Info_Record "${LSTAUDIO[i]}"
+		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+	fi
+
 	(
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" $FFMPEG_PROGRESS \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" \
+		$FFMPEG_PROGRESS \
 		${FilesTargetAfilter[i]} \
 		${FilesTargetAstream[i]} \
 		$acodec \
@@ -5479,6 +5496,10 @@ else
 	# Add date id to created filename, prevent infinite loop of ffmpeg is target=source filename
 	filename_id="Concatenate_Output-$(date +%s).${LSTAUDIO[0]##*.}"
 
+	# For progress bar
+	FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+	FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+
 	# Concatenate
 	if [[ "${LSTAUDIO[0]##*.}" = "flac" ]] || [[ "${LSTAUDIO[0]##*.}" = "FLAC" ]]; then
 		"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 -i <(for f in *."${LSTAUDIO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
@@ -5591,6 +5612,10 @@ if [[ -n "$CutSegment" ]]; then
 	if ! [[ -d "$split_output" ]]; then
 		mkdir "$split_output"
 	fi
+
+	# For progress bar
+	FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+	FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 
 	# Segment
 	# Flac exception for reconstruc duration
