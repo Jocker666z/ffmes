@@ -203,6 +203,7 @@ Tesseract engine available:
 #### Option 22 details - FLAC encoding
 * Encoding options:
 	* Quality:
+		* Compression level: 0 (fastest) & 12 (slowest)
 		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
 		* Bit depth: 16, 24 bits, or auto
 	* Channels layout 1.0 to 5.1
@@ -213,6 +214,7 @@ Tesseract engine available:
 #### Option 23 details - WavPack encoding
 * Encoding options:
 	* Quality:
+		* Compression level: 0 (fastest) & 3 (slowest)
 		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
 		* Bit depth: 16, 24/32 bits, or auto
 	* Channels layout 1.0 to 5.1

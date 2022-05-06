@@ -4814,10 +4814,7 @@ else
 fi
 
 echo " Choose FLAC (${AudioCodecType}) desired configuration:"
-echo " Notes: * ffmpeg FLAC uses a compression level parameter that varies from 0 (fastest) to 12 (slowest)."
-echo "          The compressed files are always perfect, lossless representations of the original data."
-echo "          Although the compression process involves a tradeoff between speed and size, "
-echo "          the decoding process is always quite fast and not dependent on the level of compression."
+echo " Notes: * ffmpeg FLAC uses a compression level: 0 (fastest) & 12 (slowest)."
 echo "        * If you choose and audio bit depth superior of source file, the encoding will fail."
 echo "        * Option tagued [auto] = same value of source file."
 echo "        * Max value of sample rate is 384kHz."
@@ -4828,17 +4825,19 @@ echo "         | comp. | sample |   bit |"
 echo "         | level |   rate | depth |"
 echo "         |-------|--------|-------|"
 echo "  [1]  > |   12  |  44kHz |    16 |"
-echo "  [2]  > |   12  |  44kHz |    24 |"
-echo "  [3]  > |   12  |  44kHz |  auto |"
-echo "  [4]  > |   12  |  48kHz |    16 |"
-echo "  [5]  > |   12  |  48kHz |    24 |"
-echo "  [6]  > |   12  |  48kHz |  auto |"
-echo "  [7]  > |   12  |   auto |    16 |"
-echo "  [8]  > |   12  |   auto |    24 |"
+echo "  [2]  > |    0  |  44kHz |       |"
+echo "  [3]  > |   12  |  48kHz |       |"
+echo "  [4]  > |    0  |  48kHz |       |"
+echo "         |-------|--------|-------|"
+echo "  [5]  > |   12  |  44kHz |    24 |"
+echo "  [6]  > |    0  |  44kHz |       |"
+echo "  [7]  > |   12  |  48kHz |       |"
+echo "  [8]  > |    0  |  48kHz |       |"
+echo "         |-------|--------|-------|"
 echo " *[9]  > |   12  |   auto |  auto |"
-echo "  [10] > |    5  |   auto |  auto |"
-echo "  [11] > |    0  |   auto |  auto |"
-echo "  [q] > | for exit"
+echo "  [10] > |    0  |   auto |  auto |"
+echo "         |------------------------|"
+echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
 if [ "$rpakb" = "q" ]; then
 	Restart
@@ -4848,29 +4847,29 @@ elif [ "$rpakb" = "1" ]; then
 	akb="-compression_level 12 -sample_fmt s16"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "2" ]; then
-	akb="-compression_level 12 -sample_fmt s32"
+	akb="-compression_level 0 -sample_fmt s16"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "3" ]; then
-	akb="-compression_level 12"
-	asamplerate="-ar 44100"
-elif [ "$rpakb" = "4" ]; then
 	akb="-compression_level 12 -sample_fmt s16"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "4" ]; then
+	akb="-compression_level 0 -sample_fmt s16"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "5" ]; then
 	akb="-compression_level 12 -sample_fmt s32"
-	asamplerate="-ar 48000"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "6" ]; then
-	akb="-compression_level 12"
-	asamplerate="-ar 48000"
+	akb="-compression_level 0 -sample_fmt s32"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "7" ]; then
-	akb="-compression_level 12 -sample_fmt s16"
-elif [ "$rpakb" = "8" ]; then
 	akb="-compression_level 12 -sample_fmt s32"
+	asamplerate="-ar 48000"
+elif [ "$rpakb" = "8" ]; then
+	akb="-compression_level 0 -sample_fmt s32"
+	asamplerate="-ar 48000"
 elif [ "$rpakb" = "9" ]; then
 	akb="-compression_level 12"
 elif [ "$rpakb" = "10" ]; then
-	akb="-compression_level 5"
-elif [ "$rpakb" = "11" ]; then
 	akb="-compression_level 0"
 else
 	akb="-compression_level 12"
@@ -4888,8 +4887,7 @@ else
 fi
 
 echo " Choose WavPack (${AudioCodecType}) desired configuration:"
-echo " Notes: * WavPack uses a compression level parameter that varies from 0 (fastest) to 8 (slowest)."
-echo "          The value 3 allows a very good compression without having a huge encoding time."
+echo " Notes: * ffmes WavPack uses a compression level: 0 (fastest) & 3 (slowest)."
 echo "        * Option tagued [auto] = same value of source file."
 echo "        * Max value of sample rate is 384kHz."
 echo
@@ -4899,59 +4897,52 @@ echo "         | comp. | sample |   bit |"
 echo "         | level |   rate | depth |"
 echo "         |-------|--------|-------|"
 echo "  [1]  > |    3  |  44kHz |    16 |"
-echo "  [2]  > |    3  |  44kHz | 24/32 |"
-echo "  [3]  > |    3  |  44kHz |  auto |"
-echo "  [4]  > |    1  |  44kHz |  auto |"
-echo "  [5]  > |    3  |  48kHz |    16 |"
-echo "  [6]  > |    3  |  48kHz | 24/32 |"
-echo "  [7]  > |    3  |  48kHz |  auto |"
-echo "  [8]  > |    1  |  48kHz |  auto |"
-echo "  [9]  > |    3  |   auto |    16 |"
-echo "  [10] > |    3  |   auto | 24/32 |"
-echo "  [11] > |    1  |   auto |  auto |"
-echo " *[12] > |    3  |   auto |  auto |"
-echo "  [13] > |    5  |   auto |  auto |"
-echo "  [14] > |    8  |   auto |  auto |"
-echo "  [q] >  | for exit"
+echo "  [2]  > |    0  |  44kHz |       |"
+echo "  [3]  > |    3  |  48kHz |       |"
+echo "  [4]  > |    0  |  48kHz |       |"
+echo "         |-------|--------|-------|"
+echo "  [5]  > |    3  |  44kHz |    24 |"
+echo "  [6]  > |    0  |  44kHz |       |"
+echo "  [7]  > |    3  |  48kHz |       |"
+echo "  [8]  > |    0  |  48kHz |       |"
+echo "         |-------|--------|-------|"
+echo " *[9]  > |    3  |   auto |  auto |"
+echo "  [10] > |    0  |   auto |  auto |"
+echo "         |------------------------|"
+echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
 if [ "$rpakb" = "q" ]; then
 	Restart
+elif echo "$rpakb" | grep -q 'c' ; then
+	akb="$rpakb"
 elif [ "$rpakb" = "1" ]; then
 	akb="-compression_level 3 -sample_fmt s16p"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "2" ]; then
-	akb="-compression_level 3 -sample_fmt s32p"
+	akb="-compression_level 0 -sample_fmt s16p"
 	asamplerate="-ar 44100"
 elif [ "$rpakb" = "3" ]; then
-	akb="-compression_level 3"
-	asamplerate="-ar 44100"
-elif [ "$rpakb" = "4" ]; then
-	akb="-compression_level 1"
-	asamplerate="-ar 44100"
-elif [ "$rpakb" = "5" ]; then
 	akb="-compression_level 3 -sample_fmt s16p"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "6" ]; then
-	akb="-compression_level 3 -sample_fmt s32p"
+elif [ "$rpakb" = "4" ]; then
+	akb="-compression_level 0 -sample_fmt s16p"
 	asamplerate="-ar 48000"
+elif [ "$rpakb" = "5" ]; then
+	akb="-compression_level 3 -sample_fmt s32p"
+	asamplerate="-ar 44100"
+elif [ "$rpakb" = "6" ]; then
+	akb="-compression_level 0 -sample_fmt s32p"
+	asamplerate="-ar 44100"
 elif [ "$rpakb" = "7" ]; then
-	akb="-compression_level 3"
+	akb="-compression_level 3 -sample_fmt s32p"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "8" ]; then
-	akb="-compression_level 1"
+	akb="-compression_level 0 -sample_fmt s32p"
 	asamplerate="-ar 48000"
 elif [ "$rpakb" = "9" ]; then
-	akb="-compression_level 3  -sample_fmt s16p"
-elif [ "$rpakb" = "10" ]; then
-	akb="-compression_level 3 -sample_fmt s32p"
-elif [ "$rpakb" = "11" ]; then
-	akb="-compression_level 1"
-elif [ "$rpakb" = "12" ]; then
 	akb="-compression_level 3"
-elif [ "$rpakb" = "13" ]; then
-	akb="-compression_level 5"
-elif [ "$rpakb" = "14" ]; then
-	akb="-compression_level 8"
+elif [ "$rpakb" = "10" ]; then
+	akb="-compression_level 0"
 else
 	akb="-compression_level 3"
 fi
