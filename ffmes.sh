@@ -2356,7 +2356,7 @@ if [[ -n "$BD_disk" ]]; then
 		| "$json_parser" 'walk( if type == "object" then with_entries( .key |= ( gsub( " "; "_"))) else . end )' > "$BDINFO_CACHE"
 
 	# Main stats
-	bd_disk_name=$(bd_jqparse_main_info "disk_name")
+	bd_disk_name=$(bd_jqparse_main_info "disc_name")
 	bd_main_title=$(bd_jqparse_main_info "main_title")
 
 	# Display messge for rip main track only
