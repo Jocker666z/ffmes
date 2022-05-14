@@ -4501,31 +4501,31 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	if [[ -z "$akb_modified" ]]; then
 		if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]] ; then
 			unset akb
-		elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96000 ]; then
+		elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 96050 ]; then
 			akb_modified="-b:a 64K"
 			asamplerate_modified="-cutoff 15000"
-		elif [ "$TestBitrate" -ge 96001 ] && [ "$TestBitrate" -le 128000 ]; then
+		elif [ "$TestBitrate" -ge 96051 ] && [ "$TestBitrate" -le 128050 ]; then
 			akb_modified="-b:a 96K"
 			asamplerate_modified="-cutoff 16000"
-		elif [ "$TestBitrate" -ge 129000 ] && [ "$TestBitrate" -le 160000 ]; then
+		elif [ "$TestBitrate" -ge 128051 ] && [ "$TestBitrate" -le 160050 ]; then
 			akb_modified="-b:a 128K"
 			asamplerate_modified="-cutoff 16000"
-		elif [ "$TestBitrate" -ge 161000 ] && [ "$TestBitrate" -le 192000 ]; then
+		elif [ "$TestBitrate" -ge 160051 ] && [ "$TestBitrate" -le 192050 ]; then
 			akb_modified="-b:a 160K"
 			asamplerate_modified="-cutoff 17000"
-		elif [ "$TestBitrate" -ge 193000 ] && [ "$TestBitrate" -le 256000 ]; then
+		elif [ "$TestBitrate" -ge 192051 ] && [ "$TestBitrate" -le 256050 ]; then
 			akb_modified="-b:a 192K"
 			asamplerate_modified="-cutoff 18000"
-		elif [ "$TestBitrate" -ge 257000 ] && [ "$TestBitrate" -le 280000 ]; then
+		elif [ "$TestBitrate" -ge 256051 ] && [ "$TestBitrate" -le 280050 ]; then
 			akb_modified="-b:a 220K"
 			asamplerate_modified="-cutoff 19000"
-		elif [ "$TestBitrate" -ge 281000 ] && [ "$TestBitrate" -le 320000 ]; then
+		elif [ "$TestBitrate" -ge 280051 ] && [ "$TestBitrate" -le 320050 ]; then
 			akb_modified="-b:a 256K"
 			asamplerate_modified="-cutoff 20000"
-		elif [ "$TestBitrate" -ge 321000 ] && [ "$TestBitrate" -le 400000 ]; then
+		elif [ "$TestBitrate" -ge 320051 ] && [ "$TestBitrate" -le 400050 ]; then
 			akb_modified="-b:a 280K"
 			asamplerate_modified="-cutoff 20000"
-		elif [ "$TestBitrate" -ge 400001 ]; then
+		elif [ "$TestBitrate" -ge 400051 ]; then
 			akb_modified="-b:a 320K"
 			asamplerate_modified="-cutoff 20000"
 		else
