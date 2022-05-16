@@ -4968,8 +4968,7 @@ else
 fi
 
 echo " Choose Opus (${AudioCodecType}) desired configuration:"
-echo " Note: * All options have cutoff at 48kHz."
-echo "       * Mono files have codec bitrate limitation to 256k."
+echo " Note: * Mono files have codec bitrate limitation to 256k."
 echo '       * With the "adaptive bitrate" option, ffmes will choose'
 echo "         each target file the number of kb/s to apply according"
 echo "         to the table."
@@ -5780,7 +5779,17 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		if [ ! -d BACK/ ]; then
 			mkdir BACK 2> /dev/null
 		fi
+
+		# Move source audio file
 		mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2> /dev/null
+
+		# Generate target file array
+		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+			-iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
+		# Tag target
+		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2> /dev/null
+
+		# Move source cue
 		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".utf8.back 2> /dev/null
 	else
 		Echo_Separator_Light
@@ -5788,13 +5797,6 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		Echo_Separator_Light
 		return 1
 	fi
-
-	# Generate target file array
-	mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-		-iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
-
-	# Tag
-	cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2> /dev/null
 
 	# File validation
 	Test_Target_File "1" "audio" "${LSTAUDIO[@]}"
