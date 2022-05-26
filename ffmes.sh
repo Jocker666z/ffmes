@@ -6264,7 +6264,8 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 	echo "                 |----------------------------|-------------------------------------------------------------------|"
 	echo '  [rename]     > | rename files               | rename in "Track - Title"                                         |'
 	echo '  [arename]    > | rename files with artist   | rename in "Track - Artist - Title"                                |'
-	echo "  [disk]       > | change or add disk number  | ex. of input [disk 1]                                             |"
+	echo '  [drename]    > | rename files with disc     | rename in "Disc-Track - Title"                                    |'
+	echo "  [disc]       > | change or add disc number  | ex. of input [disk 1]                                             |"
 	echo "  [track]      > | change or add tag track    | apply to all files by alphabetic sorting                          |"
 	echo "  [album x]    > | change or add tag album    | ex. of input [album Conan the Barbarian]                          |"
 	echo "  [artist x]   > | change or add tag artist   | ex. of input [artist Basil Poledouris]                            |"
@@ -6282,8 +6283,8 @@ else
 	echo
 	echo '  [rename]   > rename files in "Track - Title"'
 	echo '  [arename]  > rename files in "Track - Artist - Title"'
-	echo '  [drename]  > rename files in "Disc-Track - Artist - Title"'
-	echo "  [disk]     > change or add disk number"
+	echo '  [drename]  > rename files in "Disc-Track - Title"'
+	echo "  [disc]     > change or add disk number"
 	echo "  [track]    > change or add tag track (alphabetic sorting)"
 	echo "  [album x]  > change or add tag album"
 	echo "  [artist x] > change or add tag artist"
@@ -6318,7 +6319,7 @@ case $rpstag in
 		Audio_Tag_Rename "drename"
 		Audio_Tag_Editor
 	;;
-	disk?[0-9])
+	disc?[0-9])
 		ParsedDisc="${rpstag##* }"
 		Audio_Tag_cmd "disk" "$ParsedDisc"
 		Audio_Tag_Editor
