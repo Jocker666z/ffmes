@@ -5004,7 +5004,7 @@ if [[ "$AudioCodecType" = "libopus" ]]; then
 	echo "         |  220k  | 257kb -> 280kb |"
 	echo "         |  256k  | 281kb -> 320kb |"
 	echo "         |  280k  | 321kb -> 400kb |"
-	echo "         |  320k  | 400kb -> ∞     |"
+	echo "         |  320k  | 401kb -> ∞     |"
 fi
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
@@ -6102,6 +6102,8 @@ for i in "${!LSTAUDIO[@]}"; do
 			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "arename" ]]; then
 			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+		elif [[ "$rename_option" = "drename" ]]; then
+			mv "${LSTAUDIO[$i]}" "${TAG_DISC[$i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		fi
 	fi
 	StopLoading $?
@@ -6280,6 +6282,7 @@ else
 	echo
 	echo '  [rename]   > rename files in "Track - Title"'
 	echo '  [arename]  > rename files in "Track - Artist - Title"'
+	echo '  [drename]  > rename files in "Disc-Track - Artist - Title"'
 	echo "  [disk]     > change or add disk number"
 	echo "  [track]    > change or add tag track (alphabetic sorting)"
 	echo "  [album x]  > change or add tag album"
@@ -6309,6 +6312,10 @@ case $rpstag in
 	;;
 	arename)
 		Audio_Tag_Rename "arename"
+		Audio_Tag_Editor
+	;;
+	drename)
+		Audio_Tag_Rename "drename"
 		Audio_Tag_Editor
 	;;
 	disk?[0-9])
