@@ -1340,9 +1340,10 @@ printf '%02d:%02d:%02d\n' $((second/3600)) $((second%3600/60)) $((second%60))
 Restart() {								# Restart script & for keep argument
 Clean
 if [ -n "$ffmes_args" ]; then
-	bash "$FFMES_PATH"/"$FFMES_BIN" "$ffmes_args" && exit
+	cd "$initial_working_dir" \
+	&& exec "${FFMES_PATH}/${FFMES_BIN}" "${ffmes_args_full[@]}"
 else
-	bash "$FFMES_PATH"/"$FFMES_BIN" && exit
+	exec "${FFMES_PATH}/${FFMES_BIN}" && exit
 fi
 }
 TrapStop() {							# Ctrl+z Trap for loop exit
@@ -6392,6 +6393,8 @@ shopt -u nocasematch
 }
 
 # Arguments variables
+initial_working_dir="$PWD"
+ffmes_args_full=( "$@" )
 while [[ $# -gt 0 ]]; do
     ffmes_args="$1"
     case "$ffmes_args" in
