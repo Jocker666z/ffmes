@@ -271,7 +271,12 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
 			fi
 		elif [[ "$audio_list" = "1" ]]; then
-			ffprobe_Bitrate+=( "$ffprobe_OverallBitrate" )
+			# Display only audio bitrate if available
+			if [[ "$ffprobe_Bitrate_raw" = "0" ]]; then
+				ffprobe_Bitrate+=( "$ffprobe_OverallBitrate" )
+			else
+				ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
+			fi
 		else
 			ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
 		fi
