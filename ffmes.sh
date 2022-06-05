@@ -4479,6 +4479,7 @@ Audio_ffmpeg_cmd_Bitrate() {			# FFmpeg audio cmd - bitrate
 if [ "$AdaptedBitrate" = "1" ]; then
 	# Local variable
 	local TestBitrate
+	local TestChannel
 	local akb_modified
 	local asamplerate_modified
 
@@ -4486,13 +4487,26 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	files="$1"
 
 	# Test bitrate
-	TestBitrate=$(ffprobe -hide_banner -v quiet -show_entries format=bit_rate \
+	TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
+					-select_streams a -show_entries stream=bit_rate \
 					-of default=noprint_wrappers=1:nokey=1 "$files")
+	if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
+		TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
+						| sed -n -e 's/^.*bitrate: //p' \
+						| awk '{a = "000"; print $1a}')
+	fi
 
 	# If opus mono & source > 320k - apply hard codec limitation
 	if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 		if [[ "$confchan" = "-channel_layout mono" ]]; then
 			if [ "$TestBitrate" -ge 320000 ]; then
+				akb_modified="-b:a 256K"
+			fi
+		else
+			TestChannel=$("$ffprobe_bin" -hide_banner -v quiet \
+							-select_streams a -show_entries stream=channels \
+							-of default=noprint_wrappers=1:nokey=1 "$files")
+			if [[ "$TestChannel" = "1" ]]; then
 				akb_modified="-b:a 256K"
 			fi
 		fi
