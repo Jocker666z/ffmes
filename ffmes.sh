@@ -48,7 +48,7 @@ SUBTI_EXT_AVAILABLE="ass|srt|ssa|idx|sup"
 
 # Audio variables
 CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit wvunpack)
-AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aptx|aud|caf|dff|dsf|dts|eac3|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|ogg|ops|opus|ra|ram|sbc|shn|spx|tak|thd|tta|w64|wav|wma|wv"
+AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aptx|aud|caf|dff|dsf|dts|eac3|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|oga|ogg|ops|opus|ra|ram|sbc|shn|spx|tak|thd|tta|w64|wav|wma|wv"
 CUE_EXT_AVAILABLE="cue"
 M3U_EXT_AVAILABLE="m3u|m3u8"
 ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
@@ -271,7 +271,7 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_Bitrate+=( "$ffprobe_Bitrate_raw" )
 			fi
 		elif [[ "$audio_list" = "1" ]]; then
-			# Display only audio bitrate if available
+			# Display only audio stream bitrate if available
 			if [[ "$ffprobe_Bitrate_raw" = "0" ]]; then
 				ffprobe_Bitrate+=( "$ffprobe_OverallBitrate" )
 			else
@@ -4988,7 +4988,7 @@ else
 fi
 
 echo " Choose Opus (${AudioCodecType}) desired configuration:"
-echo " Note: * Mono files have codec bitrate limitation to 256k."
+echo " Note: * Codec bitrate limitation to 256k per channel."
 echo '       * With the "adaptive bitrate" option, ffmes will choose'
 echo "         each target file the number of kb/s to apply according"
 echo "         to the table."
@@ -6415,23 +6415,28 @@ shopt -u nocasematch
 initial_working_dir="$PWD"
 ffmes_args_full=( "$@" )
 while [[ $# -gt 0 ]]; do
-    ffmes_args="$1"
-    case "$ffmes_args" in
-    -h|--help)																				# Help
+	ffmes_args="$1"
+	case "$ffmes_args" in
+	-h|--help)
+		# Help
 		Usage
 		exit
-    ;;
-    -ca|--compare_audio)																	# Compare current audio files informations. 
+		;;
+	-ca|--compare_audio)
+		# Compare current audio files informations
 		shift
 		force_compare_audio="1"
 		ffmes_option="31"
-	;;
-    -i|--input)
+		;;
+	-i|--input)
+		# Input file or dir
 		shift
 		InputFileDir="$1"
-		if [ -d "$InputFileDir" ]; then															# If target is directory
-			cd "$InputFileDir" || exit															# Move to directory
-		elif [ -f "$InputFileDir" ]; then														# If target is file
+		# If directory
+		if [ -d "$InputFileDir" ]; then
+			cd "$InputFileDir" || exit
+		# If file
+		elif [ -f "$InputFileDir" ]; then
 			InputFileExt="${InputFileDir##*.}"
 			InputFileExt="${InputFileExt,,}"
 			all_ext_available="${VIDEO_EXT_AVAILABLE[*]}|${AUDIO_EXT_AVAILABLE[*]}|${ISO_EXT_AVAILABLE[*]}"
@@ -6450,114 +6455,208 @@ while [[ $# -gt 0 ]]; do
 			Echo_Mess_Error "\"$1\" does not exist" "1"
 			exit
 		fi
-    ;;
-    -j|--videojobs)																					# Select 
+		;;
+	-j|--videojobs)
+		# For number of parallel job
 		shift
-		if ! [[ "$1" =~ ^[0-9]*$ ]] ; then															# If not integer
+		if ! [[ "$1" =~ ^[0-9]*$ ]] ; then
 			Echo_Mess_Error "Video jobs option must be an integer" "1"
 			exit
 		else
-			unset NVENC																				# Unset default NVENC
-			NVENC="$1"																				# Set NVENC
-			if [[ "$NVENC" -lt 0 ]] ; then															# If result inferior than 0
+			unset NVENC
+			NVENC="$1"
+			if [[ "$NVENC" -lt 0 ]] ; then
 				Echo_Mess_Error "Video jobs must be greater than zero" "1"
 				exit
 			fi
 		fi
-    ;;
-    -kc|--keep_cover)
+		;;
+	-kc|--keep_cover)
+		# Force keep cover in audio file
 		unset ExtractCover
 		ExtractCover="1"
-    ;;
-    --novaapi)																						# No VAAPI 
-		unset VAAPI_device																			# Unset VAAPI device
-    ;;
-    -s|--select)																					# Select 
+		;;
+	--novaapi)
+		# No VAAPI 
+		unset VAAPI_device
+		;;
+	-s|--select)
+		# By-pass main menu
 		shift
 		ffmes_option="$1"
-    ;;
-    -pk|--peaknorm)																					# Peak db 
+		;;
+	-pk|--peaknorm)
+		# Change default peak db norm
 		shift
-		if [[ "$1" =~ ^[0-9]*[.][0-9]*$ ]] || [[ "$1" =~ ^[0-9]*$ ]]; then							# If integer or float
-			unset PeakNormDB																		# Unset default PeakNormDB
-			PeakNormDB="$1"																			# Set PeakNormDB
+		if [[ "$1" =~ ^[0-9]*[.][0-9]*$ ]] || [[ "$1" =~ ^[0-9]*$ ]]; then
+			unset PeakNormDB
+			PeakNormDB="$1"
 		else
 			Echo_Mess_Error "Peak db normalization option must be a positive number" "1"
 			exit
 		fi
-    ;;
-    -v|--verbose)
-		VERBOSE="1"																					# Set verbose, for dev/null and loading disable
-		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
-		unset X265_LOG_LVL																			# Unset, for display x265 info log
-		FFMPEG_LOG_LVL="-loglevel info -stats"														# Set ffmpeg log level to stats
+		;;
+	-v|--verbose)
+		# Set verbose lvl 1
+		VERBOSE="1"
+		unset FFMPEG_LOG_LVL
+		unset X265_LOG_LVL
+		FFMPEG_LOG_LVL="-loglevel info -stats"
 		unset FFMPEG_PROGRESS
-    ;;
-    -vv|--fullverbose)
-		VERBOSE="1"																					# Set verbose, for dev/null and loading disable
-		unset FFMPEG_LOG_LVL																		# Unset default ffmpeg log
-		unset X265_LOG_LVL																			# Unset, for display x265 info log
-		FFMPEG_LOG_LVL="-loglevel debug -stats"														# Set ffmpeg log level to debug
+		;;
+	-vv|--fullverbose)
+		# Set verbose lvl 2
+		VERBOSE="1"
+		unset FFMPEG_LOG_LVL
+		unset X265_LOG_LVL
+		FFMPEG_LOG_LVL="-loglevel debug -stats"
 		unset FFMPEG_PROGRESS
-    ;;
-    *)
+		;;
+	*)
 		Usage
 		exit
-    ;;
-esac
+		;;
+	esac
 shift
 done
 
 # Main
 CheckCoreCommand
-CheckCacheDirectory							# Check if cache directory exist
+CheckCacheDirectory
 CheckCustomBin
 CheckFFmpegVersion
 CheckJQCommand
 Display_Term_Size
 StartLoading "Listing of media files to be processed"
-SetGlobalVariables							# Set global variable
-DetectDVD									# DVD detection
-TestVAAPI									# VAAPI detection
+SetGlobalVariables
+DetectDVD
+TestVAAPI
 StopLoading $?
-trap TrapExit SIGINT SIGQUIT				# Set Ctrl+c clean trap for exit all script
-trap TrapStop SIGTSTP						# Set Ctrl+z clean trap for exit current loop (for debug)
-if [ -z "$ffmes_option" ]; then				# By-pass main menu if using command argument
-	Display_Main_Menu						# Display main menu
+# Set Ctrl+c clean trap for exit all script
+trap TrapExit SIGINT SIGQUIT
+# Set Ctrl+z clean trap for exit current loop (for debug)
+trap TrapStop SIGTSTP
+# By-pass main menu if using command argument
+if [ -z "$ffmes_option" ]; then
+	Display_Main_Menu
 fi
 
 while true; do
 
-if [ -z "$ffmes_option" ]; then						# By-pass selection if using command argument
-	echo "  [q]exit [m]menu [r]restart"
-	read -r -e -p "  -> " ffmes_option
-fi
+	# By-pass selection if using command argument
+	if [ -z "$ffmes_option" ]; then
+		echo "  [q]exit [m]menu [r]restart"
+		read -r -e -p "  -> " ffmes_option
+	fi
 
-case $ffmes_option in
+	case $ffmes_option in
 
- Restart | rst | r )
-	Restart
-	;;
+	 Restart | rst | r )
+		Restart
+		;;
 
- exit | quit | q )
-	TrapExit
-	;;
+	 exit | quit | q )
+		TrapExit
+		;;
 
- main | menu | m )
-	Display_Main_Menu
-	;;
+	 main | menu | m )
+		Display_Main_Menu
+		;;
 
- 0 ) # DVD & BD rip
-	echo " Choose DVD or Blu-Ray?"
-	echo
-	echo "  [0] > for DVD"
-	echo "  [1] > for Blu-ray"
-	read -r -e -p "  -> " qdvdbd
-	case $qdvdbd in
-		"0")
-			# DVD rip
-			CheckDVDCommand
-			DVDRip
+	 0 ) # DVD & BD rip
+		echo " Choose DVD or Blu-Ray?"
+		echo
+		echo "  [0] > for DVD"
+		echo "  [1] > for Blu-ray"
+		read -r -e -p "  -> " qdvdbd
+		case $qdvdbd in
+			"0") # DVD rip
+				CheckDVDCommand
+				DVDRip
+				Video_Custom_Video
+				Video_Custom_Audio
+				Video_Custom_Container
+				Video_Custom_Stream
+				Video_FFmpeg_cmd
+				Remove_File_Source
+				Clean
+			;;
+			"1") # Blu-ray rip
+				if [ "${#LSTISO[@]}" -gt "1" ]; then
+					echo
+					Echo_Mess_Error "${#LSTISO[@]} files, one ISO file at a time"
+					echo
+					exit
+				else
+					CheckBDCommand
+					BLURAYrip
+				fi
+			;;
+			*)
+				Echo_Mess_Invalid_Answer
+			;;
+		esac
+		;;
+
+	 1 ) # video -> full custom
+		if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
+			Video_Multiple_Extention_Check
+			Video_Custom_Video
+			Video_Custom_Audio
+			Video_Custom_Container
+			Video_Custom_Stream
+			Video_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_VIDEO_FILE" "1"
+		fi
+		;;
+
+	 2 ) # video -> mkv|copy|copy
+		if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
+			videoconf="-c:v copy"
+			soundconf="-c:a copy"
+			extcont="mkv"
+			container="matroska"
+			videoformat="avcopy"
+			Video_Multiple_Extention_Check
+			Video_Custom_Stream
+			Video_FFmpeg_cmd
+			Remove_File_Source
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_VIDEO_FILE" "1"
+		fi
+		;;
+
+	 3 ) # Audio night normalization
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
+			Video_Add_OPUS_NightNorm
+			Clean
+		else
+			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
+		fi
+		;;
+
+	 10 ) # video -> mkv|copy|add audio|add sub
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]] && [[ "${#LSTSUB[@]}" -gt 0 || "${#LSTAUDIO[@]}" -gt 0 ]]; then
+			#if [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
+				videoformat="addcopy"
+				Video_Merge_Files
+				Clean
+			#else
+			#	Echo_Mess_Error "Only mkv video files are allowed" "1"
+			#fi
+		else
+			Echo_Mess_Error "One video, with several audio and/or subtitle files" "1"
+		fi
+		;;
+
+	 11 ) # Concatenate video
+		if [ "${#LSTVIDEO[@]}" -gt "1" ] && [ "$NBVEXT" -eq "1" ]; then
+			Video_Concatenate
 			Video_Custom_Video
 			Video_Custom_Audio
 			Video_Custom_Container
@@ -6565,374 +6664,290 @@ case $ffmes_option in
 			Video_FFmpeg_cmd
 			Remove_File_Source
 			Clean
-		;;
-		"1")
-			# Blu-ray rip
-			if [ "${#LSTISO[@]}" -gt "1" ]; then
-				echo
-				Echo_Mess_Error "${#LSTISO[@]} files, one ISO file at a time"
-				echo
-				exit
-			else
-				CheckBDCommand
-				BLURAYrip
+		else
+			if [[ "${#LSTVIDEO[@]}" -le "1" ]]; then
+				Echo_Mess_Error "$MESS_BATCH_ONLY" "1"
 			fi
+			if [[ "$NBVEXT" != "1" ]]; then
+				Echo_Mess_Error "$MESS_ONE_EXTENTION_ONLY" "1"
+			fi
+		fi
 		;;
-		*)
-			Echo_Mess_Invalid_Answer
-		;;
-	esac
-	;;
 
- 1 ) # video -> full custom
-	if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
-		Video_Multiple_Extention_Check
-		Video_Custom_Video
-		Video_Custom_Audio
-		Video_Custom_Container
-		Video_Custom_Stream
-		Video_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_VIDEO_FILE" "1"
-	fi
-	;;
-
- 2 ) # video -> mkv|copy|copy
- 	if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
-		videoconf="-c:v copy"
-		soundconf="-c:a copy"
-		extcont="mkv"
-		container="matroska"
-		videoformat="avcopy"
-		Video_Multiple_Extention_Check
-		Video_Custom_Stream
-		Video_FFmpeg_cmd
-		Remove_File_Source
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_VIDEO_FILE" "1"
-	fi
-	;;
-
- 3 ) # Audio night normalization
-	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
-		Video_Add_OPUS_NightNorm
-		Clean
-	else
-		Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
-	fi
-	;;
-
- 10 ) # video -> mkv|copy|add audio|add sub
-	if [[ "${#LSTVIDEO[@]}" -eq "1" ]] && [[ "${#LSTSUB[@]}" -gt 0 || "${#LSTAUDIO[@]}" -gt 0 ]]; then
-		#if [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
-			videoformat="addcopy"
-			Video_Merge_Files
+	 12 ) # Extract stream video
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
+			Video_Extract_Stream
 			Clean
-		#else
-		#	Echo_Mess_Error "Only mkv video files are allowed" "1"
-		#fi
-	else
-		Echo_Mess_Error "One video, with several audio and/or subtitle files" "1"
-	fi
-	;;
-
- 11 ) # Concatenate video
-	if [ "${#LSTVIDEO[@]}" -gt "1" ] && [ "$NBVEXT" -eq "1" ]; then
-		Video_Concatenate
-		Video_Custom_Video
-		Video_Custom_Audio
-		Video_Custom_Container
-		Video_Custom_Stream
-		Video_FFmpeg_cmd
-		Remove_File_Source
-		Clean
-	else
-		if [[ "${#LSTVIDEO[@]}" -le "1" ]]; then
-			Echo_Mess_Error "$MESS_BATCH_ONLY" "1"
+		else
+			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
 		fi
-		if [[ "$NBVEXT" != "1" ]]; then
-			Echo_Mess_Error "$MESS_ONE_EXTENTION_ONLY" "1"
+		;;
+
+	 13 ) # Cut video
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
+			Video_Cut_File
+			Clean
+		else
+			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
 		fi
-	fi
-	;;
+		;;
 
- 12 ) # Extract stream video
-	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
-		Video_Extract_Stream
-		Clean
-	else
-		Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
-	fi
-	;;
-
- 13 ) # Cut video
-	if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
-		Video_Cut_File
-		Clean
-	else
-		Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
-	fi
-	;;
-
- 14 ) # Split by chapter mkv
-	if [ "${#LSTVIDEO[@]}" -eq "1" ] && [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
-		Video_Split_By_Chapter
-		Clean
-	else
-		Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
-	fi
-	;;
-
- 15 ) # Change color palette of DVD subtitle
-	if [[ "${LSTSUBEXT[*]}" = *"idx"* ]]; then
-		DVDSubColor
-		Clean
-	else
-		Echo_Mess_Error "Only DVD subtitle extention type (idx/sub)" "1"
-	fi
-	;;
-
- 16 ) # Convert DVD subtitle to srt
-	CheckSubtitleCommand
-	if [[ "${LSTSUBEXT[*]}" = *"idx"* ]]; then
-		DVDSub2Srt
-		Clean
-	else
-		Echo_Mess_Error "Only DVD subtitle extention type (idx/sub)" "1"
-	fi
-	;;
-
- 20 ) # audio -> CUE splitter
-	CheckCueSplitCommand
-	if [ "${#LSTCUE[@]}" -eq "0" ]; then
-		Echo_Mess_Error "No CUE file in the working director" "1"
-	elif [ "${#LSTCUE[@]}" -gt "1" ]; then
-		Echo_Mess_Error "More than one CUE file in working directory" "1"
-	else
-		Audio_CUE_Split
-		Clean
-	fi
-	;;
-
- 21 ) # audio -> PCM
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="pcm"
-		Audio_Multiple_Extention_Check
-		Audio_PCM_Config
-		Audio_Channels_Question
-		Audio_Peak_Normalization_Question
-		Audio_False_Stereo_Question
-		extcont="wav"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 22 ) # audio -> flac lossless
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="flac"
-		Audio_Multiple_Extention_Check
-		Audio_FLAC_Config
-		Audio_Channels_Question
-		Audio_Peak_Normalization_Question
-		Audio_False_Stereo_Question
-		acodec="-c:a $AudioCodecType"
-		extcont="flac"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 23 ) # audio -> wavpack lossless
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="wavpack"
-		Audio_Multiple_Extention_Check
-		Audio_WavPack_Config
-		Audio_Channels_Question
-		Audio_Peak_Normalization_Question
-		Audio_False_Stereo_Question
-		acodec="-c:a $AudioCodecType"
-		extcont="wv"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 24 ) # audio -> mp3 @ vbr190-250kb
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="libmp3lame"
-		Audio_Multiple_Extention_Check
-		Audio_MP3_Config
-		acodec="-c:a $AudioCodecType"
-		confchan="-ac 2"
-		extcont="mp3"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 25 ) # audio -> ogg
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="libvorbis"
-		Audio_Multiple_Extention_Check
-		Audio_OGG_Config
-		Audio_Channels_Question
-		acodec="-c:a $AudioCodecType"
-		extcont="ogg"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 26 ) # audio -> opus
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="libopus"
-		Audio_Multiple_Extention_Check
-		Audio_Opus_Config
-		Audio_Channels_Question
-		acodec="-c:a $AudioCodecType"
-		extcont="opus"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 27 ) # audio -> aac
-	if (( "${#LSTAUDIO[@]}" )); then
-		AudioCodecType="$ffmpeg_aac_encoder"
-		Audio_Multiple_Extention_Check
-		Audio_AAC_Config
-		Audio_Channels_Question
-		acodec="-c:a $AudioCodecType"
-		extcont="m4a"
-		Audio_FFmpeg_cmd
-		Remove_File_Source
-		Remove_File_Target
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 30 ) # tools -> audio tag
-	CheckTagCommand
-	if (( "${#LSTAUDIOTAG[@]}" )); then
-		# Change number of process for increase speed, here 4*nproc
-		NPROC=$(nproc --all | awk '{ print $1 * 4 }')
-		Audio_Tag_Editor
-		# Reset number of process
-		NPROC=$(nproc --all)
-		Clean
-	else
-			echo
-			Echo_Mess_Error "No audio file to supported"
-			Echo_Mess_Error "Supported files: ${AUDIO_TAG_EXT_AVAILABLE//|/, }"
-			echo
-	fi
-	;;
-
- 31 ) # tools -> multi file view stats
-	if (( "${#LSTAUDIO[@]}" )); then
-		Display_Audio_Stats_List "${LSTAUDIO[@]}"
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	if [ "$force_compare_audio" = "1" ]; then
-		exit
-	fi
-	;;
-
- 32 ) # audio -> generate png of audio spectrum
-	if (( "${#LSTAUDIO[@]}" )); then
-		Audio_Multiple_Extention_Check
-		Audio_Generate_Spectrum_Img
-		Clean
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
-
- 33 ) # Concatenate audio
-	if [ "${#LSTAUDIO[@]}" -gt "1" ] && [ "$NBAEXT" -eq "1" ]; then
-		Audio_Concatenate_Files
-		Remove_File_Source
-		Clean
-	else
-		if [[ "${#LSTAUDIO[@]}" -le "1" ]]; then
-			Echo_Mess_Error "$MESS_BATCH_ONLY" "1"
+	 14 ) # Split by chapter mkv
+		if [ "${#LSTVIDEO[@]}" -eq "1" ] && [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
+			Video_Split_By_Chapter
+			Clean
+		else
+			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
 		fi
-		if [[ "$NBAEXT" != "1" ]]; then
-			Echo_Mess_Error "$MESS_ONE_EXTENTION_ONLY" "1"
+		;;
+
+	 15 ) # Change color palette of DVD subtitle
+		if [[ "${LSTSUBEXT[*]}" = *"idx"* ]]; then
+			DVDSubColor
+			Clean
+		else
+			Echo_Mess_Error "Only DVD subtitle extention type (idx/sub)" "1"
 		fi
-	fi
-	;;
+		;;
 
- 34 ) # Cut audio
-	if [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
-		Audio_Cut_File
-		Clean
-	else
-		Echo_Mess_Error "$MESS_ONE_AUDIO_ONLY" "1"
-	fi
-	;;
+	 16 ) # Convert DVD subtitle to srt
+		CheckSubtitleCommand
+		if [[ "${LSTSUBEXT[*]}" = *"idx"* ]]; then
+			DVDSub2Srt
+			Clean
+		else
+			Echo_Mess_Error "Only DVD subtitle extention type (idx/sub)" "1"
+		fi
+		;;
 
- 35 ) # File check
-	if [[ "${#LSTAUDIO[@]}" -ge "1" ]]; then
-		ProgressBarOption="1"
-		NPROC=$(nproc --all | awk '{ print $1 * 4 }')
-		Audio_File_Tester
-		Clean
-		# Reset
-		NPROC=$(nproc --all)
-		unset ProgressBarOption
-	else
-		Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
-	fi
-	;;
+	 20 ) # audio -> CUE splitter
+		CheckCueSplitCommand
+		if [ "${#LSTCUE[@]}" -eq "0" ]; then
+			Echo_Mess_Error "No CUE file in the working director" "1"
+		elif [ "${#LSTCUE[@]}" -gt "1" ]; then
+			Echo_Mess_Error "More than one CUE file in working directory" "1"
+		else
+			Audio_CUE_Split
+			Clean
+		fi
+		;;
 
- 99 ) # update
-	ffmesUpdate
-	Restart
-	;;
+	 21 ) # audio -> PCM
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="pcm"
+			Audio_Multiple_Extention_Check
+			Audio_PCM_Config
+			Audio_Channels_Question
+			Audio_Peak_Normalization_Question
+			Audio_False_Stereo_Question
+			extcont="wav"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
 
- * ) # update
-	echo
-	Echo_Mess_Invalid_Answer
-	echo
-	;;
+	 22 ) # audio -> flac lossless
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="flac"
+			Audio_Multiple_Extention_Check
+			Audio_FLAC_Config
+			Audio_Channels_Question
+			Audio_Peak_Normalization_Question
+			Audio_False_Stereo_Question
+			acodec="-c:a $AudioCodecType"
+			extcont="flac"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
 
-esac
+	 23 ) # audio -> wavpack lossless
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="wavpack"
+			Audio_Multiple_Extention_Check
+			Audio_WavPack_Config
+			Audio_Channels_Question
+			Audio_Peak_Normalization_Question
+			Audio_False_Stereo_Question
+			acodec="-c:a $AudioCodecType"
+			extcont="wv"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
 
-unset ffmes_option		# By-pass selection if using command argument
+	 24 ) # audio -> mp3 @ vbr190-250kb
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="libmp3lame"
+			Audio_Multiple_Extention_Check
+			Audio_MP3_Config
+			acodec="-c:a $AudioCodecType"
+			confchan="-ac 2"
+			extcont="mp3"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
+
+	 25 ) # audio -> ogg
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="libvorbis"
+			Audio_Multiple_Extention_Check
+			Audio_OGG_Config
+			Audio_Channels_Question
+			acodec="-c:a $AudioCodecType"
+			extcont="ogg"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
+
+	 26 ) # audio -> opus
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="libopus"
+			Audio_Multiple_Extention_Check
+			Audio_Opus_Config
+			Audio_Channels_Question
+			acodec="-c:a $AudioCodecType"
+			extcont="opus"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
+
+	 27 ) # audio -> aac
+		if (( "${#LSTAUDIO[@]}" )); then
+			AudioCodecType="$ffmpeg_aac_encoder"
+			Audio_Multiple_Extention_Check
+			Audio_AAC_Config
+			Audio_Channels_Question
+			acodec="-c:a $AudioCodecType"
+			extcont="m4a"
+			Audio_FFmpeg_cmd
+			Remove_File_Source
+			Remove_File_Target
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
+
+	 30 ) # tools -> audio tag
+		CheckTagCommand
+		if (( "${#LSTAUDIOTAG[@]}" )); then
+			# Change number of process for increase speed, here 4*nproc
+			NPROC=$(nproc --all | awk '{ print $1 * 4 }')
+			Audio_Tag_Editor
+			# Reset number of process
+			NPROC=$(nproc --all)
+			Clean
+		else
+				echo
+				Echo_Mess_Error "No audio file to supported"
+				Echo_Mess_Error "Supported files: ${AUDIO_TAG_EXT_AVAILABLE//|/, }"
+				echo
+		fi
+		;;
+
+	 31 ) # tools -> multi file view stats
+		if (( "${#LSTAUDIO[@]}" )); then
+			Display_Audio_Stats_List "${LSTAUDIO[@]}"
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		if [ "$force_compare_audio" = "1" ]; then
+			exit
+		fi
+		;;
+
+	 32 ) # audio -> generate png of audio spectrum
+		if (( "${#LSTAUDIO[@]}" )); then
+			Audio_Multiple_Extention_Check
+			Audio_Generate_Spectrum_Img
+			Clean
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
+
+	 33 ) # Concatenate audio
+		if [ "${#LSTAUDIO[@]}" -gt "1" ] && [ "$NBAEXT" -eq "1" ]; then
+			Audio_Concatenate_Files
+			Remove_File_Source
+			Clean
+		else
+			if [[ "${#LSTAUDIO[@]}" -le "1" ]]; then
+				Echo_Mess_Error "$MESS_BATCH_ONLY" "1"
+			fi
+			if [[ "$NBAEXT" != "1" ]]; then
+				Echo_Mess_Error "$MESS_ONE_EXTENTION_ONLY" "1"
+			fi
+		fi
+		;;
+
+	 34 ) # Cut audio
+		if [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
+			Audio_Cut_File
+			Clean
+		else
+			Echo_Mess_Error "$MESS_ONE_AUDIO_ONLY" "1"
+		fi
+		;;
+
+	 35 ) # File check
+		if [[ "${#LSTAUDIO[@]}" -ge "1" ]]; then
+			ProgressBarOption="1"
+			NPROC=$(nproc --all | awk '{ print $1 * 4 }')
+			Audio_File_Tester
+			Clean
+			# Reset
+			NPROC=$(nproc --all)
+			unset ProgressBarOption
+		else
+			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
+		fi
+		;;
+
+	 99 ) # update
+		ffmesUpdate
+		Restart
+		;;
+
+	 * ) # update
+		echo
+		Echo_Mess_Invalid_Answer
+		echo
+		;;
+
+	esac
+
+	# By-pass selection if using command argument
+	unset ffmes_option
 
 done
 exit
