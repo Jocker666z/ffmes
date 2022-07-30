@@ -74,7 +74,10 @@ for DEVICE in "${OPTICAL_DEVICE[@]}"; do
 	local lsdvd_result=$?
 	if [ "$lsdvd_result" -eq 0 ]; then
 		DVD_DEVICE="$DEVICE"
-		DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD_DEVICE" -I 2>/dev/null | grep "DVD with title" | tail -1 | awk -F'"' '{print $2}')
+		DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD_DEVICE" -I 2>/dev/null \
+					| grep "DVD with title" \
+					| tail -1 \
+					| awk -F'"' '{print $2}')
 		break
 	fi
 done
@@ -5419,6 +5422,7 @@ fi
 }
 Audio_Generate_Spectrum_Img() {			# Option 32 	- PNG of audio spectrum
 # Local variables
+local spekres
 local total_target_files_size
 local START
 local END
@@ -5428,43 +5432,20 @@ filesReject=()
 
 clear
 echo
-echo " Choose size of png spectrum for the ${#LSTAUDIO[@]} files:"
-echo
-echo "        |     sizes | descriptions                |"
-echo "        |-----------|-----------------------------|"
-echo "  [1] > |   800x450 | 2.0 thumb                   |"
-echo "  [2] > |  1280x720 | 2.0 readable / 5.1 thumb    |"
-echo " *[3] > | 1920x1080 | 2.0 detail   / 5.1 readable |"
-echo "  [4] > | 3840x2160 | 5.1 detail                  |"
-echo "  [5] > | 7680x4320 | Shoryuken                   |"
-echo "  [q] > | exit"
-read -r -e -p "-> " qspek
-if [ "$qspek" = "q" ]; then
-	Restart
-elif [ "$qspek" = "1" ]; then
-	spekres="800x450"
-elif [ "$qspek" = "2" ]; then
-	spekres="1280x720"
-elif [ "$qspek" = "3" ]; then
-	spekres="1920x1080"
-elif [ "$qspek" = "4" ]; then
-	spekres="3840x2160"
-elif [ "$qspek" = "5" ]; then
-	spekres="7680x4320"
-else
-	spekres="1920x1080"
-fi
+echo " Create spectrum image:"
 
 # Start time counter
 START=$(date +%s)
 
-echo
 Echo_Separator_Light
 for i in "${!LSTAUDIO[@]}"; do
 
+	# Generate target file array
+	LSTPNG+=( "${LSTAUDIO[i]%.*}.png" )
+
 	(
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[i]}" \
-		-lavfi showspectrumpic=s=$spekres:mode=separate:gain=1.4:color=2 "${LSTAUDIO[i]%.*}".png \
+		-lavfi showspectrumpic "${LSTAUDIO[i]%.*}".png \
 		| ProgressBar "" "$((i+1))" "${#LSTAUDIO[@]}" "Spectrum creation" "1"
 	) &
 	if [[ $(FFmpeg_instance_count) -gt $NPROC ]]; then
@@ -5474,8 +5455,6 @@ for i in "${!LSTAUDIO[@]}"; do
 done
 wait
 
-# Generate target file array
-mapfile -t LSTPNG < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('png')$' 2>/dev/null | sort | sed 's/^..//')
 # File validation
 Test_Target_File "0" "video" "${LSTPNG[@]}"
 
@@ -5556,6 +5535,9 @@ Audio_Cut_File() {						# Option 34 	- Cut audio file
 # Local variables
 local total_source_files_size
 local total_target_files_size
+local qcut
+local CutStart
+local CutEnd
 local PERC
 local START
 local END
