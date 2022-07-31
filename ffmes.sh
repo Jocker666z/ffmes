@@ -693,7 +693,7 @@ if  [[ "$TESTARGUMENT" == *"Video"* ]]; then
 	Display_Line_Truncate "  * Video to edit: ${LSTVIDEO[0]##*/}"
 elif  [[ "$TESTARGUMENT" != *"Video"* ]] && [ "${#LSTVIDEO[@]}" -eq "1" ]; then
 	Display_Line_Truncate "  * Video to edit: ${LSTVIDEO[0]##*/}"
-elif [ "${#LSTVIDEO[@]}" -gt "1" ]; then											# If no arg + 1> videos
+elif [ "${#LSTVIDEO[@]}" -gt "1" ]; then
 	echo "  * Video to edit: ${#LSTVIDEO[@]} files"
 fi
 
@@ -702,7 +702,7 @@ if  [[ "$TESTARGUMENT" == *"Audio"* ]]; then
 	Display_Line_Truncate "  * Audio to edit: ${LSTAUDIO[0]##*/}"
 elif [[ "$TESTARGUMENT" != *"Audio"* ]] && [ "${#LSTAUDIO[@]}" -eq "1" ]; then
 	Display_Line_Truncate "  * Audio to edit: ${LSTAUDIO[0]##*/}"
-elif [ "${#LSTAUDIO[@]}" -gt "1" ]; then											# If no arg + 1> videos
+elif [ "${#LSTAUDIO[@]}" -gt "1" ]; then
 	echo "  * Audio to edit: ${#LSTAUDIO[@]} files"
 fi
 
@@ -726,7 +726,9 @@ if test -n "$DVD_DEVICE"; then
 fi
 
 # Nothing
-if [ -z "$TESTARGUMENT" ] && [ -z "$DVD_DEVICE" ] && [ "${#LSTVIDEO[@]}" -eq "0" ] && [ "${#LSTAUDIO[@]}" -eq "0" ] && [ "${#LSTISO[@]}" -eq "0" ] && [ "${#LSTSUB[@]}" -eq "0" ]; then
+if [ -z "$TESTARGUMENT" ] && [ -z "$DVD_DEVICE" ] && \
+   [ "${#LSTVIDEO[@]}" -eq "0" ] && [ "${#LSTAUDIO[@]}" -eq "0" ] &&\
+   [ "${#LSTISO[@]}" -eq "0" ] && [ "${#LSTSUB[@]}" -eq "0" ]; then
 	echo "  [!] No file to process"
 fi
 }
@@ -1163,9 +1165,9 @@ else
 fi
 }
 Display_Term_Size() {					# Get terminal size
-TERM_WIDTH=$(stty size | awk '{print $2}')													# Get terminal width
-TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')					# Get terminal width truncate
-TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')			# Get terminal width truncate
+TERM_WIDTH=$(stty size | awk '{print $2}')
+TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')
+TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')
 }
 Display_Variable_Trick() {				# Punctuation trick
 local variable
@@ -3742,13 +3744,13 @@ echo "  [0 3 1] > example for select stream"
 echo "  [q]     > for exit"
 while true; do
 	read -r -e -p "-> " rpstreamch
-	if [[ "$rpstreamch" == "q" ]]; then						# Quit
+	if [[ "$rpstreamch" == "q" ]]; then
 		Restart
 
-	elif ! [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then			# Not integer retry
+	elif ! [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
 		Echo_Mess_Error "Map option must be an integer"
 
-	elif [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then			# If valid integer continue
+	elif [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
 		# Construct index array
 		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
 
@@ -3804,10 +3806,10 @@ done
 END=$(date +%s)
 
 # Make statistics of processed files
-Calc_Elapsed_Time "$START" "$END"											# Get elapsed time
-total_source_files_size=$(Calc_Files_Size "${LSTVIDEO[@]}")					# Source file(s) size
-total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")				# Target(s) size
-PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")	# Size difference between source and target
+Calc_Elapsed_Time "$START" "$END"
+total_source_files_size=$(Calc_Files_Size "${LSTVIDEO[@]}")
+total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
+PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
@@ -6112,8 +6114,8 @@ for i in "${!LSTAUDIO[@]}"; do
 	fi
 
 	# If no tag title
-	if test -z "${TAG_TITLE[$i]}"; then						# if no title
-		ParsedTitle="[untitled]"							# use "[untitled]"
+	if test -z "${TAG_TITLE[$i]}"; then
+		ParsedTitle="[untitled]"
 	else
 		# Replace eventualy / , " , : in string
 		ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)
@@ -6122,8 +6124,8 @@ for i in "${!LSTAUDIO[@]}"; do
 	fi
 
 	# If no tag artist
-	if test -z "${TAG_ARTIST[$i]}"; then					# if no artist
-		ParsedTitle="[unknown]"								# use "[unamed]"
+	if test -z "${TAG_ARTIST[$i]}"; then
+		ParsedTitle="[unknown]"
 	else
 		# Replace eventualy / , " , : in string
 		ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)
@@ -6658,13 +6660,9 @@ while true; do
 
 	 10 ) # video -> mkv|copy|add audio|add sub
 		if [[ "${#LSTVIDEO[@]}" -eq "1" ]] && [[ "${#LSTSUB[@]}" -gt 0 || "${#LSTAUDIO[@]}" -gt 0 ]]; then
-			#if [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
-				videoformat="addcopy"
-				Video_Merge_Files
-				Clean
-			#else
-			#	Echo_Mess_Error "Only mkv video files are allowed" "1"
-			#fi
+			videoformat="addcopy"
+			Video_Merge_Files
+			Clean
 		else
 			Echo_Mess_Error "One video, with several audio and/or subtitle files" "1"
 		fi
