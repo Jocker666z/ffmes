@@ -9,51 +9,83 @@
 # licence : GNU GPL-2.0
 
 # Paths
-export PATH=$PATH:/home/$USER/.local/bin													# For case of launch script outside a terminal & bin in user directory
-FFMES_BIN=$(basename "${0}")																# Set script name for prevent error when rename script
-FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"												# Set ffmes path for restart from any directory
-FFMES_CACHE="/tmp/ffmes"																	# Cache directory
-FFMES_FFPROBE_CACHE_STATS="$FFMES_CACHE/stat-ffprobe-$(date +%Y%m%s%N).info"				# ffprobe cache file
-FFMES_FFMPEG_CACHE_STAT="$FFMES_CACHE/stat-ffmpeg-$(date +%Y%m%s%N).info"					# ffmpeg cache file
-FFMES_CACHE_TAG="$FFMES_CACHE/tag-$(date +%Y%m%s%N).info"									# tag-DATE.info, audio tag file
-FFMES_CACHE_INTEGRITY="$FFMES_CACHE/interity-$(date +%Y%m%s%N).info"						# integrity-DATE.info, list of files fail interity check
-LSDVD_CACHE="$FFMES_CACHE/lsdvd-$(date +%Y%m%s%N).info"										# lsdvd cache
-BDINFO_CACHE="$FFMES_CACHE/bdinfo-$(date +%Y%m%s%N).info"									# bluray_info cache
-OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)								# DVD player drives names
+## For case of launch script outside a terminal & bin in user directory
+export PATH=$PATH:/home/$USER/.local/bin
+## Set script name for prevent error when rename script
+FFMES_BIN=$(basename "${0}")
+## Set ffmes path for restart from any directory
+FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"
+## Cache directory
+FFMES_CACHE="/tmp/ffmes"
+## ffprobe cache file
+FFMES_FFPROBE_CACHE_STATS="$FFMES_CACHE/stat-ffprobe-$(date +%Y%m%s%N).info"
+## ffmpeg cache file
+FFMES_FFMPEG_CACHE_STAT="$FFMES_CACHE/stat-ffmpeg-$(date +%Y%m%s%N).info"
+## tag-DATE.info, audio tag file
+FFMES_CACHE_TAG="$FFMES_CACHE/tag-$(date +%Y%m%s%N).info"
+## integrity-DATE.info, list of fail interity check
+FFMES_CACHE_INTEGRITY="$FFMES_CACHE/interity-$(date +%Y%m%s%N).info"
+## lsdvd cache
+LSDVD_CACHE="$FFMES_CACHE/lsdvd-$(date +%Y%m%s%N).info"
+## bluray_info cache
+BDINFO_CACHE="$FFMES_CACHE/bdinfo-$(date +%Y%m%s%N).info"
+## DVD player drives names
+OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)
 
 # General variables
+## Core command needed
 CORE_COMMAND_NEEDED=(ffmpeg ffprobe mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
-NPROC=$(nproc --all)																		# Set number of thread
-FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"										# FFmpeg log level
+## Set number of processor thread
+NPROC=$(nproc --all)
+## ffmpeg default log level
+FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"
 
 # Custom binary location
-FFMPEG_CUSTOM_BIN=""																		# FFmpeg binary, enter location of bin, if variable empty use system bin
-FFPROBE_CUSTOM_BIN=""																		# FFprobe binary, enter location of bin, if variable empty use system bin
+## ffmpeg binary, enter location of bin, if variable empty use system bin
+FFMPEG_CUSTOM_BIN=""
+## ffprobe binary, enter location of bin, if variable empty use system bin
+FFPROBE_CUSTOM_BIN=""
 
 # DVD & Blu-ray rip variables
+## BD command needed
 BLURAY_COMMAND_NEEDED=(bluray_copy bluray_info)
+## DVD command needed
 DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
+## DVD & Blu-ray input extension available
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
 
 # Video variables
-X265_LOG_LVL="log-level=-1:"																# libx265 log level
+## Video input extension available
 VIDEO_EXT_AVAILABLE="3gp|avi|bik|flv|m2ts|m4v|mkv|mts|mp4|mpeg|mpg|mov|ogv|rm|rmvb|ts|vob|vp9|webm|wmv"
-NVENC="0"																					# Set number of video encoding in same time, the countdown starts at 0, so 0 is worth one encoding at a time (0=1;1=2...)
-VAAPI_device="/dev/dri/renderD128"															# VAAPI device location
+## Set number of video encoding in same time, the countdown starts at 0 (0=1;1=2...)
+NVENC="0"
+## libx265 default log level
+X265_LOG_LVL="log-level=-1:"
+## VAAPI device location
+VAAPI_device="/dev/dri/renderD128"
 
 # Subtitle variables
+## Subtitle command needed
 SUBTI_COMMAND_NEEDED=(subp2tiff subptools tesseract wget)
+## Subtitle input extension available
 SUBTI_EXT_AVAILABLE="ass|srt|ssa|idx|sup"
 
 # Audio variables
+## Audio command needed
 CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit wvunpack)
+## Audio input extension available
 AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aptx|aud|caf|dff|dsf|dts|eac3|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|oga|ogg|ops|opus|ra|ram|sbc|shn|spx|tak|thd|tta|w64|wav|wma|wv"
+## Cue split input extension available
 CUE_EXT_AVAILABLE="cue"
+## Playlist input extension available
 M3U_EXT_AVAILABLE="m3u|m3u8"
-ExtractCover="0"																			# Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
-RemoveM3U="0"																				# Remove m3u playlist, 0=no remove, 1=remove
-PeakNormDB="1"																				# Peak db normalization option, this value is written as positive but is used in negative, e.g. 4 = -4
+## Extract cover, 0=extract cover from source and remove in output, 1=keep cover from source in output, empty=remove cover in output
+ExtractCover="0"
+## Remove playlist, 0=no remove, 1=remove
+RemoveM3U="0"
+## Peak db normalization, value written as positive but is used in negative, e.g. 4=-4
+PeakNormDB="1"
 
 # Tag variables
 TAG_COMMAND_NEEDED=(AtomicParsley mac metaflac mid3v2 vorbiscomment wvtag)
