@@ -88,7 +88,9 @@ RemoveM3U="0"
 PeakNormDB="1"
 
 # Tag variables
+## Tag command needed
 TAG_COMMAND_NEEDED=(AtomicParsley mac metaflac mid3v2 vorbiscomment wvtag)
+## Tag input extension available
 AUDIO_TAG_EXT_AVAILABLE="ape|flac|m4a|mp3|ogg|opus|wv"
 
 # Error messages
