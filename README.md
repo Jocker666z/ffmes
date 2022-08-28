@@ -298,7 +298,7 @@ Cut or split one audio by time. Examples of input:
 --------------------------------------------------------------------------------------------------
 ## Dependencies installation
 ### bluray_info & bluray_copy
-Dependencies: `libbluray-dev`
+Dependencies: `libbluray-dev libaacs-dev`
 
 ```
 git clone https://github.com/beandog/bluray_info && cd bluray_info
