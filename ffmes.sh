@@ -3952,6 +3952,7 @@ local rpstreamch_parsed
 local streams_invalid
 local MKVEXTRACT
 local PCM_EXTRACT
+local MOV_TEXT_EXTRACT
 local FILE_EXT
 
 # Array
@@ -4055,6 +4056,9 @@ for files in "${LSTVIDEO[@]}"; do
 			subrip)
 				FILE_EXT=srt ;;
 			ass) FILE_EXT=ass ;;
+			mov_text)
+				MOV_TEXT_EXTRACT="1"
+				FILE_EXT=srt ;;
 			hdmv_pgs_subtitle) FILE_EXT=sup ;;
 			dvd_subtitle)
 				MKVEXTRACT="1"
@@ -4083,11 +4087,17 @@ for files in "${LSTVIDEO[@]}"; do
 					"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
 					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 
+			elif [ "$MOV_TEXT_EXTRACT" = "1" ]; then
+				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
+					$FFMPEG_PROGRESS \
+					-c:s srt -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
+					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
+
 			else
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
-				$FFMPEG_PROGRESS \
-				-c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
-				| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
+					$FFMPEG_PROGRESS \
+					-c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
+					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 			fi
 
 			# For validation test
