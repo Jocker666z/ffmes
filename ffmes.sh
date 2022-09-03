@@ -2352,6 +2352,7 @@ local bd_track_audio_test
 local bd_track_subtitle_test
 local temp_bd_title_audio
 local temp_bd_title_subtitle
+local stream_counter
 
 # Arrays
 bd_title_pass_extract=()
@@ -2361,7 +2362,13 @@ bd_title_filesize=()
 bd_title_video_format=()
 bd_title_video_codec=()
 bd_title_audio=()
+bd_track_audio_nb=()
+bd_title_audio_stream=()
 bd_title_subtitle=()
+bd_track_subtitle_nb=()
+bd_title_subtitle_tracks_lang=()
+bd_title_subtitle_metadata=()
+bd_title_subtitle_stream=()
 
 clear
 echo
@@ -2413,8 +2420,10 @@ if [[ -n "$BD_disk" ]]; then
 	# Main tittle
 	bd_main_title=$(bd_jqparse_main_info "main_title")
 
-	# Display messge for rip main track only
-	read -r -p " Extract only main title of Blu-ray $bd_disk_name or view list? [y/N]:" qarm
+	# Display message for rip main track only
+	echo
+	Display_Line_Truncate " Blu-ray: $bd_disk_name"
+	read -r -p " Extract only main title or view list? [y/N]:" qarm
 	case $qarm in
 		"Y"|"y")
 			# Extract argument
@@ -2542,15 +2551,51 @@ if [[ -n "$BD_disk" ]]; then
 
 	for title in "${bd_title_pass_extract[@]}"; do
 
+		# Extract audio stream
+		mapfile -t bd_track_audio_nb < <("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE")
+		if (( "${#bd_track_audio_nb[@]}" )); then
+			# Stream
+			stream_counter="0"
+			for audio_stream in "${bd_track_audio_nb[@]}"; do
+				bd_title_audio_stream+=( "-map 0:a:${stream_counter}" )
+				((stream_counter=stream_counter+1))
+			done
+		fi
+
+		# Extract subtitle stream & metadata
+		mapfile -t bd_track_subtitle_nb < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE")
+		if (( "${#bd_track_subtitle_nb[@]}" )); then
+			# Stream
+			stream_counter="0"
+			for subtitle_stream in "${bd_track_subtitle_nb[@]}"; do
+				bd_title_subtitle_stream+=( "-map 0:s:${stream_counter}" )
+				((stream_counter=stream_counter+1))
+			done
+
+			# Metadata
+			mapfile -t bd_title_subtitle_tracks_lang < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .language" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+			stream_counter="0"
+			for subtitle_lang in "${bd_title_subtitle_tracks_lang[@]}"; do
+				bd_title_subtitle_metadata+=( "-metadata:s:s:${stream_counter} language=${subtitle_lang}" )
+				((stream_counter=stream_counter+1))
+			done
+		fi
+
 		# Extract chapters
 		bluray_info -t "$title" -g "$BD_disk" 2>/dev/null > "${bd_disk_name}.${title}".chapter
 
 		# Remux
-		bluray_copy "$BD_disk" -t "$title" -o - 2>/dev/null | "$ffmpeg_bin" -hide_banner -y -i - \
-					-threads 0 -map 0 -codec copy -ignore_unknown -max_muxing_queue_size 4096 \
-					"${bd_disk_name}.${title}".Remux.mkv \
-					&& echo "  ${bd_disk_name}.${title}.Remux.mkv remux done" \
-					|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv remux fail"
+		bluray_copy "$BD_disk" -t "$title" -o - 2>/dev/null \
+			| "$ffmpeg_bin" -hide_banner -y -i - -threads 0 \
+				-map 0:v \
+				$(IFS=' ';echo "${bd_title_audio_stream[*]}";IFS=$' \t\n') \
+				$(IFS=' ';echo "${bd_title_subtitle_stream[*]}";IFS=$' \t\n') \
+				-codec copy \
+				$(IFS=' ';echo "${bd_title_subtitle_metadata[*]}";IFS=$' \t\n') \
+				-ignore_unknown -max_muxing_queue_size 4096 \
+				"${bd_disk_name}.${title}".Remux.mkv \
+				&& echo "  ${bd_disk_name}.${title}.Remux.mkv remux done" \
+				|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv remux fail"
 
 		# Add chapters
 		mkvpropedit -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \

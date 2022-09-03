@@ -113,8 +113,9 @@ If you encounter bugs or have proposals, I'm open to discussion.
 
 ##### Blu-ray:
 * Rip ISO & disc directory
-* Choose title or all
+* Choose one title or all
 * Remux all stream in mkv
+* Subtitles metadata integration
 * Chapters integration
 * https://github.com/beandog/bluray_info must be installed (see install help bellow)
 
