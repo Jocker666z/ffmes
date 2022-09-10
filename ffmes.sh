@@ -3777,6 +3777,7 @@ Video_Add_OPUS_NightNorm() {			# Option 3		- Add audio stream with night normali
 # Local variables
 local subtitleconf
 # Array
+INDEX=()
 VINDEX=()
 
 Display_Media_Stats_One "${LSTVIDEO[@]}"
@@ -3797,13 +3798,19 @@ while true; do
 
 	elif [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
 		# Construct index array
-		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
+		IFS=" " read -r -a INDEX <<< "$rpstreamch"
 
 		# Test if selected stream is audio
-		for i in "${VINDEX[@]}"; do
-			if ! [[ "${ffprobe_StreamType[i]}" = "audio" ]]; then
+		for i in "${INDEX[@]}"; do
+			if [[ "${ffprobe_StreamType[i]}" != "audio" ]]; then
 				Echo_Mess_Error "The stream $i is not audio stream"
 			else
+				# Get audio map
+				for i in ${!ffprobe_StreamType[*]}; do
+					if [[ "${ffprobe_StreamIndex[i]}" = "${INDEX[*]}" ]]; then
+						VINDEX+=( "${ffprobe_a_StreamIndex[i]}" )
+					fi
+				done
 				break 2
 			fi
 		done
