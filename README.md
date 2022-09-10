@@ -75,6 +75,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 	* 1, video encoding with custom options
 	* 2, copy stream to mkv with map option
 	* 3, add audio stream with night normalization
+	* 4, one audio stream encoding
 * Video tools:
 	* 10, add audio stream or subtitle in video file
 	* 11, concatenate video files
@@ -134,7 +135,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 			* av1: cpu-used (preset), bitrate (video stream total size, crf & cbr)
 			* mpeg4 (xvid): bitrate (qscale & cbr)
 * Audio:
-	* Stream copy or encoding
+	* All stream copy or encoding
 	* Encoding options (apply to all streams):
 		* codecs:
 			* ac3 (ac3): bitrate (vbr & cbr)
@@ -150,12 +151,12 @@ If you encounter bugs or have proposals, I'm open to discussion.
 #### Option 2 details - copy stream to mkv with map option
 Copy stream in mkv file, with streams selection if source have more than 2 streams.
 
-#### Option 3 details - encode audio stream only
-Encode the selected audio streams of video files (or all of them).
+#### Option 3 details - add audio stream with night normalization
+Add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
+The new stream is in opus, stereo, 320kb. The final will be a mkv
 
-#### Option 4 details - add audio stream with night normalization
-From inplace matroska video (with audio), add stream with night mode normalization (the amplitude of sound between heavy and weak sounds will decrease).
-The new stream is in opus, stereo, 320kb.
+#### Option 4 details - encode one audio stream only
+Encode the selected audio stream of a video file, with the same settings as option 1. The final will be a mkv.
 
 #### Option 13 details - split or cut video file by time
 Cut or split one video by time. Examples of input:

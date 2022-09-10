@@ -775,6 +775,7 @@ echo "   0 - DVD & Blu-ray rip                              |"
 echo "   1 - video encoding with custom options             |-Video"
 echo "   2 - copy stream to mkv with map option             |"
 echo "   3 - add audio stream with night normalization      |"
+echo "   4 - one audio stream encoding                      |"
 echo "  -----------------------------------------------------"
 echo "  10 - add audio stream or subtitle in video file     |"
 echo "  11 - concatenate video files                        |-Video Tools"
@@ -3094,24 +3095,28 @@ echo "  [q]      > | exit"
 read -r -e -p "-> " chacodec
 case $chacodec in
 	"opus")
+		AudioCodecType="libopus"
 		acodec="libopus"
 		chacodec="OPUS"
 		Audio_Opus_Config
 		Audio_Channels_Config
 	;;
 	"vorbis")
+		AudioCodecType="libvorbis"
 		acodec="libvorbis"
 		chacodec="OGG"
 		Audio_OGG_Config
 		Audio_Channels_Config
 	;;
 	"ac3")
+		AudioCodecType="ac3"
 		acodec="ac3"
 		chacodec="AC3"
 		Audio_AC3_Config
 		Audio_Channels_Config
 	;;
 	"flac")
+		AudioCodecType="flac"
 		acodec="flac"
 		chacodec="FLAC"
 		Audio_FLAC_Config
@@ -3121,6 +3126,7 @@ case $chacodec in
 		Restart
 	;;
 	*)
+		AudioCodecType="libopus"
 		acodec="libopus"
 		chacodec="OPUS"
 		Audio_Opus_Config
@@ -3844,11 +3850,120 @@ for files in "${LSTVIDEO[@]}"; do
 			-c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus \
 			-b:a:${VINDEX[i]} 320K -ac 2 \
 			-filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm \
-			"${files%.*}"-NightNorm.mkv \
+			"${files%.*}".OPUS-NightNorm.mkv \
 			| ProgressBar "$files" "" "" "Encoding"
 
 		# Check Target if valid
-		Test_Target_File "0" "video" "${files%.*}-NightNorm.mkv"
+		Test_Target_File "0" "video" "${files%.*}.OPUS-NightNorm.mkv"
+
+	done
+
+done
+
+# End time counter
+END=$(date +%s)
+
+# Make statistics of processed files
+Calc_Elapsed_Time "$START" "$END"
+total_source_files_size=$(Calc_Files_Size "${LSTVIDEO[@]}")
+total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
+PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
+
+# End encoding messages "pass_files" "total_files" "target_size" "source_size"
+Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
+}
+Video_Custom_One_Audio() {				# Option 4		- One audio stream encoding
+# Local variables
+local astream
+local subtitleconf
+# Array
+VINDEX=()
+stream=()
+
+Display_Media_Stats_One "${LSTVIDEO[@]}"
+
+echo " Select one audio stream to encode:"
+echo
+echo "  [0 3 1] > example for select stream"
+echo "  [q]     > for exit"
+while true; do
+	read -r -e -p "-> " rpstreamch
+	if [[ "$rpstreamch" == "q" ]]; then
+		Restart
+
+	elif ! [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
+		Echo_Mess_Error "Map option must be an integer"
+
+	elif [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
+		# Construct index array
+		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
+
+		# Test if selected stream is audio
+		for i in "${VINDEX[@]}"; do
+			if [[ "${ffprobe_StreamType[i]}" != "audio" ]]; then
+				Echo_Mess_Error "The stream $i is not audio stream"
+			else
+
+				# Codec option choise
+				chvidstream="N/A"
+				extcont="mkv"
+				vstream="N/A"
+				ENCODA="1"
+				Video_Custom_Audio_Codec
+				Display_Video_Custom_Info_choice
+
+				# Get audio map
+				for i in ${!ffprobe_StreamType[*]}; do
+					if [[ "${ffprobe_StreamIndex[i]}" != "${VINDEX[*]}" ]] \
+					&& [[ "${ffprobe_StreamType[i]}" = "audio" ]]; then
+						stream+=("-map 0:a:${ffprobe_a_StreamIndex[i]} -c:a:${ffprobe_a_StreamIndex[i]} copy")
+					elif [[ "${ffprobe_StreamIndex[i]}" = "${VINDEX[*]}" ]] \
+					&& [[ "${ffprobe_StreamType[i]}" = "audio" ]]; then
+						if [[ -n "afilter" ]]; then
+							afilter="-filter:a:${ffprobe_a_StreamIndex[i]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
+						fi
+						stream+=("$afilter -map 0:a:${ffprobe_a_StreamIndex[i]} -c:a:${ffprobe_a_StreamIndex[i]} $acodec $akb $asamplerate $confchan")
+					fi
+				done
+				astream="${stream[*]}"
+				break 2
+
+			fi
+		done
+
+	fi
+done
+
+# Start time counter
+START=$(date +%s)
+
+# Encoding
+for files in "${LSTVIDEO[@]}"; do
+
+	# Subtitle correction
+	if [ "${files##*.}" = mkv ]; then
+		subtitleconf="-c:s copy"
+	elif [ "${files##*.}" = mp4 ]; then
+		subtitleconf="-c:s mov_text"
+	fi
+
+	for i in ${!VINDEX[*]}; do
+
+		# For progress bar
+		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
+
+		# Encoding
+		"$ffmpeg_bin"  $FFMPEG_LOG_LVL -y -i "$files" \
+			$FFMPEG_PROGRESS \
+			-map_metadata 0 -map 0:v -c:v copy \
+			$astream \
+			-map 0:s $subtitleconf \
+			"${files%.*}".$fileacodec.mkv \
+			| ProgressBar "$files" "" "" "Encoding"
+
+		# Check Target if valid
+		Test_Target_File "0" "video" "${files%.*}.$fileacodec.mkv"
 
 	done
 
@@ -5102,7 +5217,7 @@ echo "  [2]  > |  96k | comparable to mp3 120k  |"
 echo "  [3]  > | 128k | comparable to mp3 160k  |"
 echo "  [4]  > | 160k | comparable to mp3 192k  |"
 echo "  [5]  > | 192k | comparable to mp3 280k  |"
-if [[ "$AudioCodecType" = "libopus" ]]; then
+if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 	echo "  [6]  > | 220k | comparable to mp3 320k  |"
 else
 	echo " *[6]  > | 220k | comparable to mp3 320k  |"
@@ -5111,7 +5226,7 @@ echo "  [7]  > | 256k | 5.1 audio source        |"
 echo "  [8]  > | 320k | 7.1 audio source        |"
 echo "  [9]  > | 450k | 7.1 audio source        |"
 echo "  [10] > | 510k | highest bitrate of opus |"
-if [[ "$AudioCodecType" = "libopus" ]]; then
+if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 	echo "  -----------------------------------------"
 	echo " *[X]  > |    adaptive bitrate     |"
 	echo "         |-------------------------|"
@@ -5154,7 +5269,7 @@ elif [ "$rpakb" = "10" ]; then
 elif [ "$rpakb" = "X" ]  && [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	AdaptedBitrate="1"
 else
-	if [[ "$AudioCodecType" = "libopus" ]]; then
+	if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 		AdaptedBitrate="1"
 	else
 		akb="-b:a 220K"
@@ -6714,6 +6829,15 @@ while true; do
 	 3 ) # Audio night normalization
 		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
 			Video_Add_OPUS_NightNorm
+			Clean
+		else
+			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
+		fi
+		;;
+
+	 4 ) # One audio stream encoding
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
+			Video_Custom_One_Audio
 			Clean
 		else
 			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
