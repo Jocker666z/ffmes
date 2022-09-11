@@ -2599,10 +2599,8 @@ if [[ -n "$BD_disk" ]]; then
 		mapfile -t bd_track_audio_nb < <("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE")
 		if (( "${#bd_track_audio_nb[@]}" )); then
 			# Stream
-			stream_counter="0"
-			for audio_stream in "${bd_track_audio_nb[@]}"; do
-				bd_title_audio_stream+=( "-map 0:a:${stream_counter}" )
-				((stream_counter=stream_counter+1))
+			for i in ${!bd_track_audio_nb[*]}; do
+				bd_title_audio_stream+=( "-map 0:s:${i}" )
 			done
 		fi
 
@@ -2610,10 +2608,8 @@ if [[ -n "$BD_disk" ]]; then
 		mapfile -t bd_track_subtitle_nb < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE")
 		if (( "${#bd_track_subtitle_nb[@]}" )); then
 			# Stream
-			stream_counter="0"
-			for subtitle_stream in "${bd_track_subtitle_nb[@]}"; do
-				bd_title_subtitle_stream+=( "-map 0:s:${stream_counter}" )
-				((stream_counter=stream_counter+1))
+			for i in ${!bd_track_subtitle_nb[*]}; do
+				bd_title_subtitle_stream+=( "-map 0:s:${i}" )
 			done
 
 			# Metadata
@@ -3862,9 +3858,9 @@ while true; do
 				Echo_Mess_Error "The stream $i is not audio stream"
 			else
 				# Get audio map
-				for i in ${!ffprobe_StreamType[*]}; do
-					if [[ "${ffprobe_StreamIndex[i]}" = "${INDEX[*]}" ]]; then
-						VINDEX+=( "${ffprobe_a_StreamIndex[i]}" )
+				for j in ${!ffprobe_StreamType[*]}; do
+					if [[ "${ffprobe_StreamIndex[j]}" = "${INDEX[*]}" ]]; then
+						VINDEX+=( "${ffprobe_a_StreamIndex[j]}" )
 					fi
 				done
 				break 2
@@ -3956,16 +3952,16 @@ while true; do
 				Display_Video_Custom_Info_choice
 
 				# Get audio map
-				for i in ${!ffprobe_StreamType[*]}; do
-					if [[ "${ffprobe_StreamIndex[i]}" != "${VINDEX[*]}" ]] \
-					&& [[ "${ffprobe_StreamType[i]}" = "audio" ]]; then
-						stream+=("-map 0:a:${ffprobe_a_StreamIndex[i]} -c:a:${ffprobe_a_StreamIndex[i]} copy")
-					elif [[ "${ffprobe_StreamIndex[i]}" = "${VINDEX[*]}" ]] \
-					&& [[ "${ffprobe_StreamType[i]}" = "audio" ]]; then
-						if [[ -n "afilter" ]]; then
-							afilter="-filter:a:${ffprobe_a_StreamIndex[i]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
+				for j in ${!ffprobe_StreamType[*]}; do
+					if [[ "${ffprobe_StreamIndex[j]}" != "${VINDEX[*]}" ]] \
+					&& [[ "${ffprobe_StreamType[j]}" = "audio" ]]; then
+						stream+=("-map 0:a:${ffprobe_a_StreamIndex[j]} -c:a:${ffprobe_a_StreamIndex[j]} copy")
+					elif [[ "${ffprobe_StreamIndex[j]}" = "${VINDEX[*]}" ]] \
+					&& [[ "${ffprobe_StreamType[j]}" = "audio" ]]; then
+						if [[ -n "$afilter" ]]; then
+							afilter="-filter:a:${ffprobe_a_StreamIndex[j]} aformat=channel_layouts='7.1|6.1|5.1|stereo' -mapping_family 1"
 						fi
-						stream+=("$afilter -map 0:a:${ffprobe_a_StreamIndex[i]} -c:a:${ffprobe_a_StreamIndex[i]} $acodec $akb $asamplerate $confchan")
+						stream+=("$afilter -map 0:a:${ffprobe_a_StreamIndex[j]} -c:a:${ffprobe_a_StreamIndex[j]} $acodec $akb $asamplerate $confchan")
 					fi
 				done
 				astream="${stream[*]}"
@@ -5671,7 +5667,6 @@ fi
 }
 Audio_Generate_Spectrum_Img() {			# Option 32 	- PNG of audio spectrum
 # Local variables
-local spekres
 local total_target_files_size
 local START
 local END
