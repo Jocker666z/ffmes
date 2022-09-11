@@ -2632,13 +2632,16 @@ EnterKeyDisable
 
 # Test timestamp
 if ! [[ "$ENCODV" = "1" ]]; then
-	for i in "${!LSTVIDEO[@]}"; do
-		# Progress
-		ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
+	# Progress
+	ProgressBar "" "0" "${#LSTVIDEO[@]}" "Test timestamp" "1"
 
+	for i in "${!LSTVIDEO[@]}"; do
 		TimestampTest=$("$ffprobe_bin" -analyzeduration 512M -probesize 512M -loglevel error -select_streams v:0 \
 						-show_entries packet=pts_time,flags -of csv=print_section=0 "${LSTVIDEO[i]}" \
 						2>/dev/null | awk -F',' '/K/ {print $1}' | tail -1)
+
+		# Progress
+		ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
 
 		shopt -s nocasematch
 		if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
