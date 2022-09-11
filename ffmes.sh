@@ -2064,7 +2064,7 @@ for title in "${qtitle[@]}"; do
 	# mkvmerge - add chapters
 	Echo_Separator_Light
 	echo " Add chapters - $DVDtitle - title $title"
-	mkvpropedit -c "$RipFileName".chapters "$RipFileName".mkv 2>/dev/null
+	mkvpropedit --add-track-statistics-tags -c "$RipFileName".chapters "$RipFileName".mkv 2>/dev/null
 
 	# Check Target if valid (size test) and clean
 	if [[ $(stat --printf="%s" "$RipFileName".mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
@@ -2603,7 +2603,7 @@ if [[ -n "$BD_disk" ]]; then
 				|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv remux fail"
 
 		# Add chapters
-		mkvpropedit -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
+		mkvpropedit --add-track-statistics-tags -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
 			&& echo "  ${bd_disk_name}.${title}.Remux.mkv add chapters done" \
 			|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv add chapters fail"
 
