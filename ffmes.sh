@@ -232,6 +232,15 @@ source_files="$1"
 # File extentions
 source_files_extentions="${source_files##*.}"
 
+# If mkv regenerate stats tag
+if [[ "${source_files[$i]##*.}" = "mkv" ]] && [[ "$mkv_regenerate_stats" = "1" ]]; then
+	if [[ "$VERBOSE" = "1" ]]; then
+		mkvpropedit --add-track-statistics-tags "${source_files[$i]}"
+	else
+		mkvpropedit -q --add-track-statistics-tags "${source_files[$i]}" >/dev/null 2>&1
+	fi
+fi
+
 # Get stats with ffprobe - probesize 1G for video / 50M for audio
 if [[ ${VIDEO_EXT_AVAILABLE[*]} =~ ${source_files_extentions} ]]; then
 	"$ffprobe_bin" -analyzeduration 1G -probesize 1G -loglevel panic \
@@ -1000,6 +1009,28 @@ source_files=("$@")
 # Get stats
 if ! [[ "${source_files[0]}" = "$source_files_backup" ]]; then
 	Media_Source_Info_Record "${source_files[0]}"
+
+	# If mkv, check mkvpropedit stats
+	if [[ "${source_files[$i]##*.}" = "mkv" ]]; then
+		for i in "${!ffprobe_StreamIndex[@]}"; do
+			if [[ "${ffprobe_StreamType[$i]}" = "video" ]] \
+			&& [[ "${ffprobe_AttachedPic[$i]}" != "attached pic" ]] \
+			&& [[ -z "${ffprobe_StreamSize[i]}" ]]; then
+
+				read -r -p " mkvpropedit statistics seems to be missing, do you want to generate them? [Y/n]" qarm
+				case $qarm in
+					"Y"|"y")
+						return
+					;;
+					*)
+						mkv_regenerate_stats="1"
+						Media_Source_Info_Record "${source_files[0]}"
+					;;
+				esac
+
+			fi
+		done
+	fi
 fi
 source_files_backup="${source_files[0]}"
 
@@ -1584,7 +1615,7 @@ if (( "${#source_files[@]}" )); then
 				filesPass+=("${source_files[$i]}")
 				if [[ "$media_type" = "video" ]];then
 					# If mkv regenerate stats tag
-					if [ "${source_files[$i]##*.}" = "mkv" ]; then
+					if [[ "${source_files[$i]##*.}" = "mkv" ]]; then
 						if [[ "$VERBOSE" = "1" ]]; then
 							mkvpropedit --add-track-statistics-tags "${source_files[$i]}"
 						else
@@ -2065,7 +2096,7 @@ for title in "${qtitle[@]}"; do
 		-map 0:v -map 0:a? -map 0:s? -c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv \
 		| ProgressBar "${RipFileName}.mkv" "" "" ""
 
-	# mkvmerge - add chapters
+	# mkvpropedit - add chapters
 	Echo_Separator_Light
 	echo " Add chapters - $DVDtitle - title $title"
 	if [[ "$VERBOSE" = "1" ]]; then
