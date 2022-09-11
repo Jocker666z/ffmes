@@ -1585,7 +1585,11 @@ if (( "${#source_files[@]}" )); then
 				if [[ "$media_type" = "video" ]];then
 					# If mkv regenerate stats tag
 					if [ "${source_files[$i]##*.}" = "mkv" ]; then
-						mkvpropedit --add-track-statistics-tags "${source_files[$i]}" >/dev/null 2>&1
+						if [[ "$VERBOSE" = "1" ]]; then
+							mkvpropedit --add-track-statistics-tags "${source_files[$i]}"
+						else
+							mkvpropedit -q --add-track-statistics-tags "${source_files[$i]}" >/dev/null 2>&1
+						fi
 					fi
 					# Video target file pass array
 					filesSourcePass+=( "${LSTVIDEO[$i]}" )
@@ -2064,7 +2068,11 @@ for title in "${qtitle[@]}"; do
 	# mkvmerge - add chapters
 	Echo_Separator_Light
 	echo " Add chapters - $DVDtitle - title $title"
-	mkvpropedit --add-track-statistics-tags -c "$RipFileName".chapters "$RipFileName".mkv 2>/dev/null
+	if [[ "$VERBOSE" = "1" ]]; then
+		mkvpropedit --add-track-statistics-tags -c "$RipFileName".chapters "$RipFileName".mkv
+	else
+		mkvpropedit --add-track-statistics-tags -q -c "$RipFileName".chapters "$RipFileName".mkv 2>/dev/null
+	fi
 
 	# Check Target if valid (size test) and clean
 	if [[ $(stat --printf="%s" "$RipFileName".mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
@@ -2603,9 +2611,13 @@ if [[ -n "$BD_disk" ]]; then
 				|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv remux fail"
 
 		# Add chapters
+		if [[ "$VERBOSE" = "1" ]]; then
+			mkvpropedit --add-track-statistics-tags -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv
+		else
 		mkvpropedit --add-track-statistics-tags -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
 			&& echo "  ${bd_disk_name}.${title}.Remux.mkv add chapters done" \
 			|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv add chapters fail"
+		fi
 
 		# Clean
 		rm "${bd_disk_name}.${title}".chapter 2>/dev/null
