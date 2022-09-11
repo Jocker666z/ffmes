@@ -3830,13 +3830,6 @@ START=$(date +%s)
 # Encoding
 for files in "${LSTVIDEO[@]}"; do
 
-	# Subtitle correction
-	if [ "${files##*.}" = mkv ]; then
-		subtitleconf="-c:s copy"
-	elif [ "${files##*.}" = mp4 ]; then
-		subtitleconf="-c:s mov_text"
-	fi
-
 	for i in ${!VINDEX[*]}; do
 
 		# For progress bar
@@ -3846,7 +3839,7 @@ for files in "${LSTVIDEO[@]}"; do
 		# Encoding new track
 		"$ffmpeg_bin"  $FFMPEG_LOG_LVL -y -i "$files" \
 			$FFMPEG_PROGRESS \
-			-map 0:v -c:v copy -map 0:s? $subtitleconf -map 0:a -map 0:a:${VINDEX[i]}? \
+			-map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -map 0:a:${VINDEX[i]}? \
 			-c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus \
 			-b:a:${VINDEX[i]} 320K -ac 2 \
 			-filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm \
@@ -3940,13 +3933,6 @@ START=$(date +%s)
 # Encoding
 for files in "${LSTVIDEO[@]}"; do
 
-	# Subtitle correction
-	if [ "${files##*.}" = mkv ]; then
-		subtitleconf="-c:s copy"
-	elif [ "${files##*.}" = mp4 ]; then
-		subtitleconf="-c:s mov_text"
-	fi
-
 	for i in ${!VINDEX[*]}; do
 
 		# For progress bar
@@ -3958,7 +3944,7 @@ for files in "${LSTVIDEO[@]}"; do
 			$FFMPEG_PROGRESS \
 			-map_metadata 0 -map 0:v -c:v copy \
 			$astream \
-			-map 0:s $subtitleconf \
+			-map 0:s -c:s copy \
 			"${files%.*}".$fileacodec.mkv \
 			| ProgressBar "$files" "" "" "Encoding"
 
