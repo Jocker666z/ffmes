@@ -6869,6 +6869,7 @@ while true; do
 	 4 ) # One audio stream encoding
 		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
 			Video_Custom_One_Audio
+			Remove_File_Source
 			Clean
 		else
 			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
