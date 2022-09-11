@@ -1561,6 +1561,9 @@ fi
 if (( "${#source_files[@]}" )); then
 
 	Echo_Separator_Light
+	# Progress
+	ProgressBar "" "0" "${#source_files[@]}" "Validation" "1"
+
 	for i in "${!source_files[@]}"; do
 		if [[ "${source_files[$i]##*.}" =~ ${VIDEO_EXT_AVAILABLE[*]} ]] \
 		|| [[ "${source_files[$i]##*.}" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
@@ -1597,6 +1600,7 @@ if (( "${#source_files[@]}" )); then
 			filesPass+=("${source_files[$i]}")
 		fi
 
+		# Progress
 		ProgressBar "" "$((i+1))" "${#source_files[@]}" "Validation" "1"
 	done
 
