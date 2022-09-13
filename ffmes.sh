@@ -1019,7 +1019,7 @@ if ! [[ "${source_files[0]}" = "$source_files_backup" ]]; then
 
 				read -r -p " mkvpropedit statistics seems to be missing, do you want to generate them? [Y/n]" qarm
 				case $qarm in
-					"Y"|"y")
+					"N"|"n")
 						return
 					;;
 					*)
