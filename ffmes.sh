@@ -235,6 +235,8 @@ source_files_extentions="${source_files##*.}"
 # If mkv regenerate stats tag
 if [[ "$source_files_extentions" = "mkv" ]] && [[ "$mkv_regenerate_stats" = "1" ]]; then
 	mkvpropedit --add-track-statistics-tags "${source_files}"
+	# Reset
+	unset mkv_regenerate_stats
 fi
 
 # Get stats with ffprobe - probesize 1G for video / 50M for audio
