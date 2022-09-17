@@ -233,11 +233,11 @@ source_files="$1"
 source_files_extentions="${source_files##*.}"
 
 # If mkv regenerate stats tag
-if [[ "${source_files[$i]##*.}" = "mkv" ]] && [[ "$mkv_regenerate_stats" = "1" ]]; then
+if [[ "$source_files_extentions" = "mkv" ]] && [[ "$mkv_regenerate_stats" = "1" ]]; then
 	if [[ "$VERBOSE" = "1" ]]; then
-		mkvpropedit --add-track-statistics-tags "${source_files[$i]}"
+		mkvpropedit --add-track-statistics-tags "${source_files}"
 	else
-		mkvpropedit -q --add-track-statistics-tags "${source_files[$i]}" >/dev/null 2>&1
+		mkvpropedit -q --add-track-statistics-tags "${source_files}" >/dev/null 2>&1
 	fi
 fi
 
