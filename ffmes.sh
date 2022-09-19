@@ -525,12 +525,10 @@ ffmpeg_bin_version=$("$ffmpeg_bin" -version | awk -F 'ffmpeg version' '{print $2
 # ffmpeg version number label formating for main menu
 ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 
-# Test current ffmpeg configuration, libfdk_aac is non-free compilation
-ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
-
 # ffmpeg capabilities
-ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -encoders | grep "hevc_vaapi")
+ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
 ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
+ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
 # If no VAAPI response unset
 if [ -z "$ffmpeg_vaapi_encoder" ]; then
@@ -4571,7 +4569,7 @@ for i in "${!LSTAUDIO[@]}"; do
 	# Stock files pass in loop
 	filesInLoop+=( "${LSTAUDIO[i]}" )
 
-	# For progress bar
+	# Progress bar
 	if [[ "${#LSTAUDIO[@]}" = "1" ]] || [[ "$NPROC" = "1" ]]; then
 		# No relaunch Media_Source_Info_Record for first array item
 		if [[ "$i" != "0" ]]; then

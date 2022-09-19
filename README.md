@@ -230,8 +230,6 @@ Tesseract engine available:
 		* vbr, 64kb to 510kb
 		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files
 	* Channels layout 1.0, 2.0, 3.0, 5.1
-	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization (only files that have a value less than)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 27 details - AAC encoding
@@ -241,9 +239,7 @@ Tesseract engine available:
 		* vbr 1 to 5
 		* cbr 64kb to 560kb
 		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files
-	* Channels layout 1.0, 2.0, 3.0, 5.1
-	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization (only files that have a value less than)
+	* Channels layout 1.0 to 5.1
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 30 details - tag editor
