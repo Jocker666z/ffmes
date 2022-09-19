@@ -4844,11 +4844,12 @@ if [[ "$extcont" = "flac" ]] \
 						-print_format csv=p=0 "$files")
 
 	# If sampling rate not set + flac/wv : limit to 384kHz
-	if [[ -z "$asamplerate" ]] \
-	&& [[ "$TestSamplingRate" -gt "384000" ]] \
-	&& [[ "$extcont" = "flac" ]] \
-	&& [[ "$extcont" = "wv" ]] ; then
-		asamplerate_modified="-ar 384000"
+	if [[ -z "$asamplerate" ]] && [[ "$TestSamplingRate" -gt "384000" ]]; then
+		if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]] ; then
+			asamplerate_modified="-ar 384000"
+		else 
+			asamplerate_modified=""
+		fi
 
 	# Set sampling rate if !=
 	elif [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
