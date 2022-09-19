@@ -4865,9 +4865,7 @@ elif [[ -n "$asamplerate" ]]; then
 	else
 
 		# Array
-		if [[ -n "$asamplerate" ]]; then
-			FilesTargetAsamplerate+=( "$asamplerate" )
-		fi
+		FilesTargetAsamplerate+=( "$asamplerate" )
 
 	fi
 
