@@ -528,7 +528,7 @@ ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 # ffmpeg capabilities
 ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
 ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
-ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
+#ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
 # If no VAAPI response unset
 if [ -z "$ffmpeg_vaapi_encoder" ]; then
@@ -4843,13 +4843,6 @@ if [[ "$extcont" = "flac" ]] \
 	TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
 						-v panic -show_entries stream=sample_rate \
 						-print_format csv=p=0 "$files")
-	# Db test
-	if [ "$PeakNorm" = "1" ]; then
-		TestDB=$("$ffmpeg_bin" -i "$files" \
-				-af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 \
-				| grep "max_volume" | awk '{print $5;}')
-		TestDB_diff=$(echo "${TestDB/-/} > $PeakNormDB" | bc -l 2>/dev/null)
-	fi
 
 	# If sampling rate not set + flac/wv : limit to 384kHz
 	if [[ -z "$asamplerate" ]] && [[ "$TestSamplingRate" -gt "384000" ]]; then
