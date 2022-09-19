@@ -4852,7 +4852,7 @@ if [[ "$extcont" = "flac" ]] \
 		fi
 
 	# Set sampling rate if !=
-	elif [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
+	elif [[ -n "$asamplerate" ]] && [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
 		asamplerate_modified="-ar $TestSamplingRateSet"
 
 	# No set sampling rate
