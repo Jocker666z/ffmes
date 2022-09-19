@@ -2702,9 +2702,12 @@ for i in "${!LSTVIDEO[@]}"; do
 	# Target files pass in loop for validation test
 	filesInLoop+=( "${LSTVIDEO[i]%.*}.$videoformat.$extcont" )
 
-	# For progress bar
+	# Progress bar
 	if [[ "${#LSTVIDEO[@]}" = "1" ]] || [[ "$NVENC" = "0" ]]; then
-		Media_Source_Info_Record "${LSTVIDEO[i]}"
+		# No relaunch Media_Source_Info_Record for first array item
+		if [[ "$i" != "0" ]]; then
+			Media_Source_Info_Record "${LSTVIDEO[i]}"
+		fi
 		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
 		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 	fi
@@ -4570,7 +4573,10 @@ for i in "${!LSTAUDIO[@]}"; do
 
 	# For progress bar
 	if [[ "${#LSTAUDIO[@]}" = "1" ]] || [[ "$NPROC" = "1" ]]; then
-		Media_Source_Info_Record "${LSTAUDIO[i]}"
+		# No relaunch Media_Source_Info_Record for first array item
+		if [[ "$i" != "0" ]]; then
+			Media_Source_Info_Record "${LSTAUDIO[i]}"
+		fi
 		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
 		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 	fi
