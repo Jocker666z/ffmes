@@ -4815,23 +4815,48 @@ else
 	fi
 fi
 }
-Audio_ffmpeg_cmd_Sample_Rate() {		# FFmpeg audio cmd - sample rate
-if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
-	if [[ -z "$asamplerate" ]]; then
-		# Local variable
-		local TestSamplingRate
-		local asamplerate_modified
+Audio_ffmpeg_cmd_Sample_Rate() {		# FFmpeg audio cmd - sample rate limit
+# Local variable
+local TestSamplingRateSet
+local TestSamplingRate
+local asamplerate_modified
 
-		# Argument = file
-		files="$1"
+# Argument = file
+files="$1"
 
-		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G \
-							-probesize 1G -v panic -show_entries \
-							stream=sample_rate -print_format csv=p=0 "$files")
+# If sampling rate not set + flac/wv : limit to 384kHz
+if [[ -z "$asamplerate" ]]; then
+
+	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
+		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
+							-v panic -show_entries stream=sample_rate \
+							-print_format csv=p=0 "$files")
 		if [[ "$TestSamplingRate" -gt "384000" ]]; then
 			asamplerate_modified="-ar 384000"
 		else
-			asamplerate_modified="-ar $TestSamplingRate"
+			asamplerate_modified=""
+		fi
+
+		# Array
+		FilesTargetAsamplerate+=( "$asamplerate_modified" )
+	fi
+
+# If sampling rate set + flac/wav/wv : no resampling if sample rate of file = set sample rate
+elif [[ -n "$asamplerate" ]]; then
+
+	if [[ "$extcont" = "flac" ]] \
+	|| [[ "$extcont" = "wav" ]] \
+	|| [[ "$extcont" = "wv" ]]; then
+
+		TestSamplingRateSet=$(echo "$asamplerate" | awk -F " " '{print $NF}')
+		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
+							-v panic -show_entries stream=sample_rate \
+							-print_format csv=p=0 "$files")
+
+		if [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
+			asamplerate_modified="-ar $TestSamplingRateSet"
+		else
+			asamplerate_modified=""
 		fi
 
 		# Array
@@ -4840,15 +4865,12 @@ if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
 	else
 
 		# Array
-		FilesTargetAsamplerate+=( "$asamplerate" )
+		if [[ -n "$asamplerate" ]]; then
+			FilesTargetAsamplerate+=( "$asamplerate" )
+		fi
 
 	fi
 
-else
-	# Array
-	if [[ -n "$asamplerate" ]]; then
-		FilesTargetAsamplerate+=( "$asamplerate" )
-	fi
 fi
 
 }
