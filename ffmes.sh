@@ -4668,6 +4668,7 @@ Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTAUDIO[@]}" "$total_target
 }
 Audio_ffmpeg_cmd_Filter() {				# FFmpeg audio cmd - filter 
 if [ "$PeakNorm" = "1" ]; then
+
 	# Local variables
 	local TestDB
 	local TestDB_diff
@@ -4693,18 +4694,22 @@ if [ "$PeakNorm" = "1" ]; then
 
 	# No apply if db detected > default peak db variable
 	else
+
 		# Array
 		FilesTargetAfilter+=( "$afilter" )
+
 	fi
+
 else
+
 	# Array
-	if [[ -n "$afilter" ]]; then
-		FilesTargetAfilter+=( "$afilter" )
-	fi
+	FilesTargetAfilter+=( "$afilter" )
+
 fi
 }
 Audio_ffmpeg_cmd_Channel() {			# FFmpeg audio cmd - channel
 if [ "$TestFalseStereo" = "1" ]; then
+
 	# Local variables
 	local TESTLEFT
 	local TESTRIGHT
@@ -4724,10 +4729,12 @@ if [ "$TestFalseStereo" = "1" ]; then
 	fi
 
 else
+
 	# Array
 	if [[ -n "$confchan" ]]; then
 		FilesTargetAconfchan+=( "$confchan" )
 	fi
+
 fi
 }
 Audio_ffmpeg_cmd_Bitrate() {			# FFmpeg audio cmd - bitrate
@@ -4809,13 +4816,15 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	FilesTargetAsamplerate+=( "$asamplerate_modified" )
 
 else
+
 	# Array
 	if [[ -n "$akb" ]]; then
 		FilesTargetAkb+=( "$akb" )
 	fi
+
 fi
 }
-Audio_ffmpeg_cmd_Sample_Rate() {		# FFmpeg audio cmd - sample rate limit
+Audio_ffmpeg_cmd_Sample_Rate() {		# FFmpeg audio cmd - sample rate
 # Local variable
 local TestSamplingRateSet
 local TestSamplingRate
@@ -4824,53 +4833,42 @@ local asamplerate_modified
 # Argument = file
 files="$1"
 
-# If sampling rate not set + flac/wv : limit to 384kHz
-if [[ -z "$asamplerate" ]]; then
+# lossless case
+if [[ "$extcont" = "flac" ]] \
+|| [[ "$extcont" = "wav" ]] \
+|| [[ "$extcont" = "wv" ]]; then
 
-	if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
-		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
-							-v panic -show_entries stream=sample_rate \
-							-print_format csv=p=0 "$files")
-		if [[ "$TestSamplingRate" -gt "384000" ]]; then
-			asamplerate_modified="-ar 384000"
-		else
-			asamplerate_modified=""
-		fi
+	TestSamplingRateSet=$(echo "$asamplerate" | awk -F " " '{print $NF}')
+	TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
+						-v panic -show_entries stream=sample_rate \
+						-print_format csv=p=0 "$files")
 
-		# Array
-		FilesTargetAsamplerate+=( "$asamplerate_modified" )
-	fi
+	# If sampling rate not set + flac/wv : limit to 384kHz
+	if [[ -z "$asamplerate" ]] \
+	&& [[ "$TestSamplingRate" -gt "384000" ]] \
+	&& [[ "$extcont" = "flac" ]] \
+	&& [[ "$extcont" = "wv" ]] ; then
+		asamplerate_modified="-ar 384000"
 
-# If sampling rate set + flac/wav/wv : no resampling if sample rate of file = set sample rate
-elif [[ -n "$asamplerate" ]]; then
+	# Set sampling rate if !=
+	elif [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
+		asamplerate_modified="-ar $TestSamplingRateSet"
 
-	if [[ "$extcont" = "flac" ]] \
-	|| [[ "$extcont" = "wav" ]] \
-	|| [[ "$extcont" = "wv" ]]; then
-
-		TestSamplingRateSet=$(echo "$asamplerate" | awk -F " " '{print $NF}')
-		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
-							-v panic -show_entries stream=sample_rate \
-							-print_format csv=p=0 "$files")
-
-		if [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
-			asamplerate_modified="-ar $TestSamplingRateSet"
-		else
-			asamplerate_modified=""
-		fi
-
-		# Array
-		FilesTargetAsamplerate+=( "$asamplerate_modified" )
-
+	# No set sampling rate
 	else
-
-		# Array
-		FilesTargetAsamplerate+=( "$asamplerate" )
-
+		asamplerate_modified=""
 	fi
+
+	# Array
+	FilesTargetAsamplerate+=( "$asamplerate_modified" )
+
+# lossy case
+else
+
+	# Array
+	FilesTargetAsamplerate+=( "$asamplerate" )
 
 fi
-
 }
 Audio_ffmpeg_cmd_Bit_Depth() {			# FFmpeg audio cmd - bit depth
 if [[ "$AudioCodecType" = "flac" ]] || [[ "$AudioCodecType" = "wavpack" ]]; then
