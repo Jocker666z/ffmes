@@ -4838,10 +4838,18 @@ if [[ "$extcont" = "flac" ]] \
 || [[ "$extcont" = "wav" ]] \
 || [[ "$extcont" = "wv" ]]; then
 
+	# Sampling rate test
 	TestSamplingRateSet=$(echo "$asamplerate" | awk -F " " '{print $NF}')
 	TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
 						-v panic -show_entries stream=sample_rate \
 						-print_format csv=p=0 "$files")
+	# Db test
+	if [ "$PeakNorm" = "1" ]; then
+		TestDB=$("$ffmpeg_bin" -i "$files" \
+				-af "volumedetect" -vn -sn -dn -f null /dev/null 2>&1 \
+				| grep "max_volume" | awk '{print $5;}')
+		TestDB_diff=$(echo "${TestDB/-/} > $PeakNormDB" | bc -l 2>/dev/null)
+	fi
 
 	# If sampling rate not set + flac/wv : limit to 384kHz
 	if [[ -z "$asamplerate" ]] && [[ "$TestSamplingRate" -gt "384000" ]]; then

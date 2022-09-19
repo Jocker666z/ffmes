@@ -199,7 +199,7 @@ Tesseract engine available:
 		* unsigned 8-bit
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization (only files that have a value less than)
+	* -1db peak normalization (only files that have a value less than) (if a channels configuration not selected)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 22 details - FLAC encoding
@@ -210,7 +210,7 @@ Tesseract engine available:
 		* Bit depth: 16, 24 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization (only files that have a value less than)
+	* -1db peak normalization (only files that have a value less than) (if a channels configuration not selected)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 23 details - WavPack encoding
@@ -221,7 +221,7 @@ Tesseract engine available:
 		* Bit depth: 16, 24/32 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
-	* -1db peak normalization (only files that have a value less than)
+	* -1db peak normalization (only files that have a value less than) (if a channels configuration not selected)
 	* After encoding, option for remove all source files, if not for remove created files
 
 #### Option 26 details - Opus encoding
