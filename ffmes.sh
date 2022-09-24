@@ -528,7 +528,7 @@ ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 # ffmpeg capabilities
 ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
 ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
-#ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
+ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
 # If no VAAPI response unset
 if [ -z "$ffmpeg_vaapi_encoder" ]; then
@@ -4744,7 +4744,6 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	local TestChannel
 	local akb_modified
 	local asamplerate_modified
-
 	# Argument = file
 	files="$1"
 
@@ -4825,18 +4824,18 @@ else
 fi
 }
 Audio_ffmpeg_cmd_Sample_Rate() {		# FFmpeg audio cmd - sample rate
-# Local variable
-local TestSamplingRateSet
-local TestSamplingRate
-local asamplerate_modified
-
-# Argument = file
-files="$1"
-
 # lossless case
 if [[ "$extcont" = "flac" ]] \
 || [[ "$extcont" = "wav" ]] \
 || [[ "$extcont" = "wv" ]]; then
+
+	# Local variable
+	local TestSamplingRateSet
+	local TestSamplingRate
+	local asamplerate_modified
+	local afilter_soxr
+	# Argument = file
+	files="$1"
 
 	# Sampling rate test
 	TestSamplingRateSet=$(echo "$asamplerate" | awk -F " " '{print $NF}')
@@ -4847,13 +4846,32 @@ if [[ "$extcont" = "flac" ]] \
 	# If sampling rate not set + flac/wv : limit to 384kHz
 	if [[ -z "$asamplerate" ]] && [[ "$TestSamplingRate" -gt "384000" ]]; then
 		if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]] ; then
+
+			# If libsoxr resampler
+			if [[ -n "$ffmpeg_test_libsoxr_filter" ]]; then
+				if [[ -z "${FilesTargetAfilter[-1]}" ]]; then
+					FilesTargetAfilter[-1]="-af aresample=resampler=soxr"
+				else
+					FilesTargetAfilter[-1]="${FilesTargetAfilter[-1]},aresample=resampler=soxr:precision=33:cutoff=0.995"
+				fi
+			fi
 			asamplerate_modified="-ar 384000"
+
 		else 
 			asamplerate_modified=""
 		fi
 
 	# Set sampling rate if !=
 	elif [[ -n "$asamplerate" ]] && [[ "$TestSamplingRateSet" != "$TestSamplingRate" ]]; then
+
+		# If libsoxr resampler
+		if [[ -n "$ffmpeg_test_libsoxr_filter" ]]; then
+			if [[ -z "${FilesTargetAfilter[-1]}" ]]; then
+				FilesTargetAfilter[-1]="-af aresample=resampler=soxr"
+			else
+				FilesTargetAfilter[-1]="${FilesTargetAfilter[-1]},aresample=resampler=soxr:precision=33:cutoff=0.995"
+			fi
+		fi
 		asamplerate_modified="-ar $TestSamplingRateSet"
 
 	# No set sampling rate

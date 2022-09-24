@@ -192,11 +192,12 @@ Tesseract engine available:
 #### Option 21 details - PCM encoding
 * Encoding options:
 	* Quality:
+		* unsigned 8-bit
+		* signed 8-bit
 		* signed 16-bit little-endian
 		* signed 24-bit little-endian
 		* signed 32-bit little-endian
-		* signed 8-bit
-		* unsigned 8-bit
+		* Sample rate: 44kHz, 48kHz, or auto (use libsoxr resampler if possible)
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
 	* -1db peak normalization (only files that have a value less than) (if a channels configuration not selected)
@@ -206,7 +207,7 @@ Tesseract engine available:
 * Encoding options:
 	* Quality:
 		* Compression level: 0 (fastest) & 12 (slowest)
-		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
+		* Sample rate: 44kHz, 48kHz, or auto (384kHz max) (use libsoxr resampler if possible)
 		* Bit depth: 16, 24 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
@@ -217,7 +218,7 @@ Tesseract engine available:
 * Encoding options:
 	* Quality:
 		* Compression level: 0 (fastest) & 3 (slowest)
-		* Sample rate: 44kHz, 48kHz, or auto (384kHz max)
+		* Sample rate: 44kHz, 48kHz, or auto (384kHz max) (use libsoxr resampler if possible)
 		* Bit depth: 16, 24/32 bits, or auto
 	* Channels layout 1.0 to 5.1
 	* False stereo files detection (if a channels configuration not selected)
