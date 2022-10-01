@@ -132,7 +132,9 @@ If you encounter bugs or have proposals, I'm open to discussion.
 			* libx264: profile (8bits), tune, preset & bitrate (video stream total size, crf & cbr)
 			* libx265: profile (8>12bits), tune, HDR, preset & bitrate (video stream total size, crf & cbr)
 			* hevc_vaapi: profile (8bits), bitrate (video stream total size, qp & cbr); need ffmpeg --enable-vaapi & proper system configuration; note at same bitrate low quality than libx265 but the encoding speed is much faster
-			* av1: cpu-used (preset), bitrate (video stream total size, crf & cbr)
+			* AV1:
+				* libaom-av1: cpu-used (preset), bitrate (video stream total size, crf & cbr)
+				* libsvtav1: bitrate (video stream total size, crf & cbr); need ffmpeg --enable-libsvtav1
 			* mpeg4 (xvid): bitrate (qscale & cbr)
 * Audio:
 	* All stream copy or encoding

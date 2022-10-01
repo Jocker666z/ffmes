@@ -527,6 +527,7 @@ ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 
 # ffmpeg capabilities
 ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
+ffmpeg_test_libsvtav1_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "libsvtav1")
 ffmpeg_test_libfdk_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
 ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
@@ -2637,9 +2638,9 @@ if [[ -n "$BD_disk" ]]; then
 		if [[ "$VERBOSE" = "1" ]]; then
 			mkvpropedit --add-track-statistics-tags -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv
 		else
-		mkvpropedit --add-track-statistics-tags -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
-			&& echo "  ${bd_disk_name}.${title}.Remux.mkv add chapters done" \
-			|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv add chapters fail"
+			mkvpropedit --add-track-statistics-tags -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
+				&& echo "  ${bd_disk_name}.${title}.Remux.mkv add chapters done" \
+				|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv add chapters fail"
 		fi
 
 		# Clean
@@ -2710,6 +2711,7 @@ for i in "${!LSTVIDEO[@]}"; do
 		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 	fi
 	(
+	if [[ "$VERBOSE" = "1" ]]; then
 	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
 		-analyzeduration 1G -probesize 1G \
 		$GPUDECODE \
@@ -2719,6 +2721,17 @@ for i in "${!LSTVIDEO[@]}"; do
 		$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
 		-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
 		| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+	else
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		-analyzeduration 1G -probesize 1G \
+		$GPUDECODE \
+		-y -i "${LSTVIDEO[i]}" \
+		$FFMPEG_PROGRESS \
+		-threads 0 \
+		$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+		-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont 2>/dev/null \
+		| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+	fi
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
 		wait -n
@@ -2777,7 +2790,10 @@ elif [ "$qv" = "e" ]; then
 	if [[ -n "$VAAPI_device" ]] && [[ -n "$GPUDECODE" ]]; then
 		echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding"
 	fi
-	echo "  [av1]        > for libaom-av1 codec"
+	echo "  [libaom]     > for AV1 libaom-av1 codec"
+	if [[ -n "$ffmpeg_test_libsvtav1_codec" ]]; then
+		echo "  [libsvtav1]  > for AV1 libsvtav1 codec"
+	fi
 	echo "  [mpeg4]      > for xvid codec"
 	echo "  [q]          > for exit"
 	read -r -e -p "-> " yn
@@ -2807,12 +2823,22 @@ elif [ "$qv" = "e" ]; then
 			Video_Custom_Filter_resolution
 			Video_hevc_vaapi_Config
 		;;
-		"av1")
+		"libaom")
 			codec="libaom-av1"
 			chvcodec="AV1"
 			Video_Custom_Filter_deinterlace
 			Video_Custom_Filter_resolution
 			Video_Custom_Filter_rotation
+			Video_Custom_Filter_hdr
+			Video_av1_Config
+		;;
+		"libsvtav1")
+			codec="libsvtav1"
+			chvcodec="AV1"
+			Video_Custom_Filter_deinterlace
+			Video_Custom_Filter_resolution
+			Video_Custom_Filter_rotation
+			Video_Custom_Filter_hdr
 			Video_av1_Config
 		;;
 		"mpeg4")
@@ -3745,32 +3771,34 @@ Video_av1_Config() {					# Option 1  	- Conf av1
 local video_stream_kb
 local video_stream_size
 
-# Preset av1
-Display_Video_Custom_Info_choice
-echo " Choose cpu-used efficient compression value (preset):"
-echo
-echo "  [0] > for cpu-used 0   ∧ |"
-echo "  [1] > for cpu-used 1  Q| |"
-echo " *[2] > for cpu-used 2  U| |S"
-echo "  [3] > for cpu-used 3  A| |P"
-echo "  [4] > for cpu-used 4  L| |E"
-echo "  [5] > for cpu-used 5  I| |E"
-echo "  [6] > for cpu-used 6  T| |D"
-echo "  [7] > for cpu-used 7  Y| |"
-echo "  [8] > for cpu-used 8   | ∨"
-echo "  [q] > for exit"
-read -r -e -p "-> " reppreset
-if [ -n "$reppreset" ]; then
-	preset="-cpu-used $reppreset -row-mt 1 -tiles 4x1"
-	chpreset="; cpu-used: $reppreset"
-elif [ "$reppreset" = "q" ]; then
-	Restart
-else
-	preset="-cpu-used 2 -row-mt 1 -tiles 4x1"
-	chpreset="; cpu-used: 2"
+# Preset libaom-av1
+if [ "$codec" = "libaom-av1" ]; then
+	Display_Video_Custom_Info_choice
+	echo " Choose cpu-used efficient compression value (preset):"
+	echo
+	echo "  [0] > for cpu-used 0   ∧ |"
+	echo "  [1] > for cpu-used 1  Q| |"
+	echo " *[2] > for cpu-used 2  U| |S"
+	echo "  [3] > for cpu-used 3  A| |P"
+	echo "  [4] > for cpu-used 4  L| |E"
+	echo "  [5] > for cpu-used 5  I| |E"
+	echo "  [6] > for cpu-used 6  T| |D"
+	echo "  [7] > for cpu-used 7  Y| |"
+	echo "  [8] > for cpu-used 8   | ∨"
+	echo "  [q] > for exit"
+	read -r -e -p "-> " reppreset
+	if [ -n "$reppreset" ]; then
+		preset="-cpu-used $reppreset -row-mt 1 -tiles 4x1"
+		chpreset="; cpu-used: $reppreset"
+	elif [ "$reppreset" = "q" ]; then
+		Restart
+	else
+		preset="-cpu-used 2 -row-mt 1 -tiles 4x1"
+		chpreset="; cpu-used: 2"
+	fi
 fi
 
-# Bitrate av1
+# Bitrate AV1
 Display_Video_Custom_Info_choice
 echo " Choose a CRF number, video strem size, or enter the desired bitrate:"
 echo " Note: * This settings influences size and quality, crf is a better choise in 90% of cases."
