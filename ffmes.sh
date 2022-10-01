@@ -3771,10 +3771,10 @@ Video_av1_Config() {					# Option 1  	- Conf av1
 local video_stream_kb
 local video_stream_size
 
-# Preset libaom-av1
+# Config
 if [ "$codec" = "libaom-av1" ]; then
 	Display_Video_Custom_Info_choice
-	echo " Choose cpu-used efficient compression value (preset):"
+	echo " Choose libaom cpu-used efficient compression value (preset):"
 	echo
 	echo "  [0] > for cpu-used 0   ∧ |"
 	echo "  [1] > for cpu-used 1  Q| |"
@@ -3796,13 +3796,41 @@ if [ "$codec" = "libaom-av1" ]; then
 		preset="-cpu-used 2 -row-mt 1 -tiles 4x1"
 		chpreset="; cpu-used: 2"
 	fi
+elif [ "$codec" = "libsvtav1" ]; then
+	Display_Video_Custom_Info_choice
+	echo " Choose libsvtav1 preset:"
+	echo
+	echo "  [0]  > for preset 0    ∧ |"
+	echo "  [1]  > for preset 1    | |"
+	echo "  [2]  > for preset 2    | |"
+	echo "  [3]  > for preset 3   Q| |"
+	echo "  [4]  > for preset 4   U| |S"
+	echo "  [5]  > for preset 5   A| |P"
+	echo " *[6]  > for preset 6   L| |E"
+	echo "  [7]  > for preset 7   I| |E"
+	echo "  [8]  > for preset 8   T| |D"
+	echo "  [9]  > for preset 9   Y| |"
+	echo "  [10] > for preset 10   | |"
+	echo "  [11] > for preset 11   | |"
+	echo "  [12] > for preset 12   | ∨"
+	echo "  [q] > for exit"
+	read -r -e -p "-> " reppreset
+	if [ -n "$reppreset" ]; then
+		preset="-preset $reppreset"
+		chpreset="; preset: $reppreset"
+	elif [ "$reppreset" = "q" ]; then
+		Restart
+	else
+		preset="-preset 6"
+		chpreset="; preset: 6"
+	fi
 fi
 
 # Bitrate AV1
 Display_Video_Custom_Info_choice
 echo " Choose a CRF number, video strem size, or enter the desired bitrate:"
 echo " Note: * This settings influences size and quality, crf is a better choise in 90% of cases."
-echo "       * libaom-av1 can save about 30% bitrate compared to VP9 and H.265 / HEVC,"
+echo "       * AV1 can save about 30% bitrate compared to VP9 and H.265 / HEVC,"
 echo "         and about 50% over H.264, while retaining the same visual quality. "
 echo
 echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
