@@ -518,7 +518,7 @@ track="$2"
 ## CHECK FILES & BIN
 CheckFFmpegVersion() {
 local ffmpeg_vaapi_encoder
-local ffmpeg_test_aac_codec
+local ffmpeg_test_libfdk_codec
 
 # ffmpeg version number
 ffmpeg_bin_version=$("$ffmpeg_bin" -version | awk -F 'ffmpeg version' '{print $2}' | awk 'NR==1{print $1}')
@@ -527,7 +527,7 @@ ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 
 # ffmpeg capabilities
 ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
-ffmpeg_test_aac_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
+ffmpeg_test_libfdk_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
 ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
 # If no VAAPI response unset
@@ -535,7 +535,7 @@ if [ -z "$ffmpeg_vaapi_encoder" ]; then
 	unset VAAPI_device
 fi
 # If libfdk_aac present use libfdk_aac
-if [ -n "$ffmpeg_test_aac_codec" ]; then
+if [ -n "$ffmpeg_test_libfdk_codec" ]; then
 	ffmpeg_aac_encoder="libfdk_aac"
 else
 	ffmpeg_aac_encoder="aac"
@@ -4833,7 +4833,6 @@ if [[ "$extcont" = "flac" ]] \
 	local TestSamplingRateSet
 	local TestSamplingRate
 	local asamplerate_modified
-	local afilter_soxr
 	# Argument = file
 	files="$1"
 
