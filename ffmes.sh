@@ -2799,11 +2799,12 @@ elif [ "$qv" = "e" ]; then
 	read -r -e -p "-> " yn
 	case $yn in
 		"x264")
-			codec="libx264 -x264-params colorprim=bt709:transfer=bt709:colormatrix=bt709:fullrange=off -pix_fmt yuv420p"
+			codec="libx264"
 			chvcodec="H264"
 			Video_Custom_Filter_deinterlace
 			Video_Custom_Filter_resolution
 			Video_Custom_Filter_rotation
+			Video_Custom_Filter_hdr
 			Video_x264_5_Config
 		;;
 		"x265")
