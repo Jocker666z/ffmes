@@ -331,6 +331,8 @@ su -c "make install" -m "root"
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding#Profiles
 		* https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding_tiers_and_levels
 		* https://x265.readthedocs.io/en/default/presets.html
+	* SVT-AV1:
+		* https://gitlab.com/AOMediaCodec/SVT-AV1/-/tree/master/Docs
 * Audio:
 	* https://wiki.hydrogenaud.io/index.php?title=Lossless_comparison
 	* https://wiki.hydrogenaud.io/index.php/LAME
