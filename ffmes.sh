@@ -3577,7 +3577,7 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	echo
 	echo " ffmes predefined profiles:"
 	echo
-	echo "                                            | max  | max definition/fps by level |"
+	echo "                                      | max  | max definition/fps by level |"
 	echo "         | lvl | hight | bit | chroma | Mb/s | res.     >fps               |"
 	echo "         |-----|-------|-----|--------|------|-----------------------------|"
 	echo "   [1] > | 3.1 | 0     | 8   | 4:2:0  | 10   | 1280×720 >30                |"

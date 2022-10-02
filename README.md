@@ -129,7 +129,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 		* rotate video (except hevc_vaapi)
 		* HDR to SDR (except hevc_vaapi & mpeg4)
 		* codecs:
-			* libx264: profile ), tune, preset & bitrate (video stream total size, crf & cbr)
+			* libx264: profile, tune, preset & bitrate (video stream total size, crf & cbr)
 			* libx265: profile, tune, preset & bitrate (video stream total size, crf & cbr)
 			* hevc_vaapi: profile, bitrate (video stream total size, qp & cbr); need ffmpeg --enable-vaapi & proper system configuration; note at same bitrate low quality than libx265 but the encoding speed is much faster
 			* AV1:
