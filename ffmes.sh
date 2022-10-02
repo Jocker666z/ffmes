@@ -3511,47 +3511,47 @@ if [ "$chvcodec" = "H264" ]; then
 	echo " Note: The choice of the profile affects the compatibility of the result,"
 	echo "       be careful not to apply any more parameters to the source file (no positive effect)"
 	echo
-	echo "                                   | max definition/fps by level   |"
-	echo "        | lvl | profile  | max db  | res.     >fps                 |"
-	echo "        |-----|----------|---------|-------------------------------|"
-	echo "  [1] > | 3.0 | Baseline | 10 Mb/s | 720×480  >30  || 720×576  >25 |"
-	echo "  [2] > | 3.1 | main     | 14 Mb/s | 1280×720 >30  || 720×576  >66 |"
-	echo "  [3] > | 4.0 | Main     | 20 Mb/s | 1920×1080>30  || 2048×1024>30 |"
-	echo "  [4] > | 4.0 | High     | 25 Mb/s | 1920×1080>30  || 2048×1024>30 |"
-	echo " *[5] > | 4.1 | High     | 63 Mb/s | 1920×1080>30  || 2048×1024>30 |"
-	echo "  [6] > | 4.2 | High     | 63 Mb/s | 1920×1080>64  || 2048×1088>60 |"
-	echo "  [7] > | 5.0 | High     | 169Mb/s | 1920×1080>72  || 2560×1920>30 |"
-	echo "  [8] > | 5.1 | High     | 300Mb/s | 1920×1080>120 || 4096×2048>30 |"
-	echo "  [9] > | 5.2 | High     | 300Mb/s | 1920×1080>172 || 4096×2160>60 |"
+	echo "                                        | max  | max definition/fps by level   |"
+	echo "        | lvl | profile  | bit | chroma | Mb/s | res.     >fps                 |"
+	echo "        |-----|----------|-----|--------|------|-------------------------------|"
+	echo "  [1] > | 3.0 | Baseline | 8   | 4:2:0  | 10   | 720×576  >25                  |"
+	echo "  [2] > | 3.1 | main     | 8   | 4:2:0  | 14   | 720×576  >66                  |"
+	echo "  [3] > | 4.0 | Main     | 8   | 4:2:0  | 20   | 2048×1024>30                  |"
+	echo "  [4] > | 4.0 | High     | 8   | 4:2:0  | 25   | 2048×1024>30                  |"
+	echo " *[5] > | 4.1 | High     | 8   | 4:2:0  | 63   | 2048×1024>30                  |"
+	echo "  [6] > | 4.1 | high10   | 10  | 4:2:0  | 150  | 2048×1088>60                  |"
+	echo "  [7] > | 5.1 | High     | 8   | 4:2:0  | 300  | 2560×1920>30                  |"
+	echo "  [8] > | 5.1 | High     | 10  | 4:2:0  | 720  | 4096×2048>30                  |"
+	echo "  [9] > | 6.2 | high10   | 10  | 4:2:0  | 2400 | 8192×4320>120                 |"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " repprofile
 	if [ "$repprofile" = "1" ]; then
-		profile="-profile:v baseline -level 3.0"
-		chprofile="; profile Baseline 3.0"
+		profile="-profile:v baseline -level 3.0 -pix_fmt yuv420p"
+		chprofile="; profile Baseline 3.0 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "2" ]; then
-		profile="-profile:v baseline -level 3.1"
-		chprofile="; profile Baseline 3.1"
+		profile="-profile:v main -level 3.1 -pix_fmt yuv420p"
+		chprofile="; profile main 3.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "3" ]; then
-		profile="-profile:v main -level 4.0"
-		chprofile="; profile Baseline 4.0"
+		profile="-profile:v main -level 4.0 -pix_fmt yuv420p"
+		chprofile="; profile main 4.0 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "4" ]; then
-		profile="-profile:v high -level 4.0"
-		chprofile="; profile High 4.0"
+		profile="-profile:v high -level 4.0 -pix_fmt yuv420p"
+		chprofile="; profile High 4.0 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "5" ]; then
-		profile="-profile:v high -level 4.1"
-		chprofile="; profile High 4.1"
+		profile="-profile:v high -level 4.1 -pix_fmt yuv420p"
+		chprofile="; profile High 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "6" ]; then
-		profile="-profile:v high -level 4.2"
-		chprofile="; profile High 4.2"
+		profile="-profile:v high10 -level 4.2 -pix_fmt yuv420p10le"
+		chprofile="; profile High 4.2 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "7" ]; then
-		profile="-profile:v high -level 5.0"
-		chprofile="; profile High 5.0"
+		profile="-profile:v high -level 5.1 -pix_fmt yuv420p"
+		chprofile="; profile High 5.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "8" ]; then
-		profile="-profile:v high -level 5.1"
-		chprofile="; profile High 5.1"
+		profile="-profile:v high10 -level 5.1 -pix_fmt yuv420p10le"
+		chprofile="; profile High 5.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "9" ]; then
-		profile="-profile:v high -level 5.2"
-		chprofile="; profile High 5.2"
+		profile="-profile:v high10 -level 6.2 -pix_fmt yuv420p10le"
+		chprofile="; profile High 6.2 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "q" ]; then
 		Restart
 	else
