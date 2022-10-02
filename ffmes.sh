@@ -3688,9 +3688,10 @@ local video_stream_size
 # Bitrate
 Display_Video_Custom_Info_choice
 echo " Choose a QP number, video strem size, or enter the desired bitrate:"
-echo " Note: * hevc which can offer 25–50% bitrate savings compared to libx264."
+echo " Note: * HEVC which can offer 25–50% bitrate savings compared to libx264."
 echo "       * At same bitrate, the quality of hevc_vaapi if inferior at the libx265 codec,"
 echo "         but the encoding speed is much faster."
+echo "       * 10 bits encoding not supported."
 echo
 echo " [1200k]    Example of input for cbr desired bitrate in kb/s"
 echo " [1500m]    Example of input for aproximative total size of video stream in Mb (not recommended in batch)"
