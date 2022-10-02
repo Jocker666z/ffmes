@@ -3560,8 +3560,10 @@ if [ "$chvcodec" = "H264" ]; then
 	fi
 elif [ "$chvcodec" = "HEVC" ]; then
 	echo " Choose a profile or make your profile manually:"
-	echo " Notes: * For bit and chroma settings, if the source is below the parameters, FFmpeg will not replace them but will be at the same level."
-	echo "        * The level (lvl) parameter must be chosen judiciously according to the bit rate of the source file and the result you expect."
+	echo " Notes: * For bit and chroma settings, if the source is below the parameters,"
+	echo "          FFmpeg will not replace them but will be at the same level."
+	echo "        * The level (lvl) parameter must be chosen judiciously according to"
+	echo "          the bit rate of the source file and the result you expect."
 	echo "        * The choice of the profile affects the player compatibility of the result."
 	echo
 	echo " Manually options (expert):"
@@ -3575,25 +3577,19 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	echo
 	echo " ffmes predefined profiles:"
 	echo
-	echo "                                                    | max db | max definition/fps by level |"
-	echo "         | lvl | hight | intra | bit | HDR | chroma | Mb/s   | res.     >fps               |"
-	echo "         |-----|-------|-------|-----|-----|--------|--------|-----------------------------|"
-	echo "   [1] > | 3.1 | 0     | 0     | 8   | 0   | 4:2:0  | 10     | 1280×720 >30                |"
-	echo "   [2] > | 4.1 | 0     | 0     | 8   | 0   | 4:2:0  | 20     | 2048×1080>60                |"
-	echo "  *[3] > | 4.1 | 1     | 0     | 8   | 0   | 4:2:0  | 50     | 2048×1080>60                |"
-	echo "   [4] > | 4.1 | 1     | 0     | 12  | 0   | 4:4:4  | 150    | 2048×1080>60                |"
-	echo "   [5] > | 4.1 | 1     | 0     | 12  | 1   | 4:4:4  | 150    | 2048×1080>60                |"
-	echo "   [6] > | 4.1 | 1     | 1     | 12  | 0   | 4:4:4  | 1800   | 2048×1080>60                |"
-	echo "   [7] > | 5.2 | 1     | 0     | 8   | 0   | 4:2:0  | 240    | 4096×2160>120               |"
-	echo "   [8] > | 5.2 | 1     | 0     | 12  | 0   | 4:4:4  | 720    | 4096×2160>120               |"
-	echo "   [9] > | 5.2 | 1     | 0     | 12  | 1   | 4:4:4  | 720    | 4096×2160>120               |"
-	echo "  [10] > | 5.2 | 1     | 1     | 12  | 0   | 4:4:4  | 8640   | 4096×2160>120               |"
-	echo "  [11] > | 6.2 | 1     | 0     | 12  | 0   | 4:4:4  | 2400   | 8192×4320>120               |"
-	echo "  [12] > | 6.2 | 1     | 0     | 12  | 1   | 4:4:4  | 2400   | 8192×4320>120               |"
-	echo "  [13] > | 6.2 | 1     | 1     | 12  | 0   | 4:4:4  | 28800  | 8192×4320>120               |"
+	echo "                                            | max  | max definition/fps by level |"
+	echo "         | lvl | hight | bit | chroma | Mb/s | res.     >fps               |"
+	echo "         |-----|-------|-----|--------|------|-----------------------------|"
+	echo "   [1] > | 3.1 | 0     | 8   | 4:2:0  | 10   | 1280×720 >30                |"
+	echo "   [2] > | 4.1 | 0     | 8   | 4:2:0  | 20   | 2048×1080>60                |"
+	echo "  *[3] > | 4.1 | 1     | 8   | 4:2:0  | 50   | 2048×1080>60                |"
+	echo "   [4] > | 4.1 | 1     | 10  | 4:2:0  | 50   | 2048×1080>60                |"
+	echo "   [5] > | 5.1 | 1     | 8   | 4:2:0  | 160  | 4096×2160>60                |"
+	echo "   [6] > | 5.1 | 1     | 10  | 4:2:0  | 160  | 4096×2160>60                |"
+	echo "   [7] > | 6.1 | 1     | 10  | 4:2:0  | 480  | 8192×4320>60                |"
 	echo "   [q] > for exit"
 	read -r -e -p "-> " repprofile
-	if echo "$repprofile" | grep -q 'profil'; then
+	if echo "$repprofile" | grep -q 'profile'; then
 		profile="$repprofile"
 		chprofile="; profile $repprofile"
 	elif [ "$repprofile" = "1" ]; then
@@ -3606,35 +3602,17 @@ elif [ "$chvcodec" = "HEVC" ]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
 		chprofile="; profile 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "4" ]; then
-		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p12le"
-		chprofile="; profile 4.1 - 12 bit - 4:4:4"
+		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p10le"
+		chprofile="; profile 4.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "5" ]; then
-		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-		chprofile="; profile 4.1 - 12 bit - 4:4:4 - HDR"
+		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=5.1:high-tier=1 -pix_fmt yuv420p"
+		chprofile="; profile 5.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "6" ]; then
-		profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p12le"
-		chprofile="; profile 4.1 - 12 bit - 4:4:4 - intra"
+		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=5.1:high-tier=1 -pix_fmt yuv420p10le"
+		chprofile="; profile 5.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "7" ]; then
-		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p"
-		chprofile="; profile 5.2 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "8" ]; then
-		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p12le"
-		chprofile="; profile 5.2 - 12 bit - 4:4:4"
-	elif [ "$repprofile" = "9" ]; then
-		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-		chprofile="; profile 5.2 - 12 bit - 4:4:4 - HDR"
-	elif [ "$repprofile" = "10" ]; then
-		profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=5.2:high-tier=1 -pix_fmt yuv420p12le"
-		chprofile="; profile 5.2 - 12 bit - 4:4:4 - intra"
-	elif [ "$repprofile" = "11" ]; then
-		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p12le"
-		chprofile="; profile 6.2 - 12 bit - 4:4:4"
-	elif [ "$repprofile" = "12" ]; then
-		profile="-profile:v main444-12 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1:hdr-opt=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,10) -pix_fmt yuv420p12le"
-		chprofile="; profile 6.2 - 12 bit - 4:4:4 - HDR"
-	elif [ "$repprofile" = "13" ]; then
-		profile="-profile:v main444-12-intra -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p12le"
-		chprofile="; profile 6.2 - 12 bit - 4:4:4 - intra"
+		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p10le"
+		chprofile="; profile 6.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "q" ]; then
 		Restart
 	else
