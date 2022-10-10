@@ -4094,7 +4094,7 @@ if [ "${#LSTSUB[@]}" -gt 0 ] ; then
 		if [ "${files##*.}" != "idx" ] && [ "${files##*.}" != "sup" ]; then
 			CHARSET_DETECT=$(uchardet "$files" 2> /dev/null)
 			if [ "$CHARSET_DETECT" != "UTF-8" ]; then
-				iconv -f "$CHARSET_DETECT" -t UTF-8 "$files" > utf-8-"$files"
+				iconv -c -f "$CHARSET_DETECT" -t UTF-8 "$files" > utf-8-"$files"
 				mkdir SUB_BACKUP 2> /dev/null
 				mv "$files" SUB_BACKUP/"$files".back
 				mv -f utf-8-"$files" "$files"
@@ -6059,7 +6059,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	# UTF-8 convert
 	CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2> /dev/null)
 	if [ "$CHARSET_DETECT" != "UTF-8" ]; then
-		iconv -f "$CHARSET_DETECT" -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
+		iconv -c -f "$CHARSET_DETECT" -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
 		mkdir BACK 2> /dev/null
 		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
 		mv -f utf-8.cue "${LSTCUE[0]}"
