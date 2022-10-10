@@ -3527,7 +3527,7 @@ if [ "$chvcodec" = "H264" ]; then
 	read -r -e -p "-> " repprofile
 	if [ "$repprofile" = "1" ]; then
 		profile="-profile:v baseline -level 3.0 -pix_fmt yuv420p"
-		chprofile="; profile Baseline 3.0 - 8 bit - 4:2:0"
+		chprofile="; profile baseline 3.0 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "2" ]; then
 		profile="-profile:v main -level 3.1 -pix_fmt yuv420p"
 		chprofile="; profile main 3.1 - 8 bit - 4:2:0"
@@ -3536,22 +3536,22 @@ if [ "$chvcodec" = "H264" ]; then
 		chprofile="; profile main 4.0 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "4" ]; then
 		profile="-profile:v high -level 4.0 -pix_fmt yuv420p"
-		chprofile="; profile High 4.0 - 8 bit - 4:2:0"
+		chprofile="; profile high 4.0 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "5" ]; then
 		profile="-profile:v high -level 4.1 -pix_fmt yuv420p"
-		chprofile="; profile High 4.1 - 8 bit - 4:2:0"
+		chprofile="; profile high 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "6" ]; then
 		profile="-profile:v high10 -level 4.2 -pix_fmt yuv420p10le"
-		chprofile="; profile High 4.2 - 10 bit - 4:2:0"
+		chprofile="; profile high10 4.2 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "7" ]; then
 		profile="-profile:v high -level 5.1 -pix_fmt yuv420p"
-		chprofile="; profile High 5.1 - 8 bit - 4:2:0"
+		chprofile="; profile high 5.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "8" ]; then
 		profile="-profile:v high10 -level 5.1 -pix_fmt yuv420p10le"
-		chprofile="; profile High 5.1 - 10 bit - 4:2:0"
+		chprofile="; profile high10 5.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "9" ]; then
 		profile="-profile:v high10 -level 6.2 -pix_fmt yuv420p10le"
-		chprofile="; profile High 6.2 - 10 bit - 4:2:0"
+		chprofile="; profile high10 6.2 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "q" ]; then
 		Restart
 	else
@@ -3578,7 +3578,7 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	echo " ffmes predefined profiles:"
 	echo
 	echo "                                      | max  | max definition/fps by level |"
-	echo "         | lvl | hight | bit | chroma | Mb/s | res.     >fps               |"
+	echo "         | lvl | high  | bit | chroma | Mb/s | res.     >fps               |"
 	echo "         |-----|-------|-----|--------|------|-----------------------------|"
 	echo "   [1] > | 3.1 | 0     | 8   | 4:2:0  | 10   | 1280×720 >30                |"
 	echo "   [2] > | 4.1 | 0     | 8   | 4:2:0  | 20   | 2048×1080>60                |"
@@ -3594,25 +3594,25 @@ elif [ "$chvcodec" = "HEVC" ]; then
 		chprofile="; profile $repprofile"
 	elif [ "$repprofile" = "1" ]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=3.1 -pix_fmt yuv420p"
-		chprofile="; profile 3.1 - 8 bit - 4:2:0"
+		chprofile="; profile main 3.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "2" ]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1 -pix_fmt yuv420p"
-		chprofile="; profile 4.1 - 8 bit - 4:2:0"
+		chprofile="; profile main 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "3" ]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
-		chprofile="; profile 4.1 - 8 bit - 4:2:0"
+		chprofile="; profile high 4.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "4" ]; then
 		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p10le"
-		chprofile="; profile 4.1 - 10 bit - 4:2:0"
+		chprofile="; profile high 4.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "5" ]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=5.1:high-tier=1 -pix_fmt yuv420p"
-		chprofile="; profile 5.1 - 8 bit - 4:2:0"
+		chprofile="; profile high 5.1 - 8 bit - 4:2:0"
 	elif [ "$repprofile" = "6" ]; then
 		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=5.1:high-tier=1 -pix_fmt yuv420p10le"
-		chprofile="; profile 5.1 - 10 bit - 4:2:0"
+		chprofile="; profile high 5.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "7" ]; then
 		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p10le"
-		chprofile="; profile 6.1 - 10 bit - 4:2:0"
+		chprofile="; profile high 6.1 - 10 bit - 4:2:0"
 	elif [ "$repprofile" = "q" ]; then
 		Restart
 	else
