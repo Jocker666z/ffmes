@@ -1621,7 +1621,8 @@ if (( "${#source_files[@]}" )); then
 
 			## File test & error log generation
 			tmp_error=$(mktemp)
-			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" \
+				-max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
 			if [ -s "$tmp_error" ]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
 			fi
@@ -4106,7 +4107,9 @@ local MERGE_LSTAUDIO
 local MERGE_LSTSUB
 
 # Keep extention with wildcard for current audio and sub
-mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex \
+						'.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null \
+						| sort | sed 's/^..//')
 if [ "${#LSTAUDIO[@]}" -gt 0 ] ; then
 	MERGE_LSTAUDIO=$(printf '*.%s ' "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 fi
@@ -4200,7 +4203,8 @@ else
 	filename_id="Concatenate_Output-$(date +%s).${LSTVIDEO[0]##*.}"
 	
 	# Concatenate
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 -i <(for f in *."${LSTVIDEO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
+	"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 \
+		-i <(for f in *."${LSTVIDEO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
 		-map 0 -c copy "$filename_id" \
 		| ProgressBar "" "1" "1" "Concatenate" "1"
 
@@ -5876,11 +5880,13 @@ else
 
 	# Concatenate
 	if [[ "${LSTAUDIO[0]##*.}" = "flac" ]] || [[ "${LSTAUDIO[0]##*.}" = "FLAC" ]]; then
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 -i <(for f in *."${LSTAUDIO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 \
+			-i <(for f in *."${LSTAUDIO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
 			$FFMPEG_PROGRESS "$filename_id" \
 			| ProgressBar "" "1" "1" "Concatenate" "1"
 	else
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 -i <(for f in *."${LSTAUDIO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -f concat -safe 0 \
+			-i <(for f in *."${LSTAUDIO[0]##*.}"; do echo "file '$PWD/$f'"; done) \
 			$FFMPEG_PROGRESS -c copy "$filename_id" \
 			| ProgressBar "" "1" "1" "Concatenate" "1"
 	fi
@@ -6523,12 +6529,14 @@ PrtSep=()
 StartLoading "Grab current tags" ""
 
 # Limit to current directory & audio file ext. tested
-mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex \
+						'.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 # Get tag with ffprobe
 for i in "${!LSTAUDIO[@]}"; do
 	(
-	"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format "${LSTAUDIO[$i]}" > "$FFMES_CACHE_TAG-[$i]"
+	"$ffprobe_bin" -hide_banner -loglevel panic -select_streams a -show_streams -show_format \
+		"${LSTAUDIO[$i]}" > "$FFMES_CACHE_TAG-[$i]"
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 		wait -n
