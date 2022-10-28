@@ -1626,11 +1626,12 @@ if (( "${#source_files[@]}" )); then
 			if [ -s "$tmp_error" ]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
 			fi
-			## File rejected
+			## File fail
 			if [[ -f "${source_files[$i]%.*}-error.log" ]]; then
 				# Audio & video source file fail array
 				filesReject+=( "${source_files[$i]}" )
 				rm "${source_files[$i]}" 2>/dev/null
+			## File pass
 			else
 				# Audio & video source file pass array
 				filesPass+=("${source_files[$i]}")
