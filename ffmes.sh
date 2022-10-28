@@ -446,7 +446,10 @@ local value
 index="$1"
 value="$2"
 
-"$json_parser" -r ".streams[] | select(.index==$index) | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+"$json_parser" -r ".streams[] \
+	| select(.index==$index) \
+	| .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+	| sed s#null##g
 }
 ff_jqparse_tag() {
 local index
@@ -454,7 +457,11 @@ local value
 index="$1"
 value="$2"
 
-"$json_parser" -r ".streams[] | select(.index==$index) | .tags | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+"$json_parser" -r ".streams[] \
+	| select(.index==$index) \
+	| .tags \
+	| .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+	| sed s#null##g
 }
 ff_jqparse_disposition() {
 local index
@@ -463,7 +470,10 @@ local test
 index="$1"
 value="$2"
 
-test=$("$json_parser" -r ".streams[] | select(.index==$index) | .disposition.$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g)
+test=$("$json_parser" -r ".streams[] \
+		| select(.index==$index) \
+		| .disposition.$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+		| sed s#null##g)
 if [[ "$value" = "default" ]] && [[ "$test" = "1" ]]; then
 	echo "default"
 elif [[ "$value" = "forced" ]] && [[ "$test" = "1" ]]; then
@@ -478,13 +488,16 @@ ff_jqparse_format() {
 local value
 value="$1"
 
-"$json_parser" -r ".format | .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null | sed s#null##g
+"$json_parser" -r ".format \
+	| .$value" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+	| sed s#null##g
 }
 bd_jqparse_main_info() {
 local value
 value="$1"
 
-"$json_parser" -r ".bluray.$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
+"$json_parser" -r ".bluray.$value" "$BDINFO_CACHE" 2>/dev/null \
+	| sed s#null##g
 }
 bd_jqparse_title() {
 local title
@@ -492,7 +505,10 @@ local value
 title="$1"
 value="$2"
 
-"$json_parser" -r ".titles[] | select(.title==$title) | .$value" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g
+"$json_parser" -r ".titles[] \
+	| select(.title==$title) \
+	| .$value" "$BDINFO_CACHE" 2>/dev/null \
+	| sed s#null##g
 }
 bd_jqparse_title_audio() {
 local title
@@ -501,7 +517,10 @@ title="$1"
 track="$2"
 
 # One line formated
-"$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | select(.track==$track) | .language,.codec,.format,.rate" "$BDINFO_CACHE" 2>/dev/null \
+"$json_parser" -r ".titles[] \
+	| select(.title==$title) \
+	| .audio[] | select(.track==$track) \
+	| .language,.codec,.format,.rate" "$BDINFO_CACHE" 2>/dev/null \
 	| sed ':b;N;$!bb;s/\n/, /g' | awk '$0=""$0"kHz"'
 }
 bd_jqparse_title_subtitles() {
@@ -511,13 +530,17 @@ title="$1"
 track="$2"
 
 # One line formated
-"$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==$track) | .language" "$BDINFO_CACHE" 2>/dev/null \
+"$json_parser" -r ".titles[] \
+	| select(.title==$title) \
+	| .subtitles[] \
+	| select(.track==$track) \
+	| .language" "$BDINFO_CACHE" 2>/dev/null \
 	| sed ':b;N;$!bb;s/\n/, /g'
 }
 
 ## CHECK FILES & BIN
 CheckFFmpegVersion() {
-local ffmpeg_vaapi_encoder
+local ffmpeg_test_hevc_vaapi_codec
 local ffmpeg_test_libfdk_codec
 
 # ffmpeg version number
@@ -526,13 +549,13 @@ ffmpeg_bin_version=$("$ffmpeg_bin" -version | awk -F 'ffmpeg version' '{print $2
 ffmpeg_version_label="ffmpeg v${ffmpeg_bin_version}"
 
 # ffmpeg capabilities
-ffmpeg_vaapi_encoder=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
+ffmpeg_test_hevc_vaapi_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "hevc_vaapi")
 ffmpeg_test_libsvtav1_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -encoders | grep "libsvtav1")
 ffmpeg_test_libfdk_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | grep "libfdk")
 ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
 # If no VAAPI response unset
-if [ -z "$ffmpeg_vaapi_encoder" ]; then
+if [ -z "$ffmpeg_test_hevc_vaapi_codec" ]; then
 	unset VAAPI_device
 fi
 # If libfdk_aac present use libfdk_aac
@@ -1779,20 +1802,26 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 	while true; do
 
 		# Get main value
-		CurrentState=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "progress" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
-		CurrentDuration=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "out_time_ms" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		CurrentState=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+						| grep "progress" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		CurrentDuration=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+						| grep "out_time_ms" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		CurrentDuration=$(( CurrentDuration/1000000 ))
 
 		# Get extra value
-		Currentfps=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "fps" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
-		Currentbitrate=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "bitrate" 2>/dev/null | tail -1 \
+		Currentfps=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+					| grep "fps" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+		Currentbitrate=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+						| grep "bitrate" 2>/dev/null | tail -1 \
 						| awk -F"=" '{ print $2 }' | awk -F"." '{ print $1 }')
-		CurrentSize=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "total_size" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }' \
+		CurrentSize=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+						| grep "total_size" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }' \
 						| awk '{ foo = $1 / 1024 / 1024 ; print foo }')
 
 		# ETA - If ffprobe_fps[0] active consider video, if not consider audio
 		if [[ -n "${ffprobe_fps[0]}" ]]; then
-			Current_Frame=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "frame=" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+			Current_Frame=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+							| grep "frame=" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 			if [[ "$Currentfps" = "0.00" ]] || [[ -z "$Currentfps" ]];then
 				CurrentfpsETA="0.01"
 			else
@@ -1809,7 +1838,8 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 				Current_ETA="ETA: $((Current_Remaining/3600))h$((Current_Remaining%3600/60))m$((Current_Remaining%60))s"
 			fi
 		else
-			Current_ETA=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null | grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
+			Current_ETA=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
+						| grep "speed" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		fi
 
 		# Displayed label
@@ -1985,7 +2015,8 @@ fi
 # Grep stat
 lsdvd -a -s "$DVD" 2>/dev/null | awk -F', AP:' '{print $1}' | awk -F', Subpictures' '{print $1}' \
 	| awk ' {gsub("Quantization: drc, ","");print}' | sed 's/^/    /' > "$LSDVD_CACHE"
-DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null | grep "DVD with title" | tail -1 | awk -F'"' '{print $2}')
+DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null \
+			| grep "DVD with title" | tail -1 | awk -F'"' '{print $2}')
 # Extract all title
 mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | grep Title | awk '{print $2}' |  grep -o '[[:digit:]]*')
 
@@ -2509,13 +2540,22 @@ if [[ -n "$BD_disk" ]]; then
 				bd_title_filesize+=( "$(bd_jqparse_title "$title" "filesize" | numfmt --to=iec)" )
 
 				# Video
-				bd_title_video_format+=( "$("$json_parser" -r ".titles[] | select(.title==$title) | .video[] | .format" "$BDINFO_CACHE" 2>/dev/null)" )
-				bd_title_video_codec+=( "$("$json_parser" -r ".titles[] | select(.title==$title) | .video[] | .codec" "$BDINFO_CACHE" 2>/dev/null)" )
+				bd_title_video_format+=( "$("$json_parser" -r ".titles[] \
+										| select(.title==$title) | .video[] \
+										| .format" "$BDINFO_CACHE" 2>/dev/null)" )
+				bd_title_video_codec+=( "$("$json_parser" -r ".titles[] \
+										| select(.title==$title) | .video[] \
+										| .codec" "$BDINFO_CACHE" 2>/dev/null)" )
 
 				# Audio
-				bd_track_audio_test=$("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | select(.track==1)" "$BDINFO_CACHE")
+				bd_track_audio_test=$("$json_parser" -r ".titles[] \
+									| select(.title==$title) | .audio[] \
+									| select(.track==1)" "$BDINFO_CACHE")
 				if [[ -n "$bd_track_audio_test" ]] ; then
-					mapfile -t bd_title_audio_tracks < <("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+					mapfile -t bd_title_audio_tracks < <("$json_parser" -r ".titles[] \
+														| select(.title==$title) | .audio[] \
+														| .track" "$BDINFO_CACHE" 2>/dev/null \
+														| sed s#null##g)
 					for audio_track in "${bd_title_audio_tracks[@]}"; do
 						if [[ "${bd_title_audio_tracks[-1]}" != "$audio_track" ]]; then
 							temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")\n"
@@ -2530,9 +2570,14 @@ if [[ -n "$BD_disk" ]]; then
 				unset temp_bd_title_audio
 
 				# Subtitle
-				bd_track_subtitle_test=$("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | select(.track==1)" "$BDINFO_CACHE")
+				bd_track_subtitle_test=$("$json_parser" -r ".titles[] \
+										| select(.title==$title) | .subtitles[] \
+										| select(.track==1)" "$BDINFO_CACHE")
 				if [[ -n "$bd_track_subtitle_test" ]] ; then
-					mapfile -t bd_title_subtitle_tracks < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+					mapfile -t bd_title_subtitle_tracks < <("$json_parser" -r ".titles[] \
+															| select(.title==$title) | .subtitles[] \
+															| .track" "$BDINFO_CACHE" 2>/dev/null \
+															| sed s#null##g)
 					for subtitle_track in "${bd_title_subtitle_tracks[@]}"; do
 						if [[ "${bd_title_subtitle_tracks[-1]}" != "$subtitle_track" ]]; then
 							if [[ "${temp_bd_title_subtitle: -1}" = " " ]]; then
@@ -2593,7 +2638,8 @@ if [[ -n "$BD_disk" ]]; then
 	for title in "${bd_title_pass_extract[@]}"; do
 
 		# Extract audio stream
-		mapfile -t bd_track_audio_nb < <("$json_parser" -r ".titles[] | select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE")
+		mapfile -t bd_track_audio_nb < <("$json_parser" -r ".titles[] \
+										| select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE")
 		if (( "${#bd_track_audio_nb[@]}" )); then
 			# Stream
 			for i in ${!bd_track_audio_nb[*]}; do
@@ -2602,7 +2648,8 @@ if [[ -n "$BD_disk" ]]; then
 		fi
 
 		# Extract subtitle stream & metadata
-		mapfile -t bd_track_subtitle_nb < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE")
+		mapfile -t bd_track_subtitle_nb < <("$json_parser" -r ".titles[] \
+											| select(.title==$title) | .subtitles[] | .track" "$BDINFO_CACHE")
 		if (( "${#bd_track_subtitle_nb[@]}" )); then
 			# Stream
 			for i in ${!bd_track_subtitle_nb[*]}; do
@@ -2610,7 +2657,10 @@ if [[ -n "$BD_disk" ]]; then
 			done
 
 			# Metadata
-			mapfile -t bd_title_subtitle_tracks_lang < <("$json_parser" -r ".titles[] | select(.title==$title) | .subtitles[] | .language" "$BDINFO_CACHE" 2>/dev/null | sed s#null##g)
+			mapfile -t bd_title_subtitle_tracks_lang < <("$json_parser" -r ".titles[] \
+														| select(.title==$title) | .subtitles[] \
+														| .language" "$BDINFO_CACHE" 2>/dev/null \
+														| sed s#null##g)
 			stream_counter="0"
 			for subtitle_lang in "${bd_title_subtitle_tracks_lang[@]}"; do
 				bd_title_subtitle_metadata+=( "-metadata:s:s:${stream_counter} language=${subtitle_lang}" )
@@ -2636,9 +2686,11 @@ if [[ -n "$BD_disk" ]]; then
 
 		# Add chapters
 		if [[ "$VERBOSE" = "1" ]]; then
-			mkvpropedit --add-track-statistics-tags -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv
+			mkvpropedit --add-track-statistics-tags -c "${bd_disk_name}.${title}".chapter \
+				"${bd_disk_name}.${title}".Remux.mkv
 		else
-			mkvpropedit --add-track-statistics-tags -q -c "${bd_disk_name}.${title}".chapter "${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
+			mkvpropedit --add-track-statistics-tags -q -c "${bd_disk_name}.${title}".chapter \
+			"${bd_disk_name}.${title}".Remux.mkv 2>/dev/null \
 				&& echo "  ${bd_disk_name}.${title}.Remux.mkv add chapters done" \
 				|| Echo_Mess_Error "${bd_disk_name}.${title}.Remux.mkv add chapters fail"
 		fi
