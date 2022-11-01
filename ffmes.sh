@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2001,SC2015,SC2026,SC2046,SC2059,SC2086
+# shellcheck disable=SC2015,SC2026,SC2046,SC2059,SC2086
 # ffmes - ffmpeg media encode script
 # Bash tool handling media files and DVD. Mainly with ffmpeg. Batch or single file.
 #
@@ -6456,9 +6456,9 @@ for i in "${!LSTAUDIO[@]}"; do
 		ParsedTitle="[untitled]"
 	else
 		# Replace eventualy / , " , : in string
-		ParsedTitle=$(echo "${TAG_TITLE[$i]}" | sed s#/#-#g)
-		ParsedTitle=$(echo "$ParsedTitle" | sed s#:#-#g)
-		ParsedTitle=$(echo "$ParsedTitle" | sed 's#"#-#g')
+		ParsedTitle="${TAG_TITLE[$i]////-}"
+		ParsedTitle="${ParsedTitle//:/-}"
+		ParsedTitle="${ParsedTitle//\"/-}"
 	fi
 
 	# If no tag artist
@@ -6466,9 +6466,9 @@ for i in "${!LSTAUDIO[@]}"; do
 		ParsedTitle="[unknown]"
 	else
 		# Replace eventualy / , " , : in string
-		ParsedArtist=$(echo "${TAG_ARTIST[$i]}" | sed s#/#-#g)
-		ParsedArtist=$(echo "$ParsedArtist" | sed s#:#-#g)
-		ParsedArtist=$(echo "$ParsedArtist" | sed 's#"#-#g')
+		ParsedArtist="${TAG_ARTIST[$i]////-}"
+		ParsedArtist="${ParsedArtist//:/-}"
+		ParsedArtist="${ParsedArtist//\"/-}"
 	fi
 
 	# Rename
