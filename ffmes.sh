@@ -718,46 +718,42 @@ fi
 }
 CheckFiles() {							# Promp a message to user with number of video, audio, sub to edit
 # Video
-if  [[ "$TESTARGUMENT" == *"Video"* ]]; then
-	Display_Line_Truncate "  * Video to edit: ${LSTVIDEO[0]##*/}"
-elif  [[ "$TESTARGUMENT" != *"Video"* ]] && [ "${#LSTVIDEO[@]}" -eq "1" ]; then
-	Display_Line_Truncate "  * Video to edit: ${LSTVIDEO[0]##*/}"
-elif [ "${#LSTVIDEO[@]}" -gt "1" ]; then
-	echo "  * Video to edit: ${#LSTVIDEO[@]} files"
+if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
+	Display_Line_Truncate "  * Video     > ${LSTVIDEO[0]##*/}"
+elif [[ "${#LSTVIDEO[@]}" -gt "1" ]]; then
+	echo "  * Videos    > ${#LSTVIDEO[@]} files"
 fi
 
 # Audio
-if  [[ "$TESTARGUMENT" == *"Audio"* ]]; then
-	Display_Line_Truncate "  * Audio to edit: ${LSTAUDIO[0]##*/}"
-elif [[ "$TESTARGUMENT" != *"Audio"* ]] && [ "${#LSTAUDIO[@]}" -eq "1" ]; then
-	Display_Line_Truncate "  * Audio to edit: ${LSTAUDIO[0]##*/}"
-elif [ "${#LSTAUDIO[@]}" -gt "1" ]; then
-	echo "  * Audio to edit: ${#LSTAUDIO[@]} files"
+if [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
+	Display_Line_Truncate "  * Audio     > ${LSTAUDIO[0]##*/}"
+elif [[ "${#LSTAUDIO[@]}" -gt "1" ]]; then
+	echo "  * Audios    > ${#LSTAUDIO[@]} files"
 fi
 
 # ISO
-if  [[ "$TESTARGUMENT" == *"ISO"* ]]; then
-	Display_Line_Truncate "  * ISO to edit: ${LSTISO[0]}"
-elif [[ "$TESTARGUMENT" != *"ISO"* ]] && [ "${#LSTISO[@]}" -eq "1" ]; then
-	Display_Line_Truncate "  * ISO to edit: ${LSTISO[0]}"
+if [[ "${#LSTISO[@]}" -eq "1" ]]; then
+	Display_Line_Truncate "  * ISO       > ${LSTISO[0]}"
+elif [[ "${#LSTISO[@]}" -gt "1" ]]; then
+	echo "  * ISO       > ${#LSTISO[@]} files"
 fi
 
 # Subtitle
-if [ "${#LSTSUB[@]}" -eq "1" ]; then
-	Display_Line_Truncate "  * Subtitle to edit: ${LSTSUB[0]}"
-elif [ "${#LSTSUB[@]}" -gt "1" ]; then
-	echo "  * Subtitle to edit: ${#LSTSUB[@]}"
+if [[ "${#LSTSUB[@]}" -eq "1" ]]; then
+	Display_Line_Truncate "  * Subtitle  > ${LSTSUB[0]##*/}"
+elif [[ "${#LSTSUB[@]}" -gt "1" ]]; then
+	echo "  * Subtitles > ${#LSTSUB[@]} files"
 fi
 
 # DVD
-if test -n "$DVD_DEVICE"; then
+if [[ -n "$DVD_DEVICE" ]]; then
 	Display_Line_Truncate "  * DVD ($DVD_DEVICE): $DVDtitle"
 fi
 
 # Nothing
-if [ -z "$TESTARGUMENT" ] && [ -z "$DVD_DEVICE" ] && \
-   [ "${#LSTVIDEO[@]}" -eq "0" ] && [ "${#LSTAUDIO[@]}" -eq "0" ] &&\
-   [ "${#LSTISO[@]}" -eq "0" ] && [ "${#LSTSUB[@]}" -eq "0" ]; then
+if [[ -z "$DVD_DEVICE" ]] && [[ "${#LSTVIDEO[@]}" -eq "0" ]] \
+&& [[ "${#LSTAUDIO[@]}" -eq "0" ]] && [[ "${#LSTISO[@]}" -eq "0" ]] \
+&& [[ "${#LSTSUB[@]}" -eq "0" ]]; then
 	echo "  [!] No file to process"
 fi
 }
