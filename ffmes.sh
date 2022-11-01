@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2086,SC2183,SC2026,SC2001,SC2059
+# shellcheck disable=SC2086,SC2026,SC2001,SC2059
 # ffmes - ffmpeg media encode script
 # Bash tool handling media files and DVD. Mainly with ffmpeg. Batch or single file.
 #
@@ -937,7 +937,7 @@ echo " ${#source_files[@]} audio files - $(Calc_Files_Size "${source_files[@]}")
 # Table Display
 if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 	# Title line 1
-	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 	paste <(printf "%-${quality_string_length}.${quality_string_length}s\n" "Quality") <(printf "%s\n" "|") \
 		<(printf "%-${duration_string_length}.${duration_string_length}s\n" "Duration") <(printf "%s\n" "|") \
 		<(printf "%-${db_string_length}.${db_string_length}s\n" "Decibel") <(printf "%s\n" "|") \
@@ -955,7 +955,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 		<(printf "%-${diffdb_string_lenght}.${diffdb_string_lenght}s\n" "Diff") <(printf "%s\n" "|") \
 		<(printf "%-${FilesSize_string_length}.${FilesSize_string_length}s\n" "Mb") <(printf "%s\n" "|") \
 		<(printf "%-${filename_string_length}.${filename_string_length}s\n" "Files") | column -s $'\t' -t
-	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 
 
 	for files in "${source_files[@]}"; do
@@ -980,12 +980,12 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 		done
 
 	done
-	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 
 # Line display
 else
 	# Display Separator
-	printf '%*s' "$TERM_WIDTH_TRUNC" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 	for files in "${source_files[@]}"; do
 		# Get stats
 		Media_Source_Info_Record "$files"
@@ -1004,7 +1004,7 @@ else
 				| awk '{$2=$2};1' | awk '{print "  " $0}'
 				echo " peak dB: $ffmpeg_peakdb, mean dB: $ffmpeg_meandb, diff dB: $ffmpeg_diffdb" \
 				| awk '{$2=$2};1' | awk '{print "  " $0}'
-				printf '%*s' "$TERM_WIDTH_TRUNC" | tr ' ' "-"; echo
+				printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 			fi
 		done
 	done
@@ -1270,10 +1270,10 @@ if [[ -n "$variable" ]]; then
 fi
 }
 Echo_Separator_Light() {				# Horizontal separator light
-printf '%*s' "$TERM_WIDTH" | tr ' ' "-"; echo
+printf "%*s" "$TERM_WIDTH" "" | tr ' ' "-"; echo
 }
 Echo_Separator_Large() {				# Horizontal separator large
-printf '%*s' "$TERM_WIDTH" | tr ' ' "="; echo
+printf "%*s" "$TERM_WIDTH" "" | tr ' ' "="; echo
 }
 Echo_Mess_Invalid_Answer() {			# Horizontal separator large
 Echo_Mess_Error "Invalid answer, please try again"
@@ -2512,7 +2512,7 @@ if [[ -n "$BD_disk" ]]; then
 
 		# Print title raw of table0
 		echo
-		printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+		printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 		paste <(printf "%-3.3s\n" "") <(printf "%s\n" "|") \
 				<(printf "%-4.4s\n" "Size") <(printf "%s\n" "|") \
 				<(printf "%-8.8s\n" "Duration") <(printf "%s\n" "|") \
@@ -2520,7 +2520,7 @@ if [[ -n "$BD_disk" ]]; then
 				<(printf "%-5.5s\n" "Codec") <(printf "%s\n" "|") \
 				<(printf "%-32b" "Audio") <(printf "%s\n" "|") \
 				<(printf "%-8b\n" "Subtitle") | column -s $'\t' -t
-		printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+		printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 
 		# Titles stats
 		mapfile -t bd_titles < <("$json_parser" -r '.titles[] | .title' "$BDINFO_CACHE")
@@ -2601,7 +2601,7 @@ if [[ -n "$BD_disk" ]]; then
 						<(printf "%-5.5s\n" "${bd_title_video_codec[-1]}") <(printf "%s\n" ".") \
 						<(printf "%-32b" "${bd_title_audio[-1]}") <(printf "%s\n" ".") \
 						<(printf "%-8b\n" "${bd_title_subtitle[-1]}") | column -s $'\t' -t
-				printf '%*s' "$separator_string_length" | tr ' ' "."; echo
+				printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "."; echo
 
 			fi
 		done
@@ -6602,7 +6602,7 @@ clear
 echo
 echo "Audio files tags:"
 if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
-	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 	paste <(printf "%-${filename_string_length}.${filename_string_length}s\n" "Files") <(printf "%s\n" "|") \
 			<(printf "%-${tag_disk_string_length}.${tag_disk_string_length}s\n" "D") <(printf "%s\n" "|") \
 			<(printf "%-${tag_track_string_length}.${tag_track_string_length}s\n" "Track") <(printf "%s\n" "|") \
@@ -6610,7 +6610,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 			<(printf "%-${tag_artist_string_length}.${tag_artist_string_length}s\n" "Artist") <(printf "%s\n" "|") \
 			<(printf "%-${tag_album_string_length}.${tag_album_string_length}s\n" "Album") <(printf "%s\n" "|") \
 			<(printf "%-${tag_date_string_length}.${tag_date_string_length}s\n" "date") | column -s $'\t' -t
-	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 	paste <(printf "%-${filename_string_length}.${filename_string_length}s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") \
 			<(printf "%-${tag_disk_string_length}.${tag_disk_string_length}s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") \
 			<(printf "%-${tag_track_string_length}.${tag_track_string_length}s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") \
@@ -6618,9 +6618,9 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 			<(printf "%-${tag_artist_string_length}.${tag_artist_string_length}s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") \
 			<(printf "%-${tag_album_string_length}.${tag_album_string_length}s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") \
 			<(printf "%-${tag_date_string_length}.${tag_date_string_length}s\n" "${TAG_DATE[@]}") | column -s $'\t' -t 2>/dev/null
-	printf '%*s' "$separator_string_length" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 else
-	printf '%*s' "$TERM_WIDTH_TRUNC" | tr ' ' "-"; echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 	for i in "${!LSTAUDIO[@]}"; do
 		Display_Line_Truncate "${LSTAUDIO[$i]}"
 		echo " disk: ${TAG_DISC[$i]}, track: ${TAG_TRACK[$i]}"
@@ -6628,7 +6628,7 @@ else
 		echo " artist: ${TAG_ARTIST[$i]}"
 		echo " album: ${TAG_ALBUM[$i]}"
 		echo " date: ${TAG_DATE[$i]}"
-		printf '%*s' "$TERM_WIDTH_TRUNC" | tr ' ' "-"; echo
+		printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 	done
 fi
 
