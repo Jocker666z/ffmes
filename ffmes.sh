@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2086,SC2026,SC2001,SC2059
+# shellcheck disable=SC2001,SC2015,SC2026,SC2046,SC2059,SC2086
 # ffmes - ffmpeg media encode script
 # Bash tool handling media files and DVD. Mainly with ffmpeg. Batch or single file.
 #
