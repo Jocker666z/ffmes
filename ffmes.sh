@@ -2641,7 +2641,7 @@ if [[ -n "$BD_disk" ]]; then
 		if (( "${#bd_track_audio_nb[@]}" )); then
 			# Stream
 			for i in ${!bd_track_audio_nb[*]}; do
-				bd_title_audio_stream+=( "-map 0:s:${i}" )
+				bd_title_audio_stream+=( "-map 0:a:${i}" )
 			done
 		fi
 
@@ -6880,15 +6880,15 @@ done
 
 # Main
 CheckCoreCommand
+CheckJQCommand
 CheckCacheDirectory
 CheckCustomBin
 CheckFFmpegVersion
-CheckJQCommand
+TestVAAPI
 Display_Term_Size
 StartLoading "Listing of media files to be processed"
 SetGlobalVariables
 DetectDVD
-TestVAAPI
 StopLoading $?
 # Set Ctrl+c clean trap for exit all script
 trap TrapExit SIGINT SIGQUIT
