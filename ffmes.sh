@@ -836,6 +836,7 @@ local source_size
 local target_size
 
 filesPassLabel=()
+filesRejectLabel=()
 
 pass_files="$1"
 total_files="$2"
@@ -843,21 +844,26 @@ target_size="$3"
 source_size="$4"
 
 if (( "${#filesPass[@]}" )); then
-	Echo_Separator_Light
-	echo " File(s) created:"
 	if (( "${#filesPassSizeReduction[@]}" )); then
 		for i in "${!filesPass[@]}"; do
-			filesPassLabel+=( "(${filesPassSizeReduction[i]}%) ~ ${filesPass[i]}" )
+			filesPassLabel+=( "(${filesPassSizeReduction[i]}%) ~ $(Display_Filename_Truncate "${filesPass[i]}")" )
 		done
-		Display_List_Truncate "${filesPassLabel[@]}"
 	else
-		Display_List_Truncate "${filesPass[@]}"
+		for i in "${!filesPass[@]}"; do
+			filesPassLabel+=( "$(Display_Filename_Truncate "${filesPass[i]}")" )
+		done
 	fi
+	Echo_Separator_Light
+	echo " File(s) created:"
+	Display_List_Truncate "${filesPassLabel[@]}"
 fi
 if (( "${#filesReject[@]}" )); then
+	for i in "${!filesReject[@]}"; do
+		filesRejectLabel+=( "$(Display_Filename_Truncate "${filesReject[i]}")" )
+	done
 	Echo_Separator_Light
 	echo " File(s) in error:"
-	Display_List_Truncate "${filesReject[@]}"
+	Display_List_Truncate "${filesRejectLabel[@]}"
 fi
 
 Echo_Separator_Light
@@ -1176,6 +1182,20 @@ Echo_Separator_Light
 ## DISPLAY TRICK
 Display_Remove_Previous_Line() {		# Remove last line displayed
 printf '\e[A\e[K'
+}
+Display_Filename_Truncate() {			# Filename truncate
+local label
+local label_truncate
+local path_occurence
+label="$*"
+
+path_occurence=$(echo "$label" | awk '{print  gsub("/","",$0)}')
+if [[ "${path_occurence}" -gt "4" ]]; then
+	label_truncate=$(echo "${label}" | rev | cut -d'/' -f-3 | rev)
+	echo "...$label_truncate"
+else
+	echo "${label}"
+fi
 }
 Display_Line_Truncate() {				# Line width truncate
 local label
@@ -1622,12 +1642,12 @@ if (( "${#source_files[@]}" )); then
 			## File fail
 			if [ -s "$tmp_error" ]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
-				# Audio & video source file fail array
+				# File fail array
 				filesReject+=( "${source_files[$i]}" )
 				rm "${source_files[$i]}" 2>/dev/null
 			## File pass
 			else
-				# Audio & video source file pass array
+				# File pass array
 				filesPass+=("${source_files[$i]}")
 				if [[ "$media_type" = "video" ]];then
 					# If mkv regenerate stats tag
