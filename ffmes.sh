@@ -1618,12 +1618,10 @@ if (( "${#source_files[@]}" )); then
 			## File test & error log generation
 			tmp_error=$(mktemp)
 			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" \
-				-max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+				-max_muxing_queue_size 9999 -f null - 2> "$tmp_error"
+			## File fail
 			if [ -s "$tmp_error" ]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
-			fi
-			## File fail
-			if [[ -f "${source_files[$i]%.*}-error.log" ]]; then
 				# Audio & video source file fail array
 				filesReject+=( "${source_files[$i]}" )
 				rm "${source_files[$i]}" 2>/dev/null
