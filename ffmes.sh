@@ -1614,7 +1614,6 @@ source_files=()
 
 # Arguments
 ## duration_type = 1 = full duration test
-## remove_fail = 1 = not remove fail test
 duration_type="$1"
 media_type="$2"
 shift 2
@@ -6840,10 +6839,11 @@ while [[ $# -gt 0 ]]; do
 			exit
 		else
 			unset NVENC
-			NVENC="$1"
 			if [[ "$NVENC" -lt 0 ]] ; then
 				Echo_Mess_Error "Video jobs must be greater than zero" "1"
 				exit
+			else
+				NVENC=$(( "$1" - 1 ))
 			fi
 		fi
 		;;
