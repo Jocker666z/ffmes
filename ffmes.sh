@@ -34,9 +34,9 @@ OPTICAL_DEVICE=(/dev/dvd /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3)
 
 # General variables
 ## Core command needed
-CORE_COMMAND_NEEDED=(ffmpeg ffprobe mkvmerge mkvpropedit find nproc uchardet iconv wc bc du awk jq)
+CORE_COMMAND_NEEDED=(ffmpeg ffprobe mkvmerge mkvpropedit find uchardet iconv wc bc du awk jq)
 ## Set number of processor thread
-NPROC=$(nproc --all)
+NPROC=$(grep -cE 'processor' /proc/cpuinfo)
 ## ffmpeg default log level
 FFMPEG_LOG_LVL="-hide_banner -loglevel panic -nostats"
 
@@ -6835,7 +6835,7 @@ while [[ $# -gt 0 ]]; do
 		# For number of parallel job
 		shift
 		if ! [[ "$1" =~ ^[0-9]*$ ]] ; then
-			Echo_Mess_Error "Video jobs option must be an integer" "1"
+			Echo_Mess_Error "Video jobs option must be an positive integer" "1"
 			exit
 		else
 			unset NVENC
@@ -7241,11 +7241,11 @@ while true; do
 	 30 ) # tools -> audio tag
 		CheckTagCommand
 		if (( "${#LSTAUDIOTAG[@]}" )); then
-			# Change number of process for increase speed, here 4*nproc
-			NPROC=$(nproc --all | awk '{ print $1 * 4 }')
+			# Change number of process for increase speed, here *4
+			NPROC=$(grep -cE 'processor' /proc/cpuinfo | awk '{ print $1 * 4 }')
 			Audio_Tag_Editor
 			# Reset number of process
-			NPROC=$(nproc --all)
+			NPROC=$(grep -cE 'processor' /proc/cpuinfo)
 			Clean
 		else
 				echo
@@ -7304,11 +7304,11 @@ while true; do
 	 35 ) # File check
 		if [[ "${#LSTAUDIO[@]}" -ge "1" ]]; then
 			ProgressBarOption="1"
-			NPROC=$(nproc --all | awk '{ print $1 * 4 }')
+			NPROC=$(grep -cE 'processor' /proc/cpuinfo | awk '{ print $1 * 4 }')
 			Audio_File_Tester
 			Clean
 			# Reset
-			NPROC=$(nproc --all)
+			NPROC=$(grep -cE 'processor' /proc/cpuinfo)
 			unset ProgressBarOption
 		else
 			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
