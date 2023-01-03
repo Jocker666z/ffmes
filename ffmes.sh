@@ -1461,6 +1461,7 @@ fi
 TrapStop() {							# Ctrl+z Trap for loop exit
 EnterKeyEnable
 Clean
+stty sane
 kill -s SIGTERM $!
 }
 TrapExit() {							# Ctrl+c Trap for script exit
@@ -1468,6 +1469,7 @@ EnterKeyEnable
 Clean
 echo
 echo
+stty sane
 exit
 }
 EnterKeyDisable() {						# Disable the enter key
