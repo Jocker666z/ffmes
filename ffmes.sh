@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2015,SC2026,SC2046,SC2059,SC2086
+# shellcheck disable=SC2015,SC2026,SC2046,SC2059,SC2086,SC2317
 # ffmes - ffmpeg media encode script
 # Bash tool handling media files and DVD. Mainly with ffmpeg. Batch or single file.
 #
@@ -4856,13 +4856,21 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	files="$1"
 
 	# Test bitrate
-	TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
-					-select_streams a -show_entries stream=bit_rate \
-					-of default=noprint_wrappers=1:nokey=1 "$files")
-	if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
-		TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
-						| sed -n -e 's/^.*bitrate: //p' \
-						| awk '{a = "000"; print $1a}')
+	# if source is lossless, fix value to 500kbs
+	if [[ "${files##*.}" = "flac" ]] \
+	|| [[ "${files##*.}" = "ape" ]] \
+	|| [[ "${files##*.}" = "wav" ]] \
+	|| [[ "${files##*.}" = "wv" ]]; then
+		TestBitrate="500000"
+	else
+		TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
+						-select_streams a -show_entries stream=bit_rate \
+						-of default=noprint_wrappers=1:nokey=1 "$files")
+		if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
+			TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
+							| sed -n -e 's/^.*bitrate: //p' \
+							| awk '{a = "000"; print $1a}')
+		fi
 	fi
 
 	# If opus mono & source > 320k - apply hard codec limitation
