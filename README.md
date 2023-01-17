@@ -15,7 +15,8 @@ Source media files, supported extension:
 ### Essential 
 `ffmpeg ffprobe jq mkvtoolnix uchardet coreutils findutils bc`
 ### Optional
-`gojq` (faster than jq)
+* `gojq`: faster than jq
+* `mediainfo`: faster than ffmpeg & ffprobe
 ### CUE Splitting
 `cuetools flac monkeys-audio shntool wavpack`
 ### DVD rip

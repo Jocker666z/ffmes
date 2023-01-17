@@ -685,6 +685,11 @@ for command in "${BLURAY_COMMAND_NEEDED[@]}"; do
 done
 CheckCommandDisplay "Blu-ray rip"
 }
+CheckMediaInfoCommand() {
+if hash mediainfo &>/dev/null; then
+	mediainfo_bin=$(command -v mediainfo)
+fi
+}
 CheckSubtitleCommand() {
 n=0;
 for command in "${SUBTI_COMMAND_NEEDED[@]}"; do
@@ -4863,13 +4868,18 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	|| [[ "${files##*.}" = "wv" ]]; then
 		TestBitrate="500000"
 	else
-		TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
-						-select_streams a -show_entries stream=bit_rate \
-						-of default=noprint_wrappers=1:nokey=1 "$files")
-		if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
-			TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
-							| sed -n -e 's/^.*bitrate: //p' \
-							| awk '{a = "000"; print $1a}')
+		if (( "${#mediainfo_bin}" )); then
+			TestBitrate=$("$mediainfo_bin" --Language=raw \
+							--Inform="Audio;%BitRate%" "$files")
+		else
+			TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
+							-select_streams a -show_entries stream=bit_rate \
+							-of default=noprint_wrappers=1:nokey=1 "$files")
+			if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
+				TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
+								| sed -n -e 's/^.*bitrate: //p' \
+								| awk '{a = "000"; print $1a}')
+			fi
 		fi
 	fi
 
@@ -4880,9 +4890,14 @@ if [ "$AdaptedBitrate" = "1" ]; then
 				akb_modified="-b:a 256K"
 			fi
 		else
-			TestChannel=$("$ffprobe_bin" -hide_banner -v quiet \
-							-select_streams a -show_entries stream=channels \
-							-of default=noprint_wrappers=1:nokey=1 "$files")
+			if (( "${#mediainfo_bin}" )); then
+				TestChannel=$("$mediainfo_bin" --Language=raw \
+								--Inform="Audio;%Channel(s)%" "$files")
+			else
+				TestChannel=$("$ffprobe_bin" -hide_banner -v quiet \
+								-select_streams a -show_entries stream=channels \
+								-of default=noprint_wrappers=1:nokey=1 "$files")
+			fi
 			if [[ "$TestChannel" = "1" ]]; then
 				akb_modified="-b:a 256K"
 			fi
@@ -4954,9 +4969,14 @@ if [[ "$extcont" = "flac" ]] \
 
 	# Sampling rate test
 	TestSamplingRateSet=$(echo "$asamplerate" | awk -F " " '{print $NF}')
-	TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
-						-v panic -show_entries stream=sample_rate \
-						-print_format csv=p=0 "$files")
+	if (( "${#mediainfo_bin}" )); then
+		TestSamplingRate=$("$mediainfo_bin" --Language=raw \
+							--Inform="Audio;%SamplingRate%" "$files")
+	else
+		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
+							-v panic -show_entries stream=sample_rate \
+							-print_format csv=p=0 "$files")
+	fi
 
 	# If sampling rate not set + flac/wv : limit to 384kHz
 	if [[ -z "$asamplerate" ]] && [[ "$TestSamplingRate" -gt "384000" ]]; then
@@ -6922,6 +6942,7 @@ done
 # Main
 CheckCoreCommand
 CheckJQCommand
+CheckMediaInfoCommand
 CheckCacheDirectory
 CheckCustomBin
 CheckFFmpegVersion
