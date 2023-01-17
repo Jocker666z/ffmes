@@ -6335,22 +6335,22 @@ for i in "${!LSTAUDIO[@]}"; do
 	if [[ "${LSTAUDIO[$i]##*.}" = "opus" ]]; then
 		# Proper tag
 		if [[ "$tag_label" = "track" ]]; then
-			TAG_TRACK[$i]="$tag_value"
+			TAG_TRACK[i]="$tag_value"
 		fi
 		if [[ "$tag_label" = "album" ]]; then
-			TAG_ALBUM[$i]="$tag_value"
+			TAG_ALBUM[i]="$tag_value"
 		fi
 		if [[ "$tag_label" = "artist" ]]; then
-			TAG_ARTIST[$i]="$tag_value"
+			TAG_ARTIST[i]="$tag_value"
 		fi
 		if [[ "$tag_label" = "date" ]]; then
-			TAG_DATE[$i]="$tag_value"
+			TAG_DATE[i]="$tag_value"
 		fi
 		if [[ "$tag_label" = "title" ]]; then
-			TAG_TITLE[$i]="$tag_value"
+			TAG_TITLE[i]="$tag_value"
 		fi
 		if [[ "$tag_label" = "disk" ]]; then
-			TAG_DISC[$i]="$tag_value"
+			TAG_DISC[i]="$tag_value"
 		fi
 
 		# Remove all tag
