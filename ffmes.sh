@@ -6439,15 +6439,15 @@ rename_option="$1"
 tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | awk -F"/" '{ print $1 }' | wc -L)
 
 for i in "${!LSTAUDIO[@]}"; do
-	StartLoading "" "Rename: ${LSTAUDIO[$i]}"
+	StartLoading "" "Rename: ${LSTAUDIO[i]}"
 
 	# Remove leading 0, ignore slash
 	tag_track_proper="$(echo "${TAG_TRACK[i]}" | awk -F"/" '{ print $1 }' \
 						| sed 's/^0*//')"
 
 	# If no tag tracknumber - use TAG_TRACK_COUNT
-	if [[ -z "${TAG_TRACK[$i]}" ]]; then
-		ParsedTrack="${TAG_TRACK_COUNT[$i]}"
+	if [[ -z "${TAG_TRACK[i]}" ]]; then
+		ParsedTrack="${TAG_TRACK_COUNT[i]}"
 
 	# If tag tracknumber
 	else
@@ -6484,37 +6484,37 @@ for i in "${!LSTAUDIO[@]}"; do
 	fi
 
 	# If no tag title
-	if test -z "${TAG_TITLE[$i]}"; then
+	if test -z "${TAG_TITLE[i]}"; then
 		ParsedTitle="[untitled]"
 	else
 		# Replace eventualy / , " , : in string
-		ParsedTitle="${TAG_TITLE[$i]////-}"
+		ParsedTitle="${TAG_TITLE[i]////-}"
 		ParsedTitle="${ParsedTitle//:/-}"
 		ParsedTitle="${ParsedTitle//\"/-}"
 	fi
 
 	# If no tag artist
-	if test -z "${TAG_ARTIST[$i]}"; then
+	if test -z "${TAG_ARTIST[i]}"; then
 		ParsedTitle="[unknown]"
 	else
 		# Replace eventualy / , " , : in string
-		ParsedArtist="${TAG_ARTIST[$i]////-}"
+		ParsedArtist="${TAG_ARTIST[i]////-}"
 		ParsedArtist="${ParsedArtist//:/-}"
 		ParsedArtist="${ParsedArtist//\"/-}"
 	fi
 
 	# Rename
 	(
-	if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
+	if [[ -f "${LSTAUDIO[i]}" && -s "${LSTAUDIO[i]}" ]]; then
 		if [[ "$rename_option" = "rename" ]]; then
-			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "arename" ]]; then
-			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "drename" ]]; then
-			if [[ -n"${TAG_DISC[$i]}" ]]; then
-				mv "${LSTAUDIO[$i]}" "${TAG_DISC[$i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			if [[ -n"${TAG_DISC[i]}" ]]; then
+				mv "${LSTAUDIO[i]}" "${TAG_DISC[i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 			else
-				mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 			fi
 		fi
 	fi
