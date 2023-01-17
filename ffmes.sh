@@ -6531,7 +6531,7 @@ for i in "${!LSTAUDIO[@]}"; do
 		elif [[ "$rename_option" = "arename" ]]; then
 			mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "drename" ]]; then
-			if [[ -n"${TAG_DISC[i]}" ]]; then
+			if [[ -n "${TAG_DISC[i]}" ]]; then
 				mv "${LSTAUDIO[i]}" "${TAG_DISC[i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 			else
 				mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
