@@ -6427,7 +6427,7 @@ wait
 Audio_Tag_Rename() {					# Part of Audio_Tag_Editor
 # Local variables
 local rename_option
-local slash_tracknumber
+local tag_track_proper
 local ParsedTrack
 local ParsedTitle
 local ParsedArtist
@@ -6435,11 +6435,15 @@ local ParsedArtist
 # Argument
 rename_option="$1"
 
+# Max total digit
+tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | wc -L)
+
 for i in "${!LSTAUDIO[@]}"; do
 	StartLoading "" "Rename: ${LSTAUDIO[$i]}"
 
-	# Integer test extract tracknumber with slash
-	slash_tracknumber=$(echo "${TAG_TRACK[$i]}" | awk -F"/" '{ print $1 }')
+	# Remove leading 0, ignore slash
+	tag_track_proper="$(echo "${TAG_TRACK[i]}" | awk -F"/" '{ print $1 }' \
+						| sed 's/^0*//')"
 
 	# If no tag tracknumber - use TAG_TRACK_COUNT
 	if [[ -z "${TAG_TRACK[$i]}" ]]; then
@@ -6447,35 +6451,36 @@ for i in "${!LSTAUDIO[@]}"; do
 
 	# If tag tracknumber
 	else
-	
-		# Integer case 1 - XX
-		if [[ "${TAG_TRACK[$i]}" =~ ^-?[0-9]+$ ]]; then
-			if [ "${#TAG_TRACK[i]}" -eq "1" ] && [ "${#LSTAUDIO[@]}" -ge 10 ]; then
-				if [ "${#LSTAUDIO[@]}" -ge 10 ] && [ "${#LSTAUDIO[@]}" -le 99 ]; then
-					ParsedTrack="0${TAG_TRACK[$i]}"
-				fi
-			elif [ "${#LSTAUDIO[@]}" -eq "2" ] && [ "${#LSTAUDIO[@]}" -ge 100 ]; then
-				if [ "${#LSTAUDIO[@]}" -ge 10 ] && [ "${#LSTAUDIO[@]}" -le 99 ]; then
-					ParsedTrack="00${TAG_TRACK[$i]}"
-				fi
-			else
-				ParsedTrack="${TAG_TRACK[$i]}"
-			fi
 
-		# Integer case 2 - XX/XX
-		elif [[ "$slash_tracknumber" =~ ^-?[0-9]+$ ]]; then
-			if [ "${#slash_tracknumber}" -eq "1" ] && [ "${#LSTAUDIO[@]}" -ge 10 ]; then
-				if [ "${#LSTAUDIO[@]}" -ge 10 ] && [ "${#LSTAUDIO[@]}" -le 99 ]; then
-					ParsedTrack="0$slash_tracknumber"
-				fi
-			elif [ "${#LSTAUDIO[@]}" -eq "2" ] && [ "${#LSTAUDIO[@]}" -ge 100 ]; then
-				if [ "${#LSTAUDIO[@]}" -ge 10 ] && [ "${#LSTAUDIO[@]}" -le 99 ]; then
-					ParsedTrack="00$slash_tracknumber"
-				fi
-			else
-				ParsedTrack="$slash_tracknumber"
+		# If integer
+		if [[ "${tag_track_proper}" =~ ^-?[0-9]+$ ]]; then
+			# Lead 0 condition
+			if [ "$tag_track_total_digit" -eq "1" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+				ParsedTrack="${tag_track_proper}"
+
+			elif [ "$tag_track_total_digit" -eq "2" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+				ParsedTrack="0$tag_track_proper"
+			elif [ "$tag_track_total_digit" -eq "2" ] && [[ "${#tag_track_proper}" = "2" ]]; then
+				ParsedTrack="$tag_track_proper"
+
+			elif [ "$tag_track_total_digit" -eq "3" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+				ParsedTrack="00$tag_track_proper"
+			elif [ "$tag_track_total_digit" -eq "3" ] && [[ "${#tag_track_proper}" = "2" ]]; then
+				ParsedTrack="0$tag_track_proper"
+			elif [ "$tag_track_total_digit" -eq "3" ] && [[ "${#tag_track_proper}" = "3" ]]; then
+				ParsedTrack="$tag_track_proper"
+
+			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+				ParsedTrack="000$tag_track_proper"
+			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "2" ]]; then
+				ParsedTrack="00$tag_track_proper"
+			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "3" ]]; then
+				ParsedTrack="0$tag_track_proper"
+			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "4" ]]; then
+				ParsedTrack="$tag_track_proper"
 			fi
 		fi
+
 	fi
 
 	# If no tag title
@@ -6501,6 +6506,7 @@ for i in "${!LSTAUDIO[@]}"; do
 	# Rename
 	(
 	if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
+			#echo "${LSTAUDIO[$i]} -> ${TAG_DISC[$i]}-$ParsedTrack - ${ParsedTitle}.${LSTAUDIO[$i]##*.}"
 		if [[ "$rename_option" = "rename" ]]; then
 			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "arename" ]]; then
@@ -6514,6 +6520,10 @@ for i in "${!LSTAUDIO[@]}"; do
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 		wait -n
 	fi
+
+	# Reset
+	unset ParsedTrack
+
 done
 wait
 }
@@ -6554,7 +6564,7 @@ StartLoading "Grab current tags" ""
 
 # Limit to current directory & audio file ext. tested
 mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex \
-						'.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+						'.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort -V | sed 's/^..//')
 
 # Get tag with ffprobe
 for i in "${!LSTAUDIO[@]}"; do
