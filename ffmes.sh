@@ -6435,8 +6435,8 @@ local ParsedArtist
 # Argument
 rename_option="$1"
 
-# Max total digit
-tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | wc -L)
+# Max total digit, ignore slash
+tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | awk -F"/" '{ print $1 }' | wc -L)
 
 for i in "${!LSTAUDIO[@]}"; do
 	StartLoading "" "Rename: ${LSTAUDIO[$i]}"
@@ -6506,13 +6506,16 @@ for i in "${!LSTAUDIO[@]}"; do
 	# Rename
 	(
 	if [[ -f "${LSTAUDIO[$i]}" && -s "${LSTAUDIO[$i]}" ]]; then
-			#echo "${LSTAUDIO[$i]} -> ${TAG_DISC[$i]}-$ParsedTrack - ${ParsedTitle}.${LSTAUDIO[$i]##*.}"
 		if [[ "$rename_option" = "rename" ]]; then
 			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "arename" ]]; then
 			mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "drename" ]]; then
-			mv "${LSTAUDIO[$i]}" "${TAG_DISC[$i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			if [[ -n"${TAG_DISC[$i]}" ]]; then
+				mv "${LSTAUDIO[$i]}" "${TAG_DISC[$i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			else
+				mv "${LSTAUDIO[$i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[$i]##*.}" &>/dev/null
+			fi
 		fi
 	fi
 	StopLoading $?
