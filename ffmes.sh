@@ -771,8 +771,8 @@ Bash tool handling media files, DVD & Blu-ray. Mainly with ffmpeg.
 
 Usage:
   Select all currents: ffmes
-  Select file:         ffmes -i [INPUTFILE]
-  Select directory:    ffmes -i [INPUTDIR]
+  Select file:         ffmes -i <file>
+  Select directory:    ffmes -i <directory>
 
 In batch:
   Video batch, processes one subdirectories.
@@ -3435,6 +3435,10 @@ if [ "${#ffprobe_StreamIndex[@]}" -lt 3 ] ; then
 fi
 }
 Video_MPEG4_Config() {					# Option 1  	- Conf Xvid 
+# Local variables
+local rpvkb
+local rpvkb_unit
+
 Display_Video_Custom_Info_choice
 echo " Choose a number OR enter the desired bitrate:"
 echo
@@ -3449,8 +3453,13 @@ echo "  [6] > for qscale 15  |SD"
 echo "  [7] > for qscale 30  |"
 echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
-if echo "$rpvkb" | grep -q 'k' ; then
-	vkb="-b:v $rpvkb"
+# Get unit
+rpvkb_unit="${rpvkb: -1}"
+if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
+	# Remove all after k/K from variable for prevent syntax error
+	video_stream_kb="${rpvkb%k*}"
+	video_stream_kb="${rpvkb%K*}"
+	vkb="-b:v $video_stream_kb"
 elif [ "$rpvkb" = "1" ]; then
 	vkb="-q:v 1"
 elif [ "$rpvkb" = "2" ]; then
@@ -3473,6 +3482,8 @@ fi
 }
 Video_x264_5_Config() {					# Option 1  	- Conf x264/x265
 # Local variables
+local rpvkb
+local rpvkb_unit
 local video_stream_kb
 local video_stream_size
 
@@ -3716,14 +3727,18 @@ echo "  [8] > for crf 30  Y| |"
 echo "  [9] > for crf 35   | ∨"
 echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
-if echo "$rpvkb" | grep -q 'k'; then
-	# Remove all after k from variable for prevent syntax error
+# Get unit
+rpvkb_unit="${rpvkb: -1}"
+if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
+	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
+	video_stream_kb="${rpvkb%K*}"
 	# Set cbr variable
 	vkb="-b:v ${video_stream_kb}k"
-elif echo "$rpvkb" | grep -q 'm'; then
-	# Remove all after m from variable
+elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
+	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
+	video_stream_size="${rpvkb%M*}"
 	# Bitrate calculation
 	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
 	# Set cbr variable
@@ -3756,6 +3771,8 @@ fi
 }
 Video_hevc_vaapi_Config() {				# Option 1  	- Conf hevc_vaapi
 # Local variables
+local rpvkb
+local rpvkb_unit
 local video_stream_kb
 local video_stream_size
 
@@ -3782,14 +3799,18 @@ echo "  [8] > for crf 30  Y| |"
 echo "  [9] > for crf 35   | ∨"
 echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
-if echo "$rpvkb" | grep -q 'k'; then
-	# Remove all after k from variable for prevent syntax error
+# Get unit
+rpvkb_unit="${rpvkb: -1}"
+if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
+	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
+	video_stream_kb="${rpvkb%K*}"
 	# Set cbr variable
 	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
-elif echo "$rpvkb" | grep -q 'm'; then
-	# Remove all after m from variable
+elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
+	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
+	video_stream_size="${rpvkb%M*}"
 	# Bitrate calculation
 	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
 	# Set cbr variable
@@ -3822,6 +3843,8 @@ fi
 }
 Video_av1_Config() {					# Option 1  	- Conf av1
 # Local variables
+local rpvkb
+local rpvkb_unit
 local video_stream_kb
 local video_stream_size
 
@@ -3900,14 +3923,18 @@ echo "  [6] > for crf 50  T| |"
 echo "  [7] > for crf 60  Y| ∨"
 echo "  [q] > for exit"
 read -r -e -p "-> " rpvkb
-if echo "$rpvkb" | grep -q 'k'; then
-	# Remove all after k from variable for prevent syntax error
+# Get unit
+rpvkb_unit="${rpvkb: -1}"
+if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
+	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
+	video_stream_kb="${rpvkb%K*}"
 	# Set cbr variable
 	vkb="-b:v ${video_stream_kb}k"
-elif echo "$rpvkb" | grep -q 'm'; then
-	# Remove all after m from variable
+elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
+	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
+	video_stream_size="${rpvkb%M*}"
 	# Bitrate calculation
 	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
 	# Set cbr variable
