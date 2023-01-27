@@ -15,6 +15,8 @@ export PATH=$PATH:/home/$USER/.local/bin
 FFMES_BIN=$(basename "${0}")
 ## Set ffmes path for restart from any directory
 FFMES_PATH="$( cd "$( dirname "$0" )" && pwd )"
+## Share directory
+FFMES_SHARE="/home/$USER/.local/share/ffmes"
 ## Cache directory
 FFMES_CACHE="/tmp/ffmes"
 ## ffprobe cache file
@@ -716,9 +718,12 @@ for command in "${TAG_COMMAND_NEEDED[@]}"; do
 done
 CheckCommandDisplay "tag"
 }
-CheckCacheDirectory() {					# Check if cache directory exist
+CheckFFmesDirectory() {					# Check ffmes directories exist
 if [ ! -d "$FFMES_CACHE" ]; then
 	mkdir "$FFMES_CACHE"
+fi
+if [ ! -d "$FFMES_SHARE" ]; then
+	mkdir "$FFMES_SHARE"
 fi
 }
 CheckFiles() {							# Promp a message to user with number of video, audio, sub to edit
@@ -2364,13 +2369,21 @@ read -r -e -p "-> " rpspalette
 case $rpspalette in
 
 	"0")
-		Tesseract_Arg="--oem 0 --tessdata-dir $FFMES_PATH/tesseract"
-		if [ ! -f "$FFMES_PATH/tesseract/$SubLang.traineddata" ]; then
-			if [ ! -d "$FFMES_PATH"/tesseract ]; then
-				mkdir "$FFMES_PATH"/tesseract
-			fi
+		Tesseract_Arg="--oem 0 --tessdata-dir ${FFMES_SHARE}/tesseract"
+		# Check tesseract traineddata dir
+		if [ ! -d "$FFMES_SHARE"/tesseract ]; then
+			mkdir "$FFMES_SHARE"/tesseract
+		fi
+		# Check tesseract traineddata file
+		if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
 			StartLoading "Downloading Tesseract trained models"
-			wget https://github.com/tesseract-ocr/tessdata/raw/master/"$SubLang".traineddata -P "$FFMES_PATH"/tesseract &>/dev/null
+			if [[ "$VERBOSE" = "1" ]]; then
+				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
+			else
+				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
+			fi
 			StopLoading $?
 		fi
 		break
@@ -6971,7 +6984,7 @@ done
 CheckCoreCommand
 CheckJQCommand
 CheckMediaInfoCommand
-CheckCacheDirectory
+CheckFFmesDirectory
 CheckCustomBin
 CheckFFmpegVersion
 TestVAAPI
