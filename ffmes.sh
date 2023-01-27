@@ -2362,34 +2362,22 @@ echo " Select Tesseract engine:"
 echo
 echo "  [0] > fast     - By recognizing character patterns"
 echo " *[1] > reliable - By neural net (LSTM)"
+echo "  [2] > slow     - By recognizing character + neural net"
 echo "  [q] > for exit"
 while :
 do
 read -r -e -p "-> " rpspalette
 case $rpspalette in
-
 	"0")
 		Tesseract_Arg="--oem 0 --tessdata-dir ${FFMES_SHARE}/tesseract"
-		# Check tesseract traineddata dir
-		if [ ! -d "$FFMES_SHARE"/tesseract ]; then
-			mkdir "$FFMES_SHARE"/tesseract
-		fi
-		# Check tesseract traineddata file
-		if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
-			StartLoading "Downloading Tesseract trained models"
-			if [[ "$VERBOSE" = "1" ]]; then
-				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
-					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
-			else
-				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
-					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
-			fi
-			StopLoading $?
-		fi
 		break
 	;;
 	"1")
 		Tesseract_Arg="--oem 1"
+		break
+	;;
+	"2")
+		Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
 		break
 	;;
 	"q"|"Q")
@@ -2401,6 +2389,32 @@ case $rpspalette in
 		;;
 esac
 done
+
+# Download traineddata
+if [[ "$rpspalette" = "0" ]] || [[ "$rpspalette" = "2" ]]; then
+
+	# Check tesseract traineddata dir
+	if [ ! -d "$FFMES_SHARE"/tesseract ]; then
+		mkdir "$FFMES_SHARE"/tesseract
+	fi
+
+	# Check tesseract traineddata file
+	if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
+
+		StartLoading "Downloading Tesseract trained models"
+
+		if [[ "$VERBOSE" = "1" ]]; then
+			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+				-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
+		else
+			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+				-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
+		fi
+
+		StopLoading $?
+
+	fi
+fi
 
 # Convert loop
 echo
