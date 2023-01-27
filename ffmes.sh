@@ -2409,14 +2409,22 @@ for files in "${LSTSUB[@]}"; do
 
 	# Extract tiff
 	StartLoading "${files%.*}: Extract tiff files"
-	subp2tiff --sid=0 -n "${files%.*}" &>/dev/null
+	if [[ "$VERBOSE" = "1" ]]; then
+		subp2tiff --sid=0 -n "${files%.*}"
+	else
+		subp2tiff --sid=0 -n "${files%.*}" &>/dev/null
+	fi
 	StopLoading $?
 
 	# Convert tiff in text
 	TOTAL=(*.tif)
 	for tfiles in *.tif; do
 		(
-		tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
+		if [[ "$VERBOSE" = "1" ]]; then
+			tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang"
+		else
+			tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
+		fi
 		) &
 		if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 			wait -n
@@ -2432,7 +2440,11 @@ for files in "${LSTSUB[@]}"; do
 	StartLoading "${files%.*}: Convert text files in srt"
 
 	# Convert text in srt
-	subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt &>/dev/null
+	if [[ "$VERBOSE" = "1" ]]; then
+		subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt
+	else
+		subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt &>/dev/null
+	fi
 
 	# Remove ^L/\f/FF/form-feed/page-break character
 	sed -i 's/\o14//g' "${files%.*}".srt &>/dev/null
