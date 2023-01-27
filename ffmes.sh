@@ -2273,6 +2273,7 @@ done
 }
 DVDSub2Srt() {							# Option 18 	- DVD sub to srt
 # Local variables
+local pair_error
 local rpspalette
 local SubLang
 local Tesseract_Arg
@@ -2280,198 +2281,220 @@ local COUNTER
 local TIFF_NB
 local TOTAL
 
-clear
-echo
-echo " Select subtitle language for:"
-printf '  %s\n' "${LSTSUB[@]}"
-echo
-echo "   [0] > eng     - english"
-echo "   [1] > fra     - french"
-echo "   [2] > deu     - deutsch"
-echo "   [3] > spa     - spanish"
-echo "   [4] > por     - portuguese"
-echo "   [5] > ita     - italian"
-echo "   [6] > jpn     - japanese"
-echo "   [7] > chi-sim - chinese simplified"
-echo "   [8] > ara     - arabic"
-echo "   [9] > kor     - korean"
-echo "  [10] > rus     - russian"
-echo "   [q] > for exit"
-while :
-do
-read -r -e -p "-> " rpspalette
-case $rpspalette in
-
-	"0")
-		SubLang="eng"
-		break
-	;;
-	"1")
-		SubLang="fra"
-		break
-	;;
-	"2")
-		SubLang="deu"
-		break
-	;;
-	"3")
-		SubLang="spa"
-		break
-	;;
-	"4")
-		SubLang="por"
-		break
-	;;
-	"5")
-		SubLang="ita"
-		break
-	;;
-	"6")
-		SubLang="jpn"
-		break
-	;;
-	"7")
-		SubLang="chi-sim"
-		break
-	;;
-	"8")
-		SubLang="ara"
-		break
-	;;
-	"9")
-		SubLang="kor"
-		break
-	;;
-	"10")
-		SubLang="rus"
-		break
-	;;
-	"q"|"Q")
-		Restart
-	;;
-		*)
-			echo
-			Echo_Mess_Invalid_Answer
-			echo
-		;;
-esac
-done 
-
-echo
-echo " Select Tesseract engine:"
-echo
-echo "  [0] > fast     - By recognizing character patterns"
-echo " *[1] > reliable - By neural net (LSTM)"
-echo "  [2] > slow     - By recognizing character + neural net"
-echo "  [q] > for exit"
-while :
-do
-read -r -e -p "-> " rpspalette
-case $rpspalette in
-	"0")
-		Tesseract_Arg="--oem 0 --tessdata-dir ${FFMES_SHARE}/tesseract"
-		break
-	;;
-	"1")
-		Tesseract_Arg="--oem 1"
-		break
-	;;
-	"2")
-		Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
-		break
-	;;
-	"q"|"Q")
-		Restart
-	;;
-		*)
-		Tesseract_Arg="--oem 1"
-		break
-		;;
-esac
-done
-
-# Download traineddata
-if [[ "$rpspalette" = "0" ]] || [[ "$rpspalette" = "2" ]]; then
-
-	# Check tesseract traineddata dir
-	if [ ! -d "$FFMES_SHARE"/tesseract ]; then
-		mkdir "$FFMES_SHARE"/tesseract
-	fi
-
-	# Check tesseract traineddata file
-	if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
-
-		StartLoading "Downloading Tesseract trained models"
-
-		if [[ "$VERBOSE" = "1" ]]; then
-			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
-				-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
-		else
-			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
-				-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
-		fi
-
-		StopLoading $?
-
-	fi
-fi
-
-# Convert loop
-echo
-Echo_Separator_Light
+# Test idx/sub pair
 for files in "${LSTSUB[@]}"; do
 
-	# Extract tiff
-	StartLoading "${files%.*}: Extract tiff files"
-	if [[ "$VERBOSE" = "1" ]]; then
-		subp2tiff --sid=0 -n "${files%.*}"
-	else
-		subp2tiff --sid=0 -n "${files%.*}" &>/dev/null
-	fi
-	StopLoading $?
-
-	# Convert tiff in text
-	TOTAL=(*.tif)
-	for tfiles in *.tif; do
-		(
-		if [[ "$VERBOSE" = "1" ]]; then
-			tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang"
-		else
-			tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
-		fi
-		) &
-		if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
-			wait -n
-		fi
-		# Counter
-		TIFF_NB=$(( COUNTER + 1 ))
-		COUNTER=$TIFF_NB
-		# Progress
-		ProgressBar "" "${COUNTER}" "${#TOTAL[@]}" "tif to text files" "1" 
-	done
-	wait
-
-	StartLoading "${files%.*}: Convert text files in srt"
-
-	# Convert text in srt
-	if [[ "$VERBOSE" = "1" ]]; then
-		subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt
-	else
-		subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt &>/dev/null
+	if ! [[ -f "${files%.*}.sub" ]] && [[ -f "${files%.*}.idx" ]]; then
+		pair_error="1"
+		pair_error_list+=( "$files" )
 	fi
 
-	# Remove ^L/\f/FF/form-feed/page-break character
-	sed -i 's/\o14//g' "${files%.*}".srt &>/dev/null
+done
 
-	StopLoading $?
+# Main if pair
+if [[ "$pair_error" = "1" ]]; then
+	echo
+	Echo_Mess_Error "The pair idx/sub must have the exact same file name"
+	echo "  File(s) without sub pair:"
+	Display_List_Truncate "${pair_error_list[@]}"
 	echo
 
-	# Clean
-	COUNTER=0
-	rm -- *.tif &>/dev/null
-	rm -- *.txt &>/dev/null
-	rm -- *.xml &>/dev/null
-done
+else
+
+	clear
+	echo
+	echo " Select subtitle language for:"
+	printf '  %s\n' "${LSTSUB[@]}"
+	echo
+	echo "   [0] > eng     - english"
+	echo "   [1] > fra     - french"
+	echo "   [2] > deu     - deutsch"
+	echo "   [3] > spa     - spanish"
+	echo "   [4] > por     - portuguese"
+	echo "   [5] > ita     - italian"
+	echo "   [6] > jpn     - japanese"
+	echo "   [7] > chi-sim - chinese simplified"
+	echo "   [8] > ara     - arabic"
+	echo "   [9] > kor     - korean"
+	echo "  [10] > rus     - russian"
+	echo "   [q] > for exit"
+	while :
+	do
+	read -r -e -p "-> " rpspalette
+	case $rpspalette in
+
+		"0")
+			SubLang="eng"
+			break
+		;;
+		"1")
+			SubLang="fra"
+			break
+		;;
+		"2")
+			SubLang="deu"
+			break
+		;;
+		"3")
+			SubLang="spa"
+			break
+		;;
+		"4")
+			SubLang="por"
+			break
+		;;
+		"5")
+			SubLang="ita"
+			break
+		;;
+		"6")
+			SubLang="jpn"
+			break
+		;;
+		"7")
+			SubLang="chi-sim"
+			break
+		;;
+		"8")
+			SubLang="ara"
+			break
+		;;
+		"9")
+			SubLang="kor"
+			break
+		;;
+		"10")
+			SubLang="rus"
+			break
+		;;
+		"q"|"Q")
+			Restart
+		;;
+			*)
+				echo
+				Echo_Mess_Invalid_Answer
+				echo
+			;;
+	esac
+	done 
+
+	echo
+	echo " Select Tesseract engine:"
+	echo
+	echo "  [0] > fast     - By recognizing character patterns"
+	echo " *[1] > reliable - By neural net (LSTM)"
+	echo "  [2] > slow     - By recognizing character + neural net"
+	echo "  [q] > for exit"
+	while :
+	do
+	read -r -e -p "-> " rpspalette
+	case $rpspalette in
+		"0")
+			Tesseract_Arg="--oem 0 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			break
+		;;
+		"1")
+			Tesseract_Arg="--oem 1"
+			break
+		;;
+		"2")
+			Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			break
+		;;
+		"q"|"Q")
+			Restart
+		;;
+			*)
+			Tesseract_Arg="--oem 1"
+			break
+			;;
+	esac
+	done
+
+	# Download traineddata
+	if [[ "$rpspalette" = "0" ]] || [[ "$rpspalette" = "2" ]]; then
+
+		# Check tesseract traineddata dir
+		if [ ! -d "$FFMES_SHARE"/tesseract ]; then
+			mkdir "$FFMES_SHARE"/tesseract
+		fi
+
+		# Check tesseract traineddata file
+		if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
+
+			StartLoading "Downloading Tesseract trained models"
+
+			if [[ "$VERBOSE" = "1" ]]; then
+				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
+			else
+				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
+			fi
+
+			StopLoading $?
+
+		fi
+	fi
+
+	# Convert loop
+	echo
+	Echo_Separator_Light
+	for files in "${LSTSUB[@]}"; do
+
+		# Extract tiff
+		StartLoading "${files%.*}: Extract tiff files"
+		if [[ "$VERBOSE" = "1" ]]; then
+			subp2tiff --sid=0 -n "${files%.*}"
+		else
+			subp2tiff --sid=0 -n "${files%.*}" &>/dev/null
+		fi
+		StopLoading $?
+
+		# Convert tiff in text
+		TOTAL=(*.tif)
+		for tfiles in *.tif; do
+			(
+			if [[ "$VERBOSE" = "1" ]]; then
+				tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang"
+			else
+				tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang" &>/dev/null
+			fi
+			) &
+			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
+				wait -n
+			fi
+			# Counter
+			TIFF_NB=$(( COUNTER + 1 ))
+			COUNTER=$TIFF_NB
+			# Progress
+			ProgressBar "" "${COUNTER}" "${#TOTAL[@]}" "tif to text files" "1" 
+		done
+		wait
+
+		StartLoading "${files%.*}: Convert text files in srt"
+
+		# Convert text in srt
+		if [[ "$VERBOSE" = "1" ]]; then
+			subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt
+		else
+			subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt &>/dev/null
+		fi
+
+		# Remove ^L/\f/FF/form-feed/page-break character
+		sed -i 's/\o14//g' "${files%.*}".srt &>/dev/null
+
+		StopLoading $?
+		echo
+
+		# Clean
+		COUNTER=0
+		rm -- *.tif &>/dev/null
+		rm -- *.txt &>/dev/null
+		rm -- *.xml &>/dev/null
+	done
+
+fi
 }
 
 ## Blu-ray
