@@ -69,7 +69,7 @@ VAAPI_device="/dev/dri/renderD128"
 ## Subtitle command needed
 SUBTI_COMMAND_NEEDED=(subp2tiff subptools tesseract wget)
 ## Subtitle input extension available
-SUBTI_EXT_AVAILABLE="ass|srt|ssa|idx|sup"
+SUBTI_EXT_AVAILABLE="ass|idx|srt|ssa|sup"
 
 # Audio variables
 ## Audio command needed
@@ -6884,13 +6884,14 @@ while [[ $# -gt 0 ]]; do
 		elif [ -f "$InputFileDir" ]; then
 			InputFileExt="${InputFileDir##*.}"
 			InputFileExt="${InputFileExt,,}"
-			all_ext_available="${VIDEO_EXT_AVAILABLE[*]}|${AUDIO_EXT_AVAILABLE[*]}|${ISO_EXT_AVAILABLE[*]}"
+			all_ext_available="${VIDEO_EXT_AVAILABLE[*]}|${AUDIO_EXT_AVAILABLE[*]}|${ISO_EXT_AVAILABLE[*]}|${SUBTI_EXT_AVAILABLE[*]}"
 			if ! [[ "$all_ext_available" =~ $InputFileExt ]]; then
 				echo
 				Echo_Mess_Error "\"$1\" is not supported"
 				Echo_Mess_Error "Supported Video: ${VIDEO_EXT_AVAILABLE//|/, }"
 				Echo_Mess_Error "Supported Audio: ${AUDIO_EXT_AVAILABLE//|/, }"
 				Echo_Mess_Error "Supported ISO: ${ISO_EXT_AVAILABLE//|/, }"
+				Echo_Mess_Error "Supported Subtitle: ${SUBTI_EXT_AVAILABLE//|/, }"
 				echo
 				exit
 			else
