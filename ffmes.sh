@@ -2198,7 +2198,7 @@ else
 	exit
 fi
 }
-DVDSubColor() {							# Option 17 	- Change color of DVD sub
+DVDSubColor() {							# Option 15 	- Change color of DVD sub
 # Local variables
 local palette
 
@@ -2271,7 +2271,7 @@ case $rpspalette in
 esac
 done 
 }
-DVDSub2Srt() {							# Option 18 	- DVD sub to srt
+DVDSub2Srt() {							# Option 16 	- DVD sub to srt
 # Local variables
 local pair_error
 local rpspalette
@@ -2280,6 +2280,8 @@ local Tesseract_Arg
 local COUNTER
 local TIFF_NB
 local TOTAL
+
+pair_error_list=()
 
 # Test idx/sub pair
 for files in "${LSTSUB[@]}"; do
@@ -4211,7 +4213,7 @@ PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
 }
-Video_Merge_Files() {					# Option 11 	- Add audio stream or subtitle in video file
+Video_Merge_Files() {					# Option 10 	- Add audio stream or subtitle in video file
 # Local variables
 local MERGE_LSTAUDIO
 local MERGE_LSTSUB
@@ -4285,7 +4287,7 @@ total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" ""
 }
-Video_Concatenate() {					# Option 12 	- Concatenate video
+Video_Concatenate() {					# Option 11 	- Concatenate video
 # Local variables
 local filename_id
 
@@ -4346,7 +4348,7 @@ else
 	esac
 fi
 }
-Video_Extract_Stream() {				# Option 13 	- Extract stream
+Video_Extract_Stream() {				# Option 12 	- Extract stream
 # Local variables
 local rpstreamch_parsed
 local streams_invalid
@@ -4519,7 +4521,7 @@ total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" ""
 }
-Video_Cut_File() {						# Option 14 	- Cut video
+Video_Cut_File() {						# Option 13 	- Cut video
 # Local variables
 local qcut0
 local qcut
@@ -4650,7 +4652,7 @@ PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 # End encoding messages "pass_files" "total_files" "target_size" "source_size"
 Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
 }
-Video_Split_By_Chapter() {				# Option 15 	- Split by chapter
+Video_Split_By_Chapter() {				# Option 14 	- Split by chapter
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 
 if [[ -n "$ffprobe_ChapterNumberFormated" ]]; then
@@ -6944,15 +6946,32 @@ while [[ $# -gt 0 ]]; do
 			cd "$InputFileDir" || exit
 		# If file
 		elif [ -f "$InputFileDir" ]; then
+
+			# Variable filter
 			InputFileExt="${InputFileDir##*.}"
-			InputFileExt="${InputFileExt,,}"
-			all_ext_available="${VIDEO_EXT_AVAILABLE[*]}|${AUDIO_EXT_AVAILABLE[*]}|${ISO_EXT_AVAILABLE[*]}|${SUBTI_EXT_AVAILABLE[*]}"
-			if ! [[ "$all_ext_available" =~ $InputFileExt ]]; then
+			all_ext_available="${VIDEO_EXT_AVAILABLE}| \
+							   ${AUDIO_EXT_AVAILABLE}| \
+							   ${ISO_EXT_AVAILABLE}| \
+							   ${SUBTI_EXT_AVAILABLE}"
+			all_ext_available="${all_ext_available//[[:blank:]]/}"
+			mapfile -t arr_all_ext_available < <( echo "${all_ext_available//|/$'\n'}" )
+
+			# Ext. test
+			shopt -s nocasematch
+			for files_ext in "${arr_all_ext_available[@]}"; do
+				if [[ "$files_ext" = "$InputFileExt" ]]; then
+					ext_test_result_off="1"
+				fi
+			done
+			shopt -u nocasematch
+
+			# If test pass = no error
+			if [[ "$ext_test_result_off" != "1" ]]; then
 				echo
 				Echo_Mess_Error "\"$1\" is not supported"
 				Echo_Mess_Error "Supported Video: ${VIDEO_EXT_AVAILABLE//|/, }"
 				Echo_Mess_Error "Supported Audio: ${AUDIO_EXT_AVAILABLE//|/, }"
-				Echo_Mess_Error "Supported ISO: ${ISO_EXT_AVAILABLE//|/, }"
+				Echo_Mess_Error "Supported DVD Image: ${ISO_EXT_AVAILABLE//|/, }"
 				Echo_Mess_Error "Supported Subtitle: ${SUBTI_EXT_AVAILABLE//|/, }"
 				echo
 				exit

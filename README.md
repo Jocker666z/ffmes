@@ -59,7 +59,7 @@ Options:
 Examples:
 * `ffmes` with audio/video in directory
 * `ffmes -i DIRECTORY-TO.EDIT` for directory
-* `ffmes -i FILE-TO.EDIT` for single video or audio
+* `ffmes -i FILE-TO.EDIT` for single video, audio, or subtitle
 * `ffmes -vv -i FILE-TO.EDIT` for single video or audio, with ffmpeg in log level as debug
 * `ffmes -s 1 -i FILE-TO.EDIT` for single video, select option 1 by-passing the main menu
 
