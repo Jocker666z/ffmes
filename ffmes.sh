@@ -3522,7 +3522,7 @@ rpvkb_unit="${rpvkb: -1}"
 if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
 	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
-	video_stream_kb="${rpvkb%K*}"
+	video_stream_kb="${video_stream_kb%K*}"
 	vkb="-b:v $video_stream_kb"
 elif [ "$rpvkb" = "1" ]; then
 	vkb="-q:v 1"
@@ -3796,13 +3796,13 @@ rpvkb_unit="${rpvkb: -1}"
 if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
 	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
-	video_stream_kb="${rpvkb%K*}"
+	video_stream_kb="${video_stream_kb%K*}"
 	# Set cbr variable
 	vkb="-b:v ${video_stream_kb}k"
 elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
-	video_stream_size="${rpvkb%M*}"
+	video_stream_size="${video_stream_size%M*}"
 	# Bitrate calculation
 	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
 	# Set cbr variable
@@ -3868,13 +3868,13 @@ rpvkb_unit="${rpvkb: -1}"
 if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
 	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
-	video_stream_kb="${rpvkb%K*}"
+	video_stream_kb="${video_stream_kb%K*}"
 	# Set cbr variable
 	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
 elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
-	video_stream_size="${rpvkb%M*}"
+	video_stream_size="${video_stream_size%M*}"
 	# Bitrate calculation
 	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
 	# Set cbr variable
