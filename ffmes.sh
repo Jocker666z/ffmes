@@ -2391,18 +2391,30 @@ else
 	read -r -e -p "-> " rpspalette
 	case $rpspalette in
 		"0")
-			Tesseract_Arg="--oem 0 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			if [[ "$SubLang" = "chi_sim" ]];then
+				Tesseract_Arg="--oem 2 --psm 6 -c preserve_interword_spaces=1 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			else
+				Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			fi
 			break
 		;;
 		"1")
-			Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			if [[ "$SubLang" = "chi_sim" ]];then
+				Tesseract_Arg="--oem 2 --psm 6 -c preserve_interword_spaces=1 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			else
+				Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			fi
 			break
 		;;
 		"q"|"Q")
 			Restart
 		;;
 			*)
-			Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			if [[ "$SubLang" = "chi_sim" ]];then
+				Tesseract_Arg="--oem 2 --psm 6 -c preserve_interword_spaces=1 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			else
+				Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+			fi
 			break
 			;;
 	esac
