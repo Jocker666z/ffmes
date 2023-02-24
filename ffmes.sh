@@ -2414,8 +2414,14 @@ else
 		mkdir "$FFMES_SHARE"/tesseract
 	fi
 
+	# Check tesseract traineddata file is empty
+	if [[ -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]] \
+	&& [[ -z $(< "${FFMES_SHARE}/tesseract/$SubLang.traineddata") ]]; then
+		rm "${FFMES_SHARE}/tesseract/$SubLang.traineddata"
+	fi
+
 	# Check tesseract traineddata file
-	if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
+	if [[ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]]; then
 
 		StartLoading "Downloading Tesseract trained models"
 
