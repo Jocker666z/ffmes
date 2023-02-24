@@ -2384,8 +2384,7 @@ else
 	echo " Select Tesseract engine:"
 	echo
 	echo "  [0] > fast     - By recognizing character patterns"
-	echo " *[1] > reliable - By neural net (LSTM)"
-	echo "  [2] > slow     - By recognizing character + neural net"
+	echo " *[1] > reliable - By recognizing character + neural net"
 	echo "  [q] > for exit"
 	while :
 	do
@@ -2396,10 +2395,6 @@ else
 			break
 		;;
 		"1")
-			Tesseract_Arg="--oem 1"
-			break
-		;;
-		"2")
 			Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
 			break
 		;;
@@ -2407,7 +2402,7 @@ else
 			Restart
 		;;
 			*)
-			Tesseract_Arg="--oem 1"
+			Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
 			break
 			;;
 	esac
