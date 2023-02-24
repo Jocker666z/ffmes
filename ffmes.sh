@@ -2408,30 +2408,27 @@ else
 	esac
 	done
 
-	# Download traineddata
-	if [[ "$rpspalette" = "0" ]] || [[ "$rpspalette" = "2" ]]; then
+	# traineddata
+	# Check tesseract traineddata dir
+	if [ ! -d "$FFMES_SHARE"/tesseract ]; then
+		mkdir "$FFMES_SHARE"/tesseract
+	fi
 
-		# Check tesseract traineddata dir
-		if [ ! -d "$FFMES_SHARE"/tesseract ]; then
-			mkdir "$FFMES_SHARE"/tesseract
+	# Check tesseract traineddata file
+	if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
+
+		StartLoading "Downloading Tesseract trained models"
+
+		if [[ "$VERBOSE" = "1" ]]; then
+			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+				-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
+		else
+			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
+				-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
 		fi
 
-		# Check tesseract traineddata file
-		if [ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]; then
+		StopLoading $?
 
-			StartLoading "Downloading Tesseract trained models"
-
-			if [[ "$VERBOSE" = "1" ]]; then
-				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
-					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata
-			else
-				wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
-					-O "$FFMES_SHARE"/tesseract/"$SubLang".traineddata &>/dev/null
-			fi
-
-			StopLoading $?
-
-		fi
 	fi
 
 	# Convert loop
