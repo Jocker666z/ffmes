@@ -2354,7 +2354,7 @@ else
 			break
 		;;
 		"7")
-			SubLang="chi-sim"
+			SubLang="chi_sim"
 			break
 		;;
 		"8")
