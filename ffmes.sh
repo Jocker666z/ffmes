@@ -2410,20 +2410,20 @@ else
 
 	# traineddata
 	# Check tesseract traineddata dir
-	if [ ! -d "$FFMES_SHARE"/tesseract ]; then
+	if [[ ! -d "$FFMES_SHARE"/tesseract ]]; then
 		mkdir "$FFMES_SHARE"/tesseract
 	fi
 
 	# Check tesseract traineddata file is empty
 	if [[ -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]] \
-	&& [[ -z $(< "${FFMES_SHARE}/tesseract/$SubLang.traineddata") ]]; then
+	&& [[ ! -s "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]]; then
 		rm "${FFMES_SHARE}/tesseract/$SubLang.traineddata"
 	fi
 
 	# Check tesseract traineddata file
 	if [[ ! -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]]; then
 
-		StartLoading "Downloading Tesseract trained models"
+		StartLoading "Downloading Tesseract trained models: ${SubLang}.traineddata"
 
 		if [[ "$VERBOSE" = "1" ]]; then
 			wget https://github.com/tesseract-ocr/tessdata/blob/main/"$SubLang".traineddata?raw=true \
@@ -2435,6 +2435,14 @@ else
 
 		StopLoading $?
 
+	fi
+
+	# Check tesseract traineddata file still empty
+	if [[ -f "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]] \
+	&& [[ ! -s "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]]; then
+		rm "${FFMES_SHARE}/tesseract/$SubLang.traineddata"
+		Echo_Mess_Error "An error occurred, Tesseract trained models (${SubLang}.traineddata) was not downloaded"
+		echo
 	fi
 
 	# Convert loop
