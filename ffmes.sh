@@ -2442,7 +2442,7 @@ else
 	&& [[ ! -s "${FFMES_SHARE}/tesseract/$SubLang.traineddata" ]]; then
 		rm "${FFMES_SHARE}/tesseract/$SubLang.traineddata"
 		Echo_Mess_Error "An error occurred, Tesseract trained models (${SubLang}.traineddata) was not downloaded"
-		echo
+		exit
 	fi
 
 	# Convert loop
