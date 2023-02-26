@@ -2474,6 +2474,11 @@ else
 		# Convert tiff in text
 		TOTAL=(*.tif)
 		for tfiles in *.tif; do
+			# Counter
+			TIFF_NB=$(( COUNTER + 1 ))
+			COUNTER=$TIFF_NB
+			# Progress
+			ProgressBar "" "${COUNTER}" "${#TOTAL[@]}" "tif to text files" "1" 
 			(
 			if [[ "$VERBOSE" = "1" ]]; then
 				tesseract $Tesseract_Arg "$tfiles" "$tfiles" -l "$SubLang"
@@ -2484,11 +2489,6 @@ else
 			if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 				wait -n
 			fi
-			# Counter
-			TIFF_NB=$(( COUNTER + 1 ))
-			COUNTER=$TIFF_NB
-			# Progress
-			ProgressBar "" "${COUNTER}" "${#TOTAL[@]}" "tif to text files" "1" 
 		done
 		wait
 
@@ -2741,6 +2741,13 @@ if [[ -n "$BD_disk" ]]; then
 
 	for title in "${bd_title_pass_extract[@]}"; do
 
+		# Reset array
+		bd_title_audio_stream=()
+		bd_track_subtitle_nb=()
+		bd_title_subtitle_stream=()
+		bd_title_subtitle_tracks_lang=()
+		bd_title_subtitle_metadata=()
+
 		# Extract audio stream
 		mapfile -t bd_track_audio_nb < <("$json_parser" -r ".titles[] \
 										| select(.title==$title) | .audio[] | .track" "$BDINFO_CACHE")
@@ -2771,6 +2778,8 @@ if [[ -n "$BD_disk" ]]; then
 				((stream_counter=stream_counter+1))
 			done
 		fi
+		printf '%s\n' "${bd_title_audio_stream[@]}"
+		printf '%s\n' "${bd_title_subtitle_stream[@]}"
 
 		# Extract chapters
 		bluray_info -t "$title" -g "$BD_disk" 2>/dev/null > "${bd_disk_name}.${title}".chapter
