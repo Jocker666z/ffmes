@@ -2778,8 +2778,6 @@ if [[ -n "$BD_disk" ]]; then
 				((stream_counter=stream_counter+1))
 			done
 		fi
-		printf '%s\n' "${bd_title_audio_stream[@]}"
-		printf '%s\n' "${bd_title_subtitle_stream[@]}"
 
 		# Extract chapters
 		bluray_info -t "$title" -g "$BD_disk" 2>/dev/null > "${bd_disk_name}.${title}".chapter
