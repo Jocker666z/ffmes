@@ -105,10 +105,12 @@ MESS_ONE_EXTENTION_ONLY="Only one extention type at a time."
 
 ## SOURCE FILES VARIABLES
 DetectDVD() {							# DVD detection
+local lsdvd_result
+
 for DEVICE in "${OPTICAL_DEVICE[@]}"; do
 	lsdvd "$DEVICE" &>/dev/null
-	local lsdvd_result=$?
-	if [ "$lsdvd_result" -eq 0 ]; then
+	lsdvd_result=$?
+	if [[ "$lsdvd_result" -eq 0 ]]; then
 		DVD_DEVICE="$DEVICE"
 		DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD_DEVICE" -I 2>/dev/null \
 					| grep "DVD with title" \
@@ -132,7 +134,7 @@ LSTVOB=()
 LSTM3U=()
 
 # Populate arrays
-if test -n "$InputFileArg"; then
+if [[ -n "$InputFileArg" ]]; then
 	if [[ ${VIDEO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
 		LSTVIDEO+=("$InputFileArg")
 		mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
@@ -360,9 +362,9 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_fps+=( "$(bc <<< "scale=2; $ffprobe_fps_raw" 2>/dev/null | sed 's!\.0*$!!')" )
 				ffprobe_AttachedPic+=( "$(ff_jqparse_disposition "$index" "attached_pic")" )1
 				# HDR detection
-				if [ "${ffprobe_ColorSpace[-1]}" = "bt2020nc" ] \
-					&& [ "${ffprobe_ColorTransfert[-1]}" = "smpte2084" ] \
-					&& [ "${ffprobe_ColorPrimaries[-1]}" = "bt2020" ]; then 
+				if [[ "${ffprobe_ColorSpace[-1]}" = "bt2020nc" ]] \
+					&& [[ "${ffprobe_ColorTransfert[-1]}" = "smpte2084" ]] \
+					&& [[ "${ffprobe_ColorPrimaries[-1]}" = "bt2020" ]]; then 
 					ffprobe_hdr="1"
 				fi
 			else
@@ -557,11 +559,11 @@ ffmpeg_test_libfdk_codec=$("$ffmpeg_bin" -hide_banner -loglevel quiet -codecs | 
 ffmpeg_test_libsoxr_filter=$("$ffmpeg_bin" -hide_banner -loglevel quiet -buildconf | grep "libsoxr")
 
 # If no VAAPI response unset
-if [ -z "$ffmpeg_test_hevc_vaapi_codec" ]; then
+if [[ -z "$ffmpeg_test_hevc_vaapi_codec" ]]; then
 	unset VAAPI_device
 fi
 # If libfdk_aac present use libfdk_aac
-if [ -n "$ffmpeg_test_libfdk_codec" ]; then
+if [[ -n "$ffmpeg_test_libfdk_codec" ]]; then
 	ffmpeg_aac_encoder="libfdk_aac"
 else
 	ffmpeg_aac_encoder="aac"
@@ -719,10 +721,10 @@ done
 CheckCommandDisplay "tag"
 }
 CheckFFmesDirectory() {					# Check ffmes directories exist
-if [ ! -d "$FFMES_CACHE" ]; then
+if [[ ! -d "$FFMES_CACHE" ]]; then
 	mkdir "$FFMES_CACHE"
 fi
-if [ ! -d "$FFMES_SHARE" ]; then
+if [[ ! -d "$FFMES_SHARE" ]]; then
 	mkdir "$FFMES_SHARE"
 fi
 }
@@ -878,7 +880,7 @@ fi
 
 Echo_Separator_Light
 
-if [ -z "$total_files" ]; then
+if [[ -z "$total_files" ]]; then
 	echo " $pass_files file(s) have been processed."
 else
 	echo " ${pass_files}/${total_files} file(s) have been processed."
@@ -942,7 +944,7 @@ separator_string_length=$(( codec_string_length + bitrate_string_length + Sample
 
 
 # Only display if launched in argument
-if [ "$force_compare_audio" = "1" ]; then
+if [[ "$force_compare_audio" = "1" ]]; then
 	Display_Remove_Previous_Line
 	echo
 fi
@@ -1027,7 +1029,7 @@ else
 fi
 
 # Only display if launched in argument
-if [ "$force_compare_audio" = "1" ]; then
+if [[ "$force_compare_audio" = "1" ]]; then
 	echo
 fi
 }
@@ -1165,7 +1167,7 @@ Display_Video_Custom_Info_choice() {	# Option 1  	- Summary of configuration
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 echo " Target configuration:"
 echo "  Video stream: $chvidstream"
-if [ "$ENCODV" = "1" ]; then
+if [[ "$ENCODV" = "1" ]]; then
 	echo "   * Desinterlace: $chdes"
 	echo "   * Resolution: $chwidth"
 	if [[ "$codec" != "hevc_vaapi" ]]; then
@@ -1179,7 +1181,7 @@ if [ "$ENCODV" = "1" ]; then
 	echo "   * Bitrate: $vkb"
 fi
 echo "  Audio stream: $chsoundstream"
-if [ "$ENCODA" = "1" ]; then
+if [[ "$ENCODA" = "1" ]]; then
 	echo "   * Codec: $chacodec"
 	echo "   * Bitrate: $akb"
 	echo "   * Channels: $rpchannel"
@@ -1317,10 +1319,10 @@ error_label="$1"
 error_option="$2"
 
 if [[ -z "$error_option" ]]; then
-	echo "  [!] ${error_label}."
+	echo "  [!] ${error_label}." >&2
 elif [[ "$error_option" = "1" ]]; then
 	echo
-	echo "  [!] ${error_label}."
+	echo "  [!] ${error_label}." >&2
 	echo
 fi
 }
@@ -1333,7 +1335,7 @@ string_length=("$@")
 
 for string in "${string_length[@]}"; do
 
-	if [ -z "$string_length_calc" ]; then
+	if [[ -z "$string_length_calc" ]]; then
 		string_length_calc="${#string}"
 	fi
 
@@ -1353,7 +1355,7 @@ local kbs
 size_bytes="$1"
 duration_s="$2"
 
-if [ -n "$size_bytes" ] && [ -n "$duration_s" ]; then
+if [[ -n "$size_bytes" ]] && [[ -n "$duration_s" ]]; then
 	if [[ "$size_bytes" =~ ^[0-9]+$ ]]; then
 		kbs=$(bc <<< "scale=0; ($size_bytes * 8) / 1024 / $duration_s")
 
@@ -1464,7 +1466,7 @@ printf '%02d:%02d:%02d\n' $((second/3600)) $((second%3600/60)) $((second%60))
 ## IN SCRIPT VARIOUS FUNCTIONS
 Restart() {								# Restart script & for keep argument
 Clean
-if [ -n "$ffmes_args" ]; then
+if [[ -n "$ffmes_args" ]]; then
 	cd "$initial_working_dir" \
 	&& exec "${FFMES_PATH}/${FFMES_BIN}" "${ffmes_args_full[@]}"
 else
@@ -1540,7 +1542,7 @@ curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/
 Restart
 }
 TestVAAPI() {							# VAAPI device test
-if [ -e "$VAAPI_device" ]; then
+if [[ -e "$VAAPI_device" ]]; then
 	if "$ffmpeg_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h &>/dev/null; then
 		if [[ "$chvcodec" = "hevc_vaapi" ]]; then
 			GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
@@ -1566,7 +1568,7 @@ case $qarm in
 esac
 }
 Remove_File_Source() {					# Remove source, question+action
-if [ "${#filesPass[@]}" -gt 0 ] ; then
+if (( "${#filesPass[@]}" )); then
 	read -r -p " Remove source files? [y/N]:" qarm
 	case $qarm in
 		"Y"|"y")
@@ -1576,7 +1578,7 @@ if [ "${#filesPass[@]}" -gt 0 ] ; then
 			done
 			if [[ "$ffmes_option" -ge 20 ]]; then
 				# Remove m3u
-				if [ "$RemoveM3U" = "1" ]; then
+				if [[ "$RemoveM3U" = "1" ]]; then
 					for f in "${LSTM3U[@]}"; do
 						rm -f "$f" 2>/dev/null
 					done
@@ -1591,7 +1593,7 @@ if [ "${#filesPass[@]}" -gt 0 ] ; then
 fi
 }
 Remove_File_Target() {					# Remove target, question+action
-if [ "$SourceNotRemoved" = "1" ] ; then
+if [[ "$SourceNotRemoved" = "1" ]]; then
 	read -r -p " Remove target files? [y/N]:" qarm
 	case $qarm in
 		"Y"|"y")
@@ -1654,7 +1656,7 @@ if (( "${#source_files[@]}" )); then
 			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" \
 				-max_muxing_queue_size 9999 -f null - 2> "$tmp_error"
 			## File fail
-			if [ -s "$tmp_error" ]; then
+			if [[ -s "$tmp_error" ]]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
 				# File fail array
 				filesReject+=( "${source_files[$i]}" )
@@ -1725,12 +1727,12 @@ StartLoading() {						# Start loading animation
 if [[ -z "$VERBOSE" ]]; then
 	task=$1
 	Ltask="${#task}"
-	if [ "$Ltask" -gt "$TERM_WIDTH_TRUNC" ]; then
+	if [[ "$Ltask" -gt "$TERM_WIDTH_TRUNC" ]]; then
 		task=$(echo "${task:0:$TERM_WIDTH_TRUNC}" | awk '{print $0"..."}')
 	fi
 	msg=$2
 	Lmsg="${#2}"
-	if [ "$Lmsg" -gt "$TERM_WIDTH_TRUNC" ]; then
+	if [[ "$Lmsg" -gt "$TERM_WIDTH_TRUNC" ]]; then
 		msg=$(echo "${msg:0:$TERM_WIDTH_TRUNC}" | awk '{print $0"..."}')
 	fi
 	# $1 : msg to display
@@ -1805,7 +1807,8 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 	TimeOut="2000"
 	# Start time counter
 	start_TimeOut=$(( $(date +%s%N) / 1000000 ))
-	while [ ! -f "$FFMES_FFMPEG_PROGRESS" ] && [ ! -s "$FFMES_FFMPEG_PROGRESS" ]; do
+	while [[ ! -f "$FFMES_FFMPEG_PROGRESS" ]] \
+	   && [[ ! -s "$FFMES_FFMPEG_PROGRESS" ]]; do
 		sleep 0.1
 
 		# Time out counter
@@ -1973,6 +1976,7 @@ fi
 ## DVD
 DVDRip() {								# Option 0  	- DVD Rip
 # Local variables
+local lsdvd_result
 local DVD
 local DVDINFO
 local DVDtitle
@@ -2008,9 +2012,9 @@ esac
 done
 
 # Assign input
-if [ "${#LSTVOB[@]}" -ge "1" ]; then
+if [[ "${#LSTVOB[@]}" -ge "1" ]]; then
 	DVD="./"
-elif [ "${#LSTISO[@]}" -eq "1" ]; then
+elif [[ "${#LSTISO[@]}" -eq "1" ]]; then
 	DVD="${LSTISO[0]}"
 else
 	while true; do
@@ -2034,8 +2038,8 @@ fi
 
 # Test ISO & DVD is valid DVD Video
 lsdvd "$DVD" &>/dev/null
-local lsdvd_result=$?
-if ! [ "$lsdvd_result" -eq 0 ]; then
+lsdvd_result=$?
+if ! [[ "$lsdvd_result" -eq 0 ]]; then
 	echo
 	Echo_Mess_Error "$DVD is not valid DVD video"
 	echo
@@ -2052,7 +2056,7 @@ mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | grep Title | awk '{print $2
 
 # Question
 echo
-if [ "${#LSTVOB[@]}" -ge "1" ]; then
+if [[ "${#LSTVOB[@]}" -ge "1" ]]; then
 	echo " ${#LSTVIDEO[@]} VOB file(s) are been detected, choice one or more title to rip:"
 else
 	echo " $DVDtitle DVD video have been detected, choice one or more title to rip:"
@@ -2108,7 +2112,7 @@ for title in "${qtitle[@]}"; do
 	AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null \
 					| grep "The aspect ratio of title set $TitleParsed" | tail -1 | awk '{print $NF}')
 	# If aspect ratio empty, get main feature aspect
-	if test -z "$AspectRatio"; then
+	if [[ -z "$AspectRatio" ]]; then
 		AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null \
 						| grep "The aspect ratio of the main feature is" | tail -1 | awk '{print $NF}')
 	fi
@@ -2139,7 +2143,7 @@ for title in "${qtitle[@]}"; do
 	PCM=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB \
 			| grep pcm_dvd)
 	# pcm_dvd audio track trick
-	if test -n "$PCM"; then
+	if [[ -n "$PCM" ]]; then
 		pcm_dvd="-c:a pcm_s16le"
 	fi
 
@@ -2181,7 +2185,7 @@ VIDEO_EXT_AVAILABLE="mkv"
 mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 # encoding question
-if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
+if (( "${#LSTVIDEO[@]}" )); then
 	Echo_Separator_Light
 	echo
 	echo " ${#LSTVIDEO[@]} file(s) detected:"
@@ -2572,7 +2576,7 @@ done
 # Assign input
 if bluray_info "$PWD" &>/dev/null; then
 	BD_disk="$PWD"
-elif [[ -z "$BD_disk" ]] && [ "${#LSTISO[@]}" -eq "1" ]; then
+elif [[ -z "$BD_disk" ]] && [[ "${#LSTISO[@]}" -eq "1" ]]; then
 	BD_disk="${LSTISO[0]}"
 else
 	echo
@@ -2658,7 +2662,7 @@ if [[ -n "$BD_disk" ]]; then
 				bd_track_audio_test=$("$json_parser" -r ".titles[] \
 									| select(.title==$title) | .audio[] \
 									| select(.track==1)" "$BDINFO_CACHE")
-				if [[ -n "$bd_track_audio_test" ]] ; then
+				if [[ -n "$bd_track_audio_test" ]]; then
 					mapfile -t bd_title_audio_tracks < <("$json_parser" -r ".titles[] \
 														| select(.title==$title) | .audio[] \
 														| .track" "$BDINFO_CACHE" 2>/dev/null \
@@ -2680,7 +2684,7 @@ if [[ -n "$BD_disk" ]]; then
 				bd_track_subtitle_test=$("$json_parser" -r ".titles[] \
 										| select(.title==$title) | .subtitles[] \
 										| select(.track==1)" "$BDINFO_CACHE")
-				if [[ -n "$bd_track_subtitle_test" ]] ; then
+				if [[ -n "$bd_track_subtitle_test" ]]; then
 					mapfile -t bd_title_subtitle_tracks < <("$json_parser" -r ".titles[] \
 															| select(.title==$title) | .subtitles[] \
 															| .track" "$BDINFO_CACHE" 2>/dev/null \
@@ -2938,11 +2942,11 @@ echo "  [e] > for encode"
 echo " *[↵] > for copy"
 echo "  [q] > for exit"
 read -r -e -p "-> " qv
-if [ "$qv" = "q" ]; then
+if [[ "$qv" = "q" ]]; then
 	Restart
 
 # Video stream edition
-elif [ "$qv" = "e" ]; then
+elif [[ "$qv" = "e" ]]; then
 
 	# Set video encoding
 	ENCODV="1"
@@ -3054,7 +3058,7 @@ videoconf="$vfilter_final -c:v $vcodec $preset $profile $tune $vkb"
 }
 Video_Custom_Filter_deinterlace() {		# Option 1  	- Conf filter video, deinterlace
 Display_Video_Custom_Info_choice
-if [ "$ffprobe_Interlaced" = "1" ]; then
+if [[ "$ffprobe_Interlaced" = "1" ]]; then
 	echo " Video SEEMS interlaced, you want deinterlace:"
 else
 	echo " Video not seems interlaced, you want force deinterlace:"
@@ -3179,7 +3183,7 @@ if [[ "${#LSTVIDEO[@]}" = "1" ]]; then
 		HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
 
 		# Scale filter
-		if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]] ; then			# In not integer
+		if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]]; then			# In not integer
 			if [[ "$codec" = "hevc_vaapi" ]]; then
 				vfilter+=( "scale_vaapi=w=$WIDTH:h=-2" )
 			else
@@ -3218,15 +3222,15 @@ if [[ "${#LSTVIDEO[@]}" = "1" ]]; then
 		[0-4])
 			vfilter+=( "transpose=$ynrotat" )
 
-			if [ "$ynrotat" = "0" ]; then
+			if [[ "$ynrotat" = "0" ]]; then
 				chrotation="90° CounterCLockwise and Vertical Flip"
-			elif [ "$ynrotat" = "1" ]; then
+			elif [[ "$ynrotat" = "1" ]]; then
 				chrotation="90° Clockwise"
-			elif [ "$ynrotat" = "2" ]; then
+			elif [[ "$ynrotat" = "2" ]]; then
 				chrotation="90° CounterClockwise"
-			elif [ "$ynrotat" = "3" ]; then
+			elif [[ "$ynrotat" = "3" ]]; then
 				chrotation="90° Clockwise and Vertical Flip"
-			elif [ "$ynrotat" = "4" ]; then
+			elif [[ "$ynrotat" = "4" ]]; then
 				chrotation="180°"
 			fi
 			break
@@ -3289,9 +3293,9 @@ echo " *[↵] > for copy stream(s)"
 echo "  [r] > for remove stream(s)"
 echo "  [q] > for exit"
 read -r -e -p "-> " qa
-if [ "$qa" = "q" ]; then
+if [[ "$qa" = "q" ]]; then
 	Restart
-elif [ "$qa" = "e" ]; then
+elif [[ "$qa" = "e" ]]; then
 
 	# Set audio encoding
 	ENCODA="1"
@@ -3300,7 +3304,7 @@ elif [ "$qa" = "e" ]; then
 	Video_Custom_Audio_Codec
 
 # Remove audio stream
-elif [ "$qa" = "r" ]; then
+elif [[ "$qa" = "r" ]]; then
 	chsoundstream="Remove"
 	fileacodec="aremove"
 	soundconf="-an"
@@ -3405,7 +3409,7 @@ echo "  [q]     > for exit"
 while true; do
 	read -r -e -p "-> " rpstreamch
 	rpstreamch_parsed="${rpstreamch// /}"					# For test
-	if [ -z "$rpstreamch" ]; then							# If -map 0
+	if [[ -z "$rpstreamch" ]]; then							# If -map 0
 		# Construct arrays
 		VINDEX=( "${ffprobe_StreamIndex[@]}" )
 		VCODECTYPE=("${ffprobe_StreamType[@]}")
@@ -3470,10 +3474,10 @@ for i in ${!VINDEX[*]}; do
 		# Subtitle Stream
 		subtitle)
 			stream+=("-map 0:${VINDEX[i]}")
-			if test -z "$subtitleconf"; then
-				if [ "$extcont" = mkv ]; then
+			if [[ -z "$subtitleconf" ]]; then
+				if [[ "$extcont" = "mkv" ]]; then
 					subtitleconf="-c:s copy"
-				elif [ "$extcont" = mp4 ]; then
+				elif [[ "$extcont" = "mp4" ]]; then
 					subtitleconf="-c:s mov_text"
 				fi
 			fi
@@ -3483,12 +3487,12 @@ done
 vstream="${stream[*]}"
 
 # Set file name if $videoformat variable empty
-if test -z "$videoformat"; then
+if [[ -z "$videoformat" ]]; then
 	videoformat="$filevcodec.$fileacodec"
 fi
 
 # Reset display (last question before encoding)
-if [ "$ffmes_option" -le 3 ]; then
+if [[ "$ffmes_option" -le "3" ]]; then
 	Display_Video_Custom_Info_choice
 fi
 }
@@ -3522,7 +3526,7 @@ case $chcontainer in
 esac
 
 # Reset display (last question before encoding)
-if [ "${#ffprobe_StreamIndex[@]}" -lt 3 ] ; then
+if [[ "${#ffprobe_StreamIndex[@]}" -lt "3" ]]; then
 	Display_Video_Custom_Info_choice
 fi
 }
@@ -3552,21 +3556,21 @@ if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
 	video_stream_kb="${rpvkb%k*}"
 	video_stream_kb="${video_stream_kb%K*}"
 	vkb="-b:v $video_stream_kb"
-elif [ "$rpvkb" = "1" ]; then
+elif [[ "$rpvkb" = "1" ]]; then
 	vkb="-q:v 1"
-elif [ "$rpvkb" = "2" ]; then
+elif [[ "$rpvkb" = "2" ]]; then
 	vkb="-q:v 5"
-elif [ "$rpvkb" = "3" ]; then
+elif [[ "$rpvkb" = "3" ]]; then
 	vkb="-q:v 10"
-elif [ "$rpvkb" = "4" ]; then
+elif [[ "$rpvkb" = "4" ]]; then
 	vkb="-q:v 15"
-elif [ "$rpvkb" = "5" ]; then
+elif [[ "$rpvkb" = "5" ]]; then
 	vkb="-q:v 20"
-elif [ "$rpvkb" = "6" ]; then
+elif [[ "$rpvkb" = "6" ]]; then
 	vkb="-q:v 25"
-elif [ "$rpvkb" = "7" ]; then
+elif [[ "$rpvkb" = "7" ]]; then
 	vkb="-q:v 30"
-elif [ "$rpvkb" = "q" ]; then
+elif [[ "$rpvkb" = "q" ]]; then
 	Restart
 else
 	vkb="-q:v 10"
@@ -3592,10 +3596,10 @@ echo "  [faster]"
 echo "  [veryfast] > best speed; lower quality"
 echo "  [q]        > for exit"
 read -r -e -p "-> " reppreset
-if [ -n "$reppreset" ]; then
+if [[ -n "$reppreset" ]]; then
 	preset="-preset $reppreset"
 	chpreset="; preset $reppreset"
-elif [ "$reppreset" = "q" ]; then
+elif [[ "$reppreset" = "q" ]]; then
 	Restart
 else
 	preset="-preset medium"
@@ -3604,7 +3608,7 @@ fi
 
 # Tune x264/x265
 Display_Video_Custom_Info_choice
-if [ "$chvcodec" = "H264" ]; then
+if [[ "$chvcodec" = "H264" ]]; then
 	echo " Choose tune:"
 	echo " Note: This settings influences the final rendering of the image & speed of encoding."
 	echo
@@ -3620,32 +3624,32 @@ if [ "$chvcodec" = "H264" ]; then
 	echo "  [zerolatency] > for fast encoding and low-latency streaming "
 	echo "  [q]           > for exit"
 	read -r -e -p " -> " reptune
-	if [ "$reptune" = "film" ]; then
+	if [[ "$reptune" = "film" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "animation" ]; then
+	elif [[ "$reptune" = "animation" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "grain" ]; then
+	elif [[ "$reptune" = "grain" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "stillimage" ]; then
+	elif [[ "$reptune" = "stillimage" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "fastdecode" ]; then
+	elif [[ "$reptune" = "fastdecode" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "zerolatency" ]; then
+	elif [[ "$reptune" = "zerolatency" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "cfilm" ]; then
+	elif [[ "$reptune" = "cfilm" ]]; then
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
-	elif [ "$reptune" = "canimation" ]; then
+	elif [[ "$reptune" = "canimation" ]]; then
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9 -deblock -2:-2 -psy-rd 1.0:0.25 -aq 0.5 -qcomp 0.8"
-	elif [ "$reptune" = "no" ]; then
+	elif [[ "$reptune" = "no" ]]; then
 		unset tune
-	elif [ "$reptune" = "q" ]; then
+	elif [[ "$reptune" = "q" ]]; then
 		Restart
 	else
 		tune="-fast-pskip 0 -bf 10 -b_strategy 2 -me_method umh -me_range 24 -trellis 2 -refs 4 -subq 9"
 	fi
 	# Menu display tune
 	chtune="; tune $reptune"
-elif [ "$chvcodec" = "HEVC" ]; then
+elif [[ "$chvcodec" = "HEVC" ]]; then
 	echo " Choose tune:"
 	echo " Notes: * This settings influences the final rendering of the image, and speed of encoding."
 	echo "        * By default x265 always tunes for highest perceived visual."
@@ -3658,23 +3662,23 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	echo "  [zerolatency] > for fast encoding and low-latency streaming"
 	echo "  [q]           > for exit"
 	read -r -e -p "-> " reptune
-	if [ "$reptune" = "psnr" ]; then
+	if [[ "$reptune" = "psnr" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "ssim" ]; then
+	elif [[ "$reptune" = "ssim" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "grain" ]; then
+	elif [[ "$reptune" = "grain" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "fastdecode" ]; then
+	elif [[ "$reptune" = "fastdecode" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "zerolatency" ]; then
+	elif [[ "$reptune" = "zerolatency" ]]; then
 		tune="-tune $reptune"
-	elif [ "$reptune" = "q" ]; then
+	elif [[ "$reptune" = "q" ]]; then
 		Restart
 	else
 		chtune="; tune default"
 	fi
 	# Menu display tune
-	if [ -n "$tune" ]; then
+	if [[ -n "$tune" ]]; then
 		chtune="; tune $reptune"
 	else
 		chtune="; tune default"
@@ -3683,7 +3687,7 @@ fi
 
 # Profile x264/x265
 Display_Video_Custom_Info_choice
-if [ "$chvcodec" = "H264" ]; then
+if [[ "$chvcodec" = "H264" ]]; then
 	echo " Choose the profile:"
 	echo " Note: The choice of the profile affects the compatibility of the result,"
 	echo "       be careful not to apply any more parameters to the source file (no positive effect)"
@@ -3702,40 +3706,40 @@ if [ "$chvcodec" = "H264" ]; then
 	echo "  [9] > | 6.2 | high10   | 10  | 4:2:0  | 2400 | 8192×4320>120                 |"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " repprofile
-	if [ "$repprofile" = "1" ]; then
+	if [[ "$repprofile" = "1" ]]; then
 		profile="-profile:v baseline -level 3.0 -pix_fmt yuv420p"
 		chprofile="; profile baseline 3.0 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "2" ]; then
+	elif [[ "$repprofile" = "2" ]]; then
 		profile="-profile:v main -level 3.1 -pix_fmt yuv420p"
 		chprofile="; profile main 3.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "3" ]; then
+	elif [[ "$repprofile" = "3" ]]; then
 		profile="-profile:v main -level 4.0 -pix_fmt yuv420p"
 		chprofile="; profile main 4.0 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "4" ]; then
+	elif [[ "$repprofile" = "4" ]]; then
 		profile="-profile:v high -level 4.0 -pix_fmt yuv420p"
 		chprofile="; profile high 4.0 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "5" ]; then
+	elif [[ "$repprofile" = "5" ]]; then
 		profile="-profile:v high -level 4.1 -pix_fmt yuv420p"
 		chprofile="; profile high 4.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "6" ]; then
+	elif [[ "$repprofile" = "6" ]]; then
 		profile="-profile:v high10 -level 4.2 -pix_fmt yuv420p10le"
 		chprofile="; profile high10 4.2 - 10 bit - 4:2:0"
-	elif [ "$repprofile" = "7" ]; then
+	elif [[ "$repprofile" = "7" ]]; then
 		profile="-profile:v high -level 5.1 -pix_fmt yuv420p"
 		chprofile="; profile high 5.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "8" ]; then
+	elif [[ "$repprofile" = "8" ]]; then
 		profile="-profile:v high10 -level 5.1 -pix_fmt yuv420p10le"
 		chprofile="; profile high10 5.1 - 10 bit - 4:2:0"
-	elif [ "$repprofile" = "9" ]; then
+	elif [[ "$repprofile" = "9" ]]; then
 		profile="-profile:v high10 -level 6.2 -pix_fmt yuv420p10le"
 		chprofile="; profile high10 6.2 - 10 bit - 4:2:0"
-	elif [ "$repprofile" = "q" ]; then
+	elif [[ "$repprofile" = "q" ]]; then
 		Restart
 	else
 		profile="-profile:v high -level 4.1"
 		chprofile="; profile High 4.1"
 	fi
-elif [ "$chvcodec" = "HEVC" ]; then
+elif [[ "$chvcodec" = "HEVC" ]]; then
 	echo " Choose a profile or make your profile manually:"
 	echo " Notes: * For bit and chroma settings, if the source is below the parameters,"
 	echo "          FFmpeg will not replace them but will be at the same level."
@@ -3769,28 +3773,28 @@ elif [ "$chvcodec" = "HEVC" ]; then
 	if echo "$repprofile" | grep -q 'profile'; then
 		profile="$repprofile"
 		chprofile="; profile $repprofile"
-	elif [ "$repprofile" = "1" ]; then
+	elif [[ "$repprofile" = "1" ]]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=3.1 -pix_fmt yuv420p"
 		chprofile="; profile main 3.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "2" ]; then
+	elif [[ "$repprofile" = "2" ]]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1 -pix_fmt yuv420p"
 		chprofile="; profile main 4.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "3" ]; then
+	elif [[ "$repprofile" = "3" ]]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
 		chprofile="; profile high 4.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "4" ]; then
+	elif [[ "$repprofile" = "4" ]]; then
 		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p10le"
 		chprofile="; profile high 4.1 - 10 bit - 4:2:0"
-	elif [ "$repprofile" = "5" ]; then
+	elif [[ "$repprofile" = "5" ]]; then
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=5.1:high-tier=1 -pix_fmt yuv420p"
 		chprofile="; profile high 5.1 - 8 bit - 4:2:0"
-	elif [ "$repprofile" = "6" ]; then
+	elif [[ "$repprofile" = "6" ]]; then
 		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=5.1:high-tier=1 -pix_fmt yuv420p10le"
 		chprofile="; profile high 5.1 - 10 bit - 4:2:0"
-	elif [ "$repprofile" = "7" ]; then
+	elif [[ "$repprofile" = "7" ]]; then
 		profile="-profile:v main10 -x265-params ${X265_LOG_LVL}level=6.2:high-tier=1 -pix_fmt yuv420p10le"
 		chprofile="; profile high 6.1 - 10 bit - 4:2:0"
-	elif [ "$repprofile" = "q" ]; then
+	elif [[ "$repprofile" = "q" ]]; then
 		Restart
 	else
 		profile="-profile:v main -x265-params ${X265_LOG_LVL}level=4.1:high-tier=1 -pix_fmt yuv420p"
@@ -3837,25 +3841,25 @@ elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	vkb="-b:v ${video_stream_kb}k"
 elif echo "$rpvkb" | grep -q 'crf'; then
 	vkb="$rpvkb"
-elif [ "$rpvkb" = "1" ]; then
+elif [[ "$rpvkb" = "1" ]]; then
 	vkb="-crf 0"
-elif [ "$rpvkb" = "2" ]; then
+elif [[ "$rpvkb" = "2" ]]; then
 	vkb="-crf 5"
-elif [ "$rpvkb" = "3" ]; then
+elif [[ "$rpvkb" = "3" ]]; then
 	vkb="-crf 10"
-elif [ "$rpvkb" = "4" ]; then
+elif [[ "$rpvkb" = "4" ]]; then
 	vkb="-crf 15"
-elif [ "$rpvkb" = "5" ]; then
+elif [[ "$rpvkb" = "5" ]]; then
 	vkb="-crf 20"
-elif [ "$rpvkb" = "6" ]; then
+elif [[ "$rpvkb" = "6" ]]; then
 	vkb="-crf 22"
-elif [ "$rpvkb" = "7" ]; then
+elif [[ "$rpvkb" = "7" ]]; then
 	vkb="-crf 25"
-elif [ "$rpvkb" = "8" ]; then
+elif [[ "$rpvkb" = "8" ]]; then
 	vkb="-crf 30"
-elif [ "$rpvkb" = "9" ]; then
+elif [[ "$rpvkb" = "9" ]]; then
 	vkb="-crf 35"
-elif [ "$rpvkb" = "q" ]; then
+elif [[ "$rpvkb" = "q" ]]; then
 	Restart
 else
 	vkb="-crf 20"
@@ -3909,25 +3913,25 @@ elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
 elif echo "$rpvkb" | grep -q 'qp'; then
 	vkb="-rc_mode 2 $rpvkb"
-elif [ "$rpvkb" = "1" ]; then
+elif [[ "$rpvkb" = "1" ]]; then
 	vkb="-rc_mode 1 -qp 0"
-elif [ "$rpvkb" = "2" ]; then
+elif [[ "$rpvkb" = "2" ]]; then
 	vkb="-rc_mode 1 -qp 5"
-elif [ "$rpvkb" = "3" ]; then
+elif [[ "$rpvkb" = "3" ]]; then
 	vkb="-rc_mode 1 -qp 10"
-elif [ "$rpvkb" = "4" ]; then
+elif [[ "$rpvkb" = "4" ]]; then
 	vkb="-rc_mode 1 -qp 15"
-elif [ "$rpvkb" = "5" ]; then
+elif [[ "$rpvkb" = "5" ]]; then
 	vkb="-rc_mode 1 -qp 20"
-elif [ "$rpvkb" = "6" ]; then
+elif [[ "$rpvkb" = "6" ]]; then
 	vkb="-rc_mode 1 -qp 22"
-elif [ "$rpvkb" = "7" ]; then
+elif [[ "$rpvkb" = "7" ]]; then
 	vkb="-rc_mode 1 -qp 25"
-elif [ "$rpvkb" = "8" ]; then
+elif [[ "$rpvkb" = "8" ]]; then
 	vkb="-rc_mode 1 -qp 30"
-elif [ "$rpvkb" = "9" ]; then
+elif [[ "$rpvkb" = "9" ]]; then
 	vkb="-rc_mode 1 -qp 35"
-elif [ "$rpvkb" = "q" ]; then
+elif [[ "$rpvkb" = "q" ]]; then
 	Restart
 else
 	vkb="-rc_mode 1 -qp 25"
@@ -3941,7 +3945,7 @@ local video_stream_kb
 local video_stream_size
 
 # Config
-if [ "$codec" = "libaom-av1" ]; then
+if [[ "$codec" = "libaom-av1" ]]; then
 	Display_Video_Custom_Info_choice
 	echo " Choose libaom cpu-used efficient compression value (preset):"
 	echo
@@ -3956,16 +3960,16 @@ if [ "$codec" = "libaom-av1" ]; then
 	echo "  [8] > for cpu-used 8   | ∨"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " reppreset
-	if [ -n "$reppreset" ]; then
+	if [[ -n "$reppreset" ]]; then
 		preset="-cpu-used $reppreset -row-mt 1 -tiles 4x1"
 		chpreset="; cpu-used: $reppreset"
-	elif [ "$reppreset" = "q" ]; then
+	elif [[ "$reppreset" = "q" ]]; then
 		Restart
 	else
 		preset="-cpu-used 2 -row-mt 1 -tiles 4x1"
 		chpreset="; cpu-used: 2"
 	fi
-elif [ "$codec" = "libsvtav1" ]; then
+elif [[ "$codec" = "libsvtav1" ]]; then
 	Display_Video_Custom_Info_choice
 	echo " Choose libsvtav1 preset:"
 	echo
@@ -3984,10 +3988,10 @@ elif [ "$codec" = "libsvtav1" ]; then
 	echo "  [12] > for preset 12   | ∨"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " reppreset
-	if [ -n "$reppreset" ]; then
+	if [[ -n "$reppreset" ]]; then
 		preset="-preset $reppreset"
 		chpreset="; preset: $reppreset"
-	elif [ "$reppreset" = "q" ]; then
+	elif [[ "$reppreset" = "q" ]]; then
 		Restart
 	else
 		preset="-preset 6"
@@ -4033,21 +4037,21 @@ elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	vkb="-b:v ${video_stream_kb}k"
 elif echo "$rpvkb" | grep -q 'crf'; then
 	vkb="$rpvkb -b:v 0"
-elif [ "$rpvkb" = "1" ]; then
+elif [[ "$rpvkb" = "1" ]]; then
 	vkb="-crf 0 -b:v 0"
-elif [ "$rpvkb" = "2" ]; then
+elif [[ "$rpvkb" = "2" ]]; then
 	vkb="-crf 10 -b:v 0"
-elif [ "$rpvkb" = "3" ]; then
+elif [[ "$rpvkb" = "3" ]]; then
 	vkb="-crf 20 -b:v 0"
-elif [ "$rpvkb" = "4" ]; then
+elif [[ "$rpvkb" = "4" ]]; then
 	vkb="-crf 30 -b:v 0"
-elif [ "$rpvkb" = "5" ]; then
+elif [[ "$rpvkb" = "5" ]]; then
 	vkb="-crf 40 -b:v 0"
-elif [ "$rpvkb" = "6" ]; then
+elif [[ "$rpvkb" = "6" ]]; then
 	vkb="-crf 50 -b:v 0"
-elif [ "$rpvkb" = "7" ]; then
+elif [[ "$rpvkb" = "7" ]]; then
 	vkb="-crf 60 -b:v 0"
-elif [ "$rpvkb" = "q" ]; then
+elif [[ "$rpvkb" = "q" ]]; then
 	Restart
 else
 	vkb="-crf 30 -b:v 0"
@@ -4250,10 +4254,10 @@ local MERGE_LSTSUB
 mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex \
 						'.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null \
 						| sort | sed 's/^..//')
-if [ "${#LSTAUDIO[@]}" -gt 0 ] ; then
+if (( "${#LSTAUDIO[@]}" )); then
 	MERGE_LSTAUDIO=$(printf '*.%s ' "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 fi
-if [ "${#LSTSUB[@]}" -gt 0 ] ; then
+if (( "${#LSTSUB[@]}" )); then
 	MERGE_LSTSUB=$(printf '*.%s ' "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 fi
 
@@ -4261,10 +4265,10 @@ fi
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 echo "  You will merge the following files:"
 echo "   ${LSTVIDEO[0]##*/}"
-if [ "${#LSTAUDIO[@]}" -gt 0 ] ; then
+if (( "${#LSTAUDIO[@]}" )); then
 	printf '   %s\n' "${LSTAUDIO[@]}"
 fi
-if [ "${#LSTSUB[@]}" -gt 0 ] ; then
+if (( "${#LSTSUB[@]}" )); then
 	printf '   %s\n' "${LSTSUB[@]}"
 fi
 echo
@@ -4284,11 +4288,11 @@ echo
 Echo_Separator_Light
 
 # If sub add, convert in UTF-8, srt and ssa
-if [ "${#LSTSUB[@]}" -gt 0 ] ; then
+if (( "${#LSTSUB[@]}" )); then
 	for files in "${LSTSUB[@]}"; do
-		if [ "${files##*.}" != "idx" ] && [ "${files##*.}" != "sup" ]; then
+		if [[ "${files##*.}" != "idx" ]] && [[ "${files##*.}" != "sup" ]]; then
 			CHARSET_DETECT=$(uchardet "$files" 2> /dev/null)
-			if [ "$CHARSET_DETECT" != "UTF-8" ]; then
+			if [[ "$CHARSET_DETECT" != "UTF-8" ]]; then
 				iconv -c -f "$CHARSET_DETECT" -t UTF-8 "$files" > utf-8-"$files"
 				mkdir SUB_BACKUP 2> /dev/null
 				mv "$files" SUB_BACKUP/"$files".back
@@ -4330,7 +4334,7 @@ echo
 echo " *[↵] > for continue"
 echo "  [q] > for exit"
 read -r -e -p "-> " concatrep
-if [ "$concatrep" = "q" ]; then
+if [[ "$concatrep" = "q" ]]; then
 		Restart
 else
 	# Start time counter
@@ -4402,7 +4406,7 @@ echo "  [q]     > for exit"
 while true; do
 	read -r -e -p "-> " rpstreamch
 	rpstreamch_parsed="${rpstreamch// /}"					# For test
-	if [ -z "$rpstreamch" ]; then							# If -map 0
+	if [[ -z "$rpstreamch" ]]; then							# If -map 0
 		# Construct arrays
 		VINDEX=( "${ffprobe_StreamIndex[@]}" )
 		VCODECNAME=("${ffprobe_Codec[@]}")
@@ -4501,23 +4505,23 @@ for files in "${LSTVIDEO[@]}"; do
 			FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
 
 			# Extract
-			if [ "$MKVEXTRACT" = "1" ]; then
+			if [[ "$MKVEXTRACT" = "1" ]]; then
 				mkvextract "$files" tracks "${VINDEX[i]}":"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT"
 
-			elif [ "$MPEG2EXTRACT" = "1" ]; then
+			elif [[ "$MPEG2EXTRACT" = "1" ]]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts -analyzeduration 1G -probesize 1G -i "$files" \
 					$FFMPEG_PROGRESS \
 					-c copy -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
 					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 
-			elif [ "$PCM_EXTRACT" = "1" ]; then
+			elif [[ "$PCM_EXTRACT" = "1" ]]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
 					$FFMPEG_PROGRESS \
 					-map 0:"${VINDEX[i]}" -c:a pcm_s24le \
 					"${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
 					| ProgressBar "${files%.*}-Stream-${VINDEX[i]}.$FILE_EXT" "" "" "Extract"
 
-			elif [ "$MOV_TEXT_EXTRACT" = "1" ]; then
+			elif [[ "$MOV_TEXT_EXTRACT" = "1" ]]; then
 				"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -i "$files" \
 					$FFMPEG_PROGRESS \
 					-c:s srt -map 0:"${VINDEX[i]}" "${files%.*}"-Stream-"${VINDEX[i]}"."$FILE_EXT" \
@@ -4703,7 +4707,7 @@ Video_Multiple_Extention_Check() {		# If sources video multiple extention questi
 # Local variables
 local NEW_VIDEO_EXT_AVAILABLE
 
-if [ "$NBVEXT" -gt "1" ]; then
+if [[ "$NBVEXT" -gt "1" ]]; then
 	echo
 	echo " Different source video file extensions have been found, would you like to select one or more?"
 	echo " Note: * It is recommended not to batch process different sources, in order to control the result as well as possible."
@@ -4715,9 +4719,9 @@ if [ "$NBVEXT" -gt "1" ]; then
 	echo " *[↵]       > for no selection"
 	echo "  [q]       > for exit"
 	read -r -e -p "-> " NEW_VIDEO_EXT_AVAILABLE
-	if [ "$NEW_VIDEO_EXT_AVAILABLE" = "q" ]; then
+	if [[ "$NEW_VIDEO_EXT_AVAILABLE" = "q" ]]; then
 		Restart
-	elif test -n "$NEW_VIDEO_EXT_AVAILABLE"; then
+	elif [[ -n "$NEW_VIDEO_EXT_AVAILABLE" ]]; then
 		mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep \
 			-regex '.*\.('$NEW_VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
 	fi
@@ -4857,7 +4861,7 @@ wait
 # Check error files
 for i in "${!filesInLoop[@]}"; do
 	# File reject
-	if [ -s "${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log" ]; then
+	if [[ -s "${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log" ]]; then
 		filesToTest_realpath=$(realpath "${filesToTest[i]}")
 		mv "${FFMES_CACHE}/${filesToTest[i]##*/}.$i.error.log" \
 			"${filesToTest_realpath%/*}/${filesToTest[i]##*/}.error.log" 2>/dev/null
@@ -4899,7 +4903,7 @@ PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
 Display_End_Encoding_Message "${#filesPass[@]}" "${#LSTAUDIO[@]}" "$total_target_files_size" "$total_source_files_size"
 }
 Audio_ffmpeg_cmd_Filter() {				# FFmpeg audio cmd - filter 
-if [ "$PeakNorm" = "1" ]; then
+if [[ "$PeakNorm" = "1" ]]; then
 
 	# Local variables
 	local TestDB
@@ -4940,7 +4944,7 @@ else
 fi
 }
 Audio_ffmpeg_cmd_Channel() {			# FFmpeg audio cmd - channel
-if [ "$TestFalseStereo" = "1" ]; then
+if [[ "$TestFalseStereo" = "1" ]]; then
 
 	# Local variables
 	local TESTLEFT
@@ -4953,7 +4957,7 @@ if [ "$TestFalseStereo" = "1" ]; then
 	TESTLEFT=$("$ffmpeg_bin" -i "$files" -map_channel 0.0.0 -f md5 - 2>/dev/null)
 	TESTRIGHT=$("$ffmpeg_bin" -i "$files" -map_channel 0.0.1 -f md5 - 2>/dev/null)
 	# Array
-	if [ "$TESTLEFT" = "$TESTRIGHT" ]; then
+	if [[ "$TESTLEFT" = "$TESTRIGHT" ]]; then
 		confchan_mono="-channel_layout mono"
 		FilesTargetAconfchan+=( "$confchan_mono" )
 	else
@@ -4970,7 +4974,7 @@ else
 fi
 }
 Audio_ffmpeg_cmd_Bitrate() {			# FFmpeg audio cmd - bitrate
-if [ "$AdaptedBitrate" = "1" ]; then
+if [[ "$AdaptedBitrate" = "1" ]]; then
 	# Local variable
 	local TestBitrate
 	local TestChannel
@@ -5005,7 +5009,7 @@ if [ "$AdaptedBitrate" = "1" ]; then
 	# If opus mono & source > 320k - apply hard codec limitation
 	if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 		if [[ "$confchan" = "-channel_layout mono" ]]; then
-			if [ "$TestBitrate" -ge 320000 ]; then
+			if [[ "$TestBitrate" -ge 320000 ]]; then
 				akb_modified="-b:a 256K"
 			fi
 		else
@@ -5025,33 +5029,33 @@ if [ "$AdaptedBitrate" = "1" ]; then
 
 	# If not integer = file not valid
 	if [[ -z "$akb_modified" ]]; then
-		if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]] ; then
+		if ! [[ "$TestBitrate" =~ ^[0-9]+$ ]]; then
 			unset akb
-		elif [ "$TestBitrate" -ge 1 ] && [ "$TestBitrate" -le 97000 ]; then
+		elif [[ "$TestBitrate" -ge 1 ]] && [[ "$TestBitrate" -le 97000 ]]; then
 			akb_modified="-b:a 64K"
 			asamplerate_modified="-cutoff 15000"
-		elif [ "$TestBitrate" -ge 97001 ] && [ "$TestBitrate" -le 129000 ]; then
+		elif [[ "$TestBitrate" -ge 97001 ]] && [[ "$TestBitrate" -le 129000 ]]; then
 			akb_modified="-b:a 96K"
 			asamplerate_modified="-cutoff 16000"
-		elif [ "$TestBitrate" -ge 129001 ] && [ "$TestBitrate" -le 161000 ]; then
+		elif [[ "$TestBitrate" -ge 129001 ]] && [[ "$TestBitrate" -le 161000 ]]; then
 			akb_modified="-b:a 128K"
 			asamplerate_modified="-cutoff 16000"
-		elif [ "$TestBitrate" -ge 161001 ] && [ "$TestBitrate" -le 193000 ]; then
+		elif [[ "$TestBitrate" -ge 161001 ]] && [[ "$TestBitrate" -le 193000 ]]; then
 			akb_modified="-b:a 160K"
 			asamplerate_modified="-cutoff 17000"
-		elif [ "$TestBitrate" -ge 193001 ] && [ "$TestBitrate" -le 257000 ]; then
+		elif [[ "$TestBitrate" -ge 193001 ]] && [[ "$TestBitrate" -le 257000 ]]; then
 			akb_modified="-b:a 192K"
 			asamplerate_modified="-cutoff 18000"
-		elif [ "$TestBitrate" -ge 257001 ] && [ "$TestBitrate" -le 281000 ]; then
+		elif [[ "$TestBitrate" -ge 257001 ]] && [[ "$TestBitrate" -le 281000 ]]; then
 			akb_modified="-b:a 220K"
 			asamplerate_modified="-cutoff 19000"
-		elif [ "$TestBitrate" -ge 281001 ] && [ "$TestBitrate" -le 321000 ]; then
+		elif [[ "$TestBitrate" -ge 281001 ]] && [[ "$TestBitrate" -le 321000 ]]; then
 			akb_modified="-b:a 256K"
 			asamplerate_modified="-cutoff 20000"
-		elif [ "$TestBitrate" -ge 321001 ] && [ "$TestBitrate" -le 401000 ]; then
+		elif [[ "$TestBitrate" -ge 321001 ]] && [[ "$TestBitrate" -le 401000 ]]; then
 			akb_modified="-b:a 280K"
 			asamplerate_modified="-cutoff 20000"
-		elif [ "$TestBitrate" -ge 401001 ]; then
+		elif [[ "$TestBitrate" -ge 401001 ]]; then
 			akb_modified="-b:a 320K"
 			asamplerate_modified="-cutoff 20000"
 		else
@@ -5099,7 +5103,7 @@ if [[ "$extcont" = "flac" ]] \
 
 	# If sampling rate not set + flac/wv : limit to 384kHz
 	if [[ -z "$asamplerate" ]] && [[ "$TestSamplingRate" -gt "384000" ]]; then
-		if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]] ; then
+		if [[ "$extcont" = "flac" ]] || [[ "$extcont" = "wv" ]]; then
 
 			# If libsoxr resampler
 			if [[ -n "$ffmpeg_test_libsoxr_filter" ]]; then
@@ -5193,7 +5197,7 @@ else
 fi
 }
 Audio_ffmpeg_cmd_Stream() {				# FFmpeg audio cmd - stream selection
-if [ "$ExtractCover" = "1" ] && [ "$extcont" != "opus" ]; then
+if [[ "$ExtractCover" = "1" ]] && [[ "$extcont" != "opus" ]]; then
 	astream="-map 0 -c:v copy"
 else
 	astream="-map 0:a"
@@ -5205,7 +5209,7 @@ Audio_Cover_Extraction() {				# FFmpeg audio cmd - cover extraction
 # Argument = file
 files="$1"
 
-if [ "$ExtractCover" = "0" ]; then
+if [[ "$ExtractCover" = "0" ]]; then
 	if [[ ! -e "${files%/*}"/cover.jpg ]] && [[ ! -e cover.jpg ]]; then
 		"$ffmpeg_bin" -n -i "$files" "${files%.*}".jpg 2>/dev/null
 		mv "${files%.*}".jpg "${files%/*}"/cover.jpg 2>/dev/null
@@ -5214,7 +5218,7 @@ if [ "$ExtractCover" = "0" ]; then
 fi
 }
 Audio_Channels_Config() {				#
-if [ "$ffmes_option" -lt 20 ]; then          # if profile 0 or 1 display
+if [[ "$ffmes_option" -lt "20" ]]; then          # if profile 0 or 1 display
 	Display_Video_Custom_Info_choice
 fi
 if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
@@ -5227,18 +5231,18 @@ if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	echo " *[↵] > for no change"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " rpchan
-	if [ "$rpchan" = "q" ]; then
+	if [[ "$rpchan" = "q" ]]; then
 		Restart
-	elif [ "$rpchan" = "1" ]; then
+	elif [[ "$rpchan" = "1" ]]; then
 		confchan="-channel_layout mono"
 		rpchannel="1.0 (Mono)"
-	elif [ "$rpchan" = "2" ]; then
+	elif [[ "$rpchan" = "2" ]]; then
 		confchan="-channel_layout stereo"
 		rpchannel="2.0 (Stereo)"
-	elif [ "$rpchan" = "3" ]; then
+	elif [[ "$rpchan" = "3" ]]; then
 		confchan="-channel_layout 3.0"
 		rpchannel="3.0 (FL+FR+FC)"
-	elif [ "$rpchan" = "4" ]; then
+	elif [[ "$rpchan" = "4" ]]; then
 		confchan="-channel_layout 5.1"
 		rpchannel="5.1 (FL+FR+FC+LFE+BL+BR)"
 	else
@@ -5261,33 +5265,33 @@ else
 	echo " *[↵] > for no change"
 	echo "  [q] > for exit"
 	read -r -e -p "-> " rpchan
-	if [ "$rpchan" = "q" ]; then
+	if [[ "$rpchan" = "q" ]]; then
 		Restart
-	elif [ "$rpchan" = "1" ]; then
+	elif [[ "$rpchan" = "1" ]]; then
 		confchan="-channel_layout mono"
 		rpchannel="1.0 (Mono)"
-	elif [ "$rpchan" = "2" ]; then
+	elif [[ "$rpchan" = "2" ]]; then
 		confchan="-channel_layout stereo"
 		rpchannel="2.0 (Stereo)"
-	elif [ "$rpchan" = "3" ]; then
+	elif [[ "$rpchan" = "3" ]]; then
 		confchan="-channel_layout 2.1"
 		rpchannel="2.1 (FL+FR+LFE)"
-	elif [ "$rpchan" = "4" ]; then
+	elif [[ "$rpchan" = "4" ]]; then
 		confchan="-channel_layout 3.0"
 		rpchannel="3.0 (FL+FR+FC)"
-	elif [ "$rpchan" = "5" ]; then
+	elif [[ "$rpchan" = "5" ]]; then
 		confchan="-channel_layout 3.1"
 		rpchannel="3.1 (FL+FR+FC+LFE)"
-	elif [ "$rpchan" = "6" ]; then
+	elif [[ "$rpchan" = "6" ]]; then
 		confchan="-channel_layout 4.0"
 		rpchannel="4.0 (FL+FR+FC+BC)"
-	elif [ "$rpchan" = "7" ]; then
+	elif [[ "$rpchan" = "7" ]]; then
 		confchan="-channel_layout 4.1"
 		rpchannel="4.1 (FL+FR+FC+LFE+BC)"
-	elif [ "$rpchan" = "8" ]; then
+	elif [[ "$rpchan" = "8" ]]; then
 		confchan="-channel_layout 5.0"
 		rpchannel="5.0 (FL+FR+FC+BL+BR)"
-	elif [ "$rpchan" = "9" ]; then
+	elif [[ "$rpchan" = "9" ]]; then
 		confchan="-channel_layout 5.1"
 		rpchannel="5.1 (FL+FR+FC+LFE+BL+BR)"
 	else
@@ -5299,7 +5303,7 @@ Audio_PCM_Config() {					# Option 21 	- Audio to wav (PCM)
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then		# If in video encoding
+if [[ "$ffmes_option" -lt "20" ]]; then		# If in video encoding
 	Display_Video_Custom_Info_choice
 else							# If not in video encoding
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5327,47 +5331,47 @@ echo "  [14] > | signed little-endian |   auto |    24 |"
 echo "  [15] > | signed little-endian |   auto |    32 |"
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	acodec="-c:a u8"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	acodec="-c:a s8"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	acodec="-c:a pcm_s16le"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	acodec="-c:a pcm_s24le"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	acodec="-c:a pcm_s32le"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	acodec="-c:a u8"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "7" ]; then
+elif [[ "$rpakb" = "7" ]]; then
 	acodec="-c:a s8"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "8" ]; then
+elif [[ "$rpakb" = "8" ]]; then
 	acodec="-c:a pcm_s16le"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "9" ]; then
+elif [[ "$rpakb" = "9" ]]; then
 	acodec="-c:a pcm_s24le"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "10" ]; then
+elif [[ "$rpakb" = "10" ]]; then
 	acodec="-c:a pcm_s32le"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "11" ]; then
+elif [[ "$rpakb" = "11" ]]; then
 	acodec="-c:a u8"
-elif [ "$rpakb" = "12" ]; then
+elif [[ "$rpakb" = "12" ]]; then
 	acodec="-c:a s8"
-elif [ "$rpakb" = "13" ]; then
+elif [[ "$rpakb" = "13" ]]; then
 	acodec="-c:a pcm_s16le"
-elif [ "$rpakb" = "14" ]; then
+elif [[ "$rpakb" = "14" ]]; then
 	acodec="-c:a pcm_s24le"
-elif [ "$rpakb" = "15" ]; then
+elif [[ "$rpakb" = "15" ]]; then
 	acodec="-c:a pcm_s32le"
 else
 	acodec="-c:a pcm_s16le"
@@ -5377,7 +5381,7 @@ Audio_FLAC_Config() {					# Option 1,22 	- Conf audio/video flac, audio to flac
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then
+if [[ "$ffmes_option" -lt "20" ]]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5410,37 +5414,37 @@ echo "  [10] > |    0  |   auto |  auto |"
 echo "         |------------------------|"
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
 elif echo "$rpakb" | grep -q 'c' ; then
 	akb="$rpakb"
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-compression_level 12 -sample_fmt s16"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-compression_level 0 -sample_fmt s16"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-compression_level 12 -sample_fmt s16"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-compression_level 0 -sample_fmt s16"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-compression_level 12 -sample_fmt s32"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-compression_level 0 -sample_fmt s32"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "7" ]; then
+elif [[ "$rpakb" = "7" ]]; then
 	akb="-compression_level 12 -sample_fmt s32"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "8" ]; then
+elif [[ "$rpakb" = "8" ]]; then
 	akb="-compression_level 0 -sample_fmt s32"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "9" ]; then
+elif [[ "$rpakb" = "9" ]]; then
 	akb="-compression_level 12"
-elif [ "$rpakb" = "10" ]; then
+elif [[ "$rpakb" = "10" ]]; then
 	akb="-compression_level 0"
 else
 	akb="-compression_level 12"
@@ -5450,7 +5454,7 @@ Audio_WavPack_Config() {				# Option 23 	- audio to wavpack
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then
+if [[ "$ffmes_option" -lt "20" ]]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5482,37 +5486,37 @@ echo "  [10] > |    0  |   auto |  auto |"
 echo "         |------------------------|"
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
 elif echo "$rpakb" | grep -q 'c' ; then
 	akb="$rpakb"
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-compression_level 3 -sample_fmt s16p"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-compression_level 0 -sample_fmt s16p"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-compression_level 3 -sample_fmt s16p"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-compression_level 0 -sample_fmt s16p"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-compression_level 3 -sample_fmt s32p"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-compression_level 0 -sample_fmt s32p"
 	asamplerate="-ar 44100"
-elif [ "$rpakb" = "7" ]; then
+elif [[ "$rpakb" = "7" ]]; then
 	akb="-compression_level 3 -sample_fmt s32p"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "8" ]; then
+elif [[ "$rpakb" = "8" ]]; then
 	akb="-compression_level 0 -sample_fmt s32p"
 	asamplerate="-ar 48000"
-elif [ "$rpakb" = "9" ]; then
+elif [[ "$rpakb" = "9" ]]; then
 	akb="-compression_level 3"
-elif [ "$rpakb" = "10" ]; then
+elif [[ "$rpakb" = "10" ]]; then
 	akb="-compression_level 0"
 else
 	akb="-compression_level 3"
@@ -5522,7 +5526,7 @@ Audio_Opus_Config() {					# Option 1,26 	- Conf audio/video opus, audio to opus 
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then
+if [[ "$ffmes_option" -lt "20" ]]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5570,29 +5574,30 @@ if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 fi
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-b:a 64K"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-b:a 96K"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-b:a 128K"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-b:a 160K"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-b:a 192K"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-b:a 220K"
-elif [ "$rpakb" = "7" ]; then
+elif [[ "$rpakb" = "7" ]]; then
 	akb="-b:a 256K"
-elif [ "$rpakb" = "8" ]; then
+elif [[ "$rpakb" = "8" ]]; then
 	akb="-b:a 320K"
-elif [ "$rpakb" = "9" ]; then
+elif [[ "$rpakb" = "9" ]]; then
 	akb="-b:a 450K"
-elif [ "$rpakb" = "10" ]; then
+elif [[ "$rpakb" = "10" ]]; then
 	akb="-b:a 510K"
-elif [ "$rpakb" = "X" ]  && [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
+elif [[ "$rpakb" = "X" ]] \
+  && [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 	AdaptedBitrate="1"
 else
 	if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
@@ -5606,7 +5611,7 @@ Audio_OGG_Config() {					# Option 1,25 	- Conf audio/video libvorbis, audio to o
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then
+if [[ "$ffmes_option" -lt "20" ]]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5640,38 +5645,38 @@ echo " *[9]  > | 500k | 22kHz |"
 echo "  [10] > | 500k |  N/A  |"
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
 elif echo "$rpakb" | grep -q 'k' ; then
 	akb="-b:a $rpakb"
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-q 2"
 	asamplerate="-cutoff 14000 -ar 44100"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-q 3"
 	asamplerate="-cutoff 15000 -ar 44100"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-q 4"
 	asamplerate="-cutoff 15000 -ar 44100"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-q 5"
 	asamplerate="-cutoff 16000 -ar 44100"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-q 6"
 	asamplerate="-cutoff 17000 -ar 44100"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-q 7"
 	asamplerate="-cutoff 18000 -ar 44100"
-elif [ "$rpakb" = "7" ]; then
+elif [[ "$rpakb" = "7" ]]; then
 	akb="-q 8 "
 	asamplerate="-cutoff 19000 -ar 44100"
-elif [ "$rpakb" = "8" ]; then
+elif [[ "$rpakb" = "8" ]]; then
 	akb="-q 9"
 	asamplerate="-cutoff 20000 -ar 44100"
-elif [ "$rpakb" = "9" ]; then
+elif [[ "$rpakb" = "9" ]]; then
 	akb="-q 10"
 	asamplerate="-cutoff 22050 -ar 44100"
-elif [ "$rpakb" = "10" ]; then
+elif [[ "$rpakb" = "10" ]]; then
 	akb="-q 10"
 else
 	akb="-q 10"
@@ -5682,7 +5687,7 @@ Audio_MP3_Config() {					# Option 24 	- Audio to mp3 (libmp3lame)
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then
+if [[ "$ffmes_option" -lt "20" ]]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5706,21 +5711,21 @@ echo "  [5]   | 220-260k |"
 echo " *[6] > | 320k     |"
 echo "  [q] > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
 elif echo "$rpakb" | grep -q 'k' ; then
 	akb="-b:a $rpakb"
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-q:a 4"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-q:a 3"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-q:a 2"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-q:a 1"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-q:a 0"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-b:a 320k"
 else
 	akb="-b:a 320k"
@@ -5730,7 +5735,7 @@ Audio_AAC_Config() {					# Option 27 	- Conf audio aac or libfdk_aac, audio to m
 # Local variables
 local rpakb
 
-if [ "$ffmes_option" -lt 20 ]; then
+if [[ "$ffmes_option" -lt "20" ]]; then
 	Display_Video_Custom_Info_choice
 else
 	Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -5780,51 +5785,51 @@ echo "         |  280k  | 321kb -> 400kb | 20kHz |"
 echo "         |  320k  | 400kb -> ∞     | 20kHz |"
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-b:a 64K"
 	asamplerate="-cutoff 14000"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-b:a 96K"
 	asamplerate="-cutoff 15000"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-b:a 128K"
 	asamplerate="-cutoff 16000"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-b:a 160K"
 	asamplerate="-cutoff 17000"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-b:a 192K"
 	asamplerate="-cutoff 18000"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-b:a 220K"
 	asamplerate="-cutoff 19000"
-elif [ "$rpakb" = "7" ]; then
+elif [[ "$rpakb" = "7" ]]; then
 	akb="-b:a 320K"
 	asamplerate="-cutoff 20000"
-elif [ "$rpakb" = "8" ]; then
+elif [[ "$rpakb" = "8" ]]; then
 	akb="-b:a 384K"
 	asamplerate="-cutoff 20000"
-elif [ "$rpakb" = "9" ]; then
+elif [[ "$rpakb" = "9" ]]; then
 	akb="-b:a 512K"
 	asamplerate="-cutoff 20000"
-elif [ "$rpakb" = "10" ]; then
+elif [[ "$rpakb" = "10" ]]; then
 	akb="-vbr 1"
 	asamplerate="-cutoff 15000"
-elif [ "$rpakb" = "11" ]; then
+elif [[ "$rpakb" = "11" ]]; then
 	akb="-vbr 2"
 	asamplerate="-cutoff 15000"
-elif [ "$rpakb" = "12" ]; then
+elif [[ "$rpakb" = "12" ]]; then
 	akb="-vbr 3"
 	asamplerate="-cutoff 16000"
-elif [ "$rpakb" = "13" ]; then
+elif [[ "$rpakb" = "13" ]]; then
 	akb="-vbr 4"
 	asamplerate="-cutoff 17000"
-elif [ "$rpakb" = "14" ]; then
+elif [[ "$rpakb" = "14" ]]; then
 	akb="-vbr 5"
 	asamplerate="-cutoff 19000"
-elif [ "$rpakb" = "X" ]; then
+elif [[ "$rpakb" = "X" ]]; then
 	AdaptedBitrate="1"
 else
 	AdaptedBitrate="1"
@@ -5851,21 +5856,21 @@ echo "  [5] > | 540k |"
 echo " *[6] > | 640k |"
 echo "  [q] > | for exit"
 read -r -e -p "-> " rpakb
-if [ "$rpakb" = "q" ]; then
+if [[ "$rpakb" = "q" ]]; then
 	Restart
 elif echo "$rpakb" | grep -q 'k' ; then
 	akb="-b:a $rpakb"
-elif [ "$rpakb" = "1" ]; then
+elif [[ "$rpakb" = "1" ]]; then
 	akb="-b:a 140k"
-elif [ "$rpakb" = "2" ]; then
+elif [[ "$rpakb" = "2" ]]; then
 	akb="-b:a 240k"
-elif [ "$rpakb" = "3" ]; then
+elif [[ "$rpakb" = "3" ]]; then
 	akb="-b:a 340k"
-elif [ "$rpakb" = "4" ]; then
+elif [[ "$rpakb" = "4" ]]; then
 	akb="-b:a 440k"
-elif [ "$rpakb" = "5" ]; then
+elif [[ "$rpakb" = "5" ]]; then
 	akb="-b:a 540k"
-elif [ "$rpakb" = "6" ]; then
+elif [[ "$rpakb" = "6" ]]; then
 	akb="-b:a 640k"
 else
 	akb="-b:a 640k"
@@ -5934,7 +5939,7 @@ case $qarm in
 esac
 }
 Audio_Multiple_Extention_Check() {		# If sources audio multiple extention question
-if [ "$NBAEXT" -gt "1" ]; then
+if [[ "$NBAEXT" -gt "1" ]]; then
 	echo
 	echo " Different source audio file extensions have been found, would you like to select one or more?"
 	echo " Notes: * It is recommended not to batch process different sources, in order to control the result as well as possible."
@@ -5948,9 +5953,9 @@ if [ "$NBAEXT" -gt "1" ]; then
 	echo "  [q]       > for exit"
 	echo -n " -> "
 	read -r NEW_AUDIO_EXT_AVAILABLE
-	if [ "$NEW_AUDIO_EXT_AVAILABLE" = "q" ]; then
+	if [[ "$NEW_AUDIO_EXT_AVAILABLE" = "q" ]]; then
 		Restart
-	elif test -n "$NEW_AUDIO_EXT_AVAILABLE"; then
+	elif [[ -n "$NEW_AUDIO_EXT_AVAILABLE" ]]; then
 		StartLoading "Search the files processed"
 		mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep \
 			-regex '.*\.('$NEW_AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
@@ -6024,7 +6029,7 @@ echo
 echo " *[↵] > for continue"
 echo "  [q] > for exit"
 read -r -e -p "-> " concatrep
-if [ "$concatrep" = "q" ]; then
+if [[ "$concatrep" = "q" ]]; then
 		Restart
 else
 
@@ -6235,9 +6240,9 @@ local END
 mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
 	-iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
-if [ "${#LSTAUDIO[@]}" -eq "0" ]; then
+if [[ "${#LSTAUDIO[@]}" -eq "0" ]]; then
 	Echo_Mess_Error "No audio file in the working directory"
-elif [ "${#LSTAUDIO[@]}" -gt "1" ]; then
+elif [[ "${#LSTAUDIO[@]}" -gt "1" ]]; then
 	Echo_Mess_Error "More than one audio file in working directory"
 elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 
@@ -6260,15 +6265,15 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	echo "  [4] > |   -8 -e -p"
 	echo "  [q] > | for exit"
 	read -r -e -p "-> " rpakb
-	if [ "$rpakb" = "q" ]; then
+	if [[ "$rpakb" = "q" ]]; then
 		Restart
-	elif [ "$rpakb" = "1" ]; then
+	elif [[ "$rpakb" = "1" ]]; then
 		flac_level="-0"
-	elif [ "$rpakb" = "2" ]; then
+	elif [[ "$rpakb" = "2" ]]; then
 		flac_level="-5"
-	elif [ "$rpakb" = "3" ]; then
+	elif [[ "$rpakb" = "3" ]]; then
 		flac_level="-8"
-	elif [ "$rpakb" = "4" ]; then
+	elif [[ "$rpakb" = "4" ]]; then
 		flac_level="-8 -e -p"
 	else
 		flac_level="-8"
@@ -6279,7 +6284,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 
 	# UTF-8 convert
 	CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2> /dev/null)
-	if [ "$CHARSET_DETECT" != "UTF-8" ]; then
+	if [[ "$CHARSET_DETECT" != "UTF-8" ]]; then
 		iconv -c -f "$CHARSET_DETECT" -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
 		mkdir BACK 2> /dev/null
 		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
@@ -6299,7 +6304,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		wvunpack -w "${LSTAUDIO[0]}"
 		# Clean
 		if test $? -eq 0; then
-			if [ ! -d BACK/ ]; then
+			if [[ ! -d BACK/ ]]; then
 				mkdir BACK 2> /dev/null
 			fi
 			mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2> /dev/null
@@ -6318,7 +6323,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	# Clean
 	if test $? -eq 0; then
 		rm 00*.flac 2> /dev/null
-		if [ ! -d BACK/ ]; then
+		if [[ ! -d BACK/ ]]; then
 			mkdir BACK 2> /dev/null
 		fi
 
@@ -6385,7 +6390,7 @@ for files in "${LSTAUDIO[@]}"; do
 	(
 	tmp_error=$(mktemp)
 	"$ffmpeg_bin" -v error -i "$files" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
-	if [ -s "$tmp_error" ]; then
+	if [[ -s "$tmp_error" ]]; then
 		cp "$tmp_error" "${files%.*}-error.log"
 		echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
 	fi
@@ -6410,7 +6415,7 @@ Calc_Elapsed_Time "$START" "$END"								# Get elapsed time
 
 # End encoding messages
 echo
-if [ -s "$FFMES_CACHE_INTEGRITY" ]; then
+if [[ -s "$FFMES_CACHE_INTEGRITY" ]]; then
 	Echo_Separator_Light
 	echo " File(s) in error:"
 	cat "$FFMES_CACHE_INTEGRITY"
@@ -6594,28 +6599,28 @@ for i in "${!LSTAUDIO[@]}"; do
 		# If integer
 		if [[ "${tag_track_proper}" =~ ^-?[0-9]+$ ]]; then
 			# Lead 0 condition
-			if [ "$tag_track_total_digit" -eq "1" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+			if [[ "$tag_track_total_digit" -eq "1" ]] && [[ "${#tag_track_proper}" = "1" ]]; then
 				ParsedTrack="${tag_track_proper}"
 
-			elif [ "$tag_track_total_digit" -eq "2" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "2" ]] && [[ "${#tag_track_proper}" = "1" ]]; then
 				ParsedTrack="0$tag_track_proper"
-			elif [ "$tag_track_total_digit" -eq "2" ] && [[ "${#tag_track_proper}" = "2" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "2" ]] && [[ "${#tag_track_proper}" = "2" ]]; then
 				ParsedTrack="$tag_track_proper"
 
-			elif [ "$tag_track_total_digit" -eq "3" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "3" ]] && [[ "${#tag_track_proper}" = "1" ]]; then
 				ParsedTrack="00$tag_track_proper"
-			elif [ "$tag_track_total_digit" -eq "3" ] && [[ "${#tag_track_proper}" = "2" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "3" ]] && [[ "${#tag_track_proper}" = "2" ]]; then
 				ParsedTrack="0$tag_track_proper"
-			elif [ "$tag_track_total_digit" -eq "3" ] && [[ "${#tag_track_proper}" = "3" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "3" ]] && [[ "${#tag_track_proper}" = "3" ]]; then
 				ParsedTrack="$tag_track_proper"
 
-			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "1" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "4" ]] && [[ "${#tag_track_proper}" = "1" ]]; then
 				ParsedTrack="000$tag_track_proper"
-			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "2" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "4" ]] && [[ "${#tag_track_proper}" = "2" ]]; then
 				ParsedTrack="00$tag_track_proper"
-			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "3" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "4" ]] && [[ "${#tag_track_proper}" = "3" ]]; then
 				ParsedTrack="0$tag_track_proper"
-			elif [ "$tag_track_total_digit" -eq "4" ] && [[ "${#tag_track_proper}" = "4" ]]; then
+			elif [[ "$tag_track_total_digit" -eq "4" ]] && [[ "${#tag_track_proper}" = "4" ]]; then
 				ParsedTrack="$tag_track_proper"
 			fi
 		fi
@@ -6623,7 +6628,7 @@ for i in "${!LSTAUDIO[@]}"; do
 	fi
 
 	# If no tag title
-	if test -z "${TAG_TITLE[i]}"; then
+	if [[ -z "${TAG_TITLE[i]}" ]]; then
 		ParsedTitle="[untitled]"
 	else
 		# Replace eventualy / , " , : in string
@@ -6633,7 +6638,7 @@ for i in "${!LSTAUDIO[@]}"; do
 	fi
 
 	# If no tag artist
-	if test -z "${TAG_ARTIST[i]}"; then
+	if [[ -z "${TAG_ARTIST[i]}" ]]; then
 		ParsedTitle="[unknown]"
 	else
 		# Replace eventualy / , " , : in string
@@ -6970,10 +6975,10 @@ while [[ $# -gt 0 ]]; do
 		shift
 		InputFileDir="$1"
 		# If directory
-		if [ -d "$InputFileDir" ]; then
+		if [[ -d "$InputFileDir" ]]; then
 			cd "$InputFileDir" || exit
 		# If file
-		elif [ -f "$InputFileDir" ]; then
+		elif [[ -f "$InputFileDir" ]]; then
 
 			# Variable filter
 			InputFileExt="${InputFileDir##*.}"
@@ -7006,7 +7011,7 @@ while [[ $# -gt 0 ]]; do
 			else
 				InputFileArg="$InputFileDir"
 			fi
-		elif ! [ -f "$InputFileDir" ]; then
+		elif ! [[ -f "$InputFileDir" ]]; then
 			Echo_Mess_Error "\"$1\" does not exist" "1"
 			exit
 		fi
@@ -7014,12 +7019,12 @@ while [[ $# -gt 0 ]]; do
 	-j|--videojobs)
 		# For number of parallel job
 		shift
-		if ! [[ "$1" =~ ^[0-9]*$ ]] ; then
+		if ! [[ "$1" =~ ^[0-9]*$ ]]; then
 			Echo_Mess_Error "Video jobs option must be an positive integer" "1"
 			exit
 		else
 			unset NVENC
-			if [[ "$NVENC" -lt 0 ]] ; then
+			if [[ "$NVENC" -lt 0 ]]; then
 				Echo_Mess_Error "Video jobs must be greater than zero" "1"
 				exit
 			else
@@ -7094,14 +7099,14 @@ trap TrapExit SIGINT SIGQUIT
 # Set Ctrl+z clean trap for exit current loop (for debug)
 trap TrapStop SIGTSTP
 # By-pass main menu if using command argument
-if [ -z "$ffmes_option" ]; then
+if [[ -z "$ffmes_option" ]]; then
 	Display_Main_Menu
 fi
 
 while true; do
 
 	# By-pass selection if using command argument
-	if [ -z "$ffmes_option" ]; then
+	if [[ -z "$ffmes_option" ]]; then
 		echo "  [q]exit [m]menu [r]restart"
 		read -r -e -p "  -> " ffmes_option
 	fi
@@ -7139,7 +7144,7 @@ while true; do
 				Clean
 			;;
 			"1") # Blu-ray rip
-				if [ "${#LSTISO[@]}" -gt "1" ]; then
+				if [[ "${#LSTISO[@]}" -gt "1" ]]; then
 					echo
 					Echo_Mess_Error "${#LSTISO[@]} files, one ISO file at a time"
 					echo
@@ -7156,7 +7161,7 @@ while true; do
 		;;
 
 	 1 ) # video -> full custom
-		if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
+		if (( "${#LSTVIDEO[@]}" )); then
 			Video_Multiple_Extention_Check
 			Video_Custom_Video
 			Video_Custom_Audio
@@ -7172,7 +7177,7 @@ while true; do
 		;;
 
 	 2 ) # video -> mkv|copy|copy
-		if [ "${#LSTVIDEO[@]}" -gt "0" ]; then
+		if (( "${#LSTVIDEO[@]}" )); then
 			videoconf="-c:v copy"
 			soundconf="-c:a copy"
 			extcont="mkv"
@@ -7208,7 +7213,8 @@ while true; do
 		;;
 
 	 10 ) # video -> mkv|copy|add audio|add sub
-		if [[ "${#LSTVIDEO[@]}" -eq "1" ]] && [[ "${#LSTSUB[@]}" -gt 0 || "${#LSTAUDIO[@]}" -gt 0 ]]; then
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]] \
+		&& [[ "${#LSTSUB[@]}" -gt 0 || "${#LSTAUDIO[@]}" -gt 0 ]]; then
 			videoformat="addcopy"
 			Video_Merge_Files
 			Clean
@@ -7218,7 +7224,8 @@ while true; do
 		;;
 
 	 11 ) # Concatenate video
-		if [ "${#LSTVIDEO[@]}" -gt "1" ] && [ "$NBVEXT" -eq "1" ]; then
+		if [[ "${#LSTVIDEO[@]}" -gt "1" ]] \
+		&& [[ "$NBVEXT" -eq "1" ]]; then
 			Video_Concatenate
 			Video_Custom_Video
 			Video_Custom_Audio
@@ -7256,7 +7263,8 @@ while true; do
 		;;
 
 	 14 ) # Split by chapter mkv
-		if [ "${#LSTVIDEO[@]}" -eq "1" ] && [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
+		if [[ "${#LSTVIDEO[@]}" -eq "1" ]] \
+		&& [[ "${LSTVIDEO[0]##*.}" = "mkv" ]]; then
 			Video_Split_By_Chapter
 			Clean
 		else
@@ -7285,9 +7293,9 @@ while true; do
 
 	 20 ) # audio -> CUE splitter
 		CheckCueSplitCommand
-		if [ "${#LSTCUE[@]}" -eq "0" ]; then
+		if [[ "${#LSTCUE[@]}" -eq "0" ]]; then
 			Echo_Mess_Error "No CUE file in the working director" "1"
-		elif [ "${#LSTCUE[@]}" -gt "1" ]; then
+		elif [[ "${#LSTCUE[@]}" -gt "1" ]]; then
 			Echo_Mess_Error "More than one CUE file in working directory" "1"
 		else
 			Audio_CUE_Split
@@ -7443,7 +7451,7 @@ while true; do
 		else
 			Echo_Mess_Error "$MESS_NO_AUDIO_FILE" "1"
 		fi
-		if [ "$force_compare_audio" = "1" ]; then
+		if [[ "$force_compare_audio" = "1" ]]; then
 			exit
 		fi
 		;;
@@ -7459,7 +7467,8 @@ while true; do
 		;;
 
 	 33 ) # Concatenate audio
-		if [ "${#LSTAUDIO[@]}" -gt "1" ] && [ "$NBAEXT" -eq "1" ]; then
+		if [[ "${#LSTAUDIO[@]}" -gt "1" ]] \
+		&& [[ "$NBAEXT" -eq "1" ]]; then
 			Audio_Concatenate_Files
 			Remove_File_Source
 			Clean
