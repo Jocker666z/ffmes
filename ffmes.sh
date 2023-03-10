@@ -1243,9 +1243,12 @@ else
 fi
 }
 Display_Term_Size() {					# Get terminal size
-TERM_WIDTH=$(stty size | awk '{print $2}')
-TERM_WIDTH_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 8 }')
-TERM_WIDTH_PROGRESS_TRUNC=$(stty size | awk '{print $2}' | awk '{ print $1 - 32 }')
+local term_size_raw
+term_size_raw=$(stty size)
+
+TERM_WIDTH="${term_size_raw##* }"
+TERM_WIDTH_TRUNC=$(( term_width - 8 ))
+TERM_WIDTH_PROGRESS_TRUNC=$(( term_width - 32 ))
 }
 Display_Variable_Trick() {				# Punctuation trick
 local variable
