@@ -1247,8 +1247,8 @@ local term_size_raw
 term_size_raw=$(stty size)
 
 TERM_WIDTH="${term_size_raw##* }"
-TERM_WIDTH_TRUNC=$(( term_width - 8 ))
-TERM_WIDTH_PROGRESS_TRUNC=$(( term_width - 32 ))
+TERM_WIDTH_TRUNC=$(( TERM_WIDTH - 8 ))
+TERM_WIDTH_PROGRESS_TRUNC=$(( TERM_WIDTH - 32 ))
 }
 Display_Variable_Trick() {				# Punctuation trick
 local variable
