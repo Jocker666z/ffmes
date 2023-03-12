@@ -6572,6 +6572,7 @@ Audio_Tag_Rename() {					# Part of Audio_Tag_Editor
 # Local variables
 local rename_option
 local tag_track_proper
+local tag_disc_proper
 local ParsedTrack
 local ParsedTitle
 local ParsedArtist
@@ -6588,14 +6589,14 @@ for i in "${!LSTAUDIO[@]}"; do
 	# Remove leading 0, ignore slash
 	tag_track_proper="$(echo "${TAG_TRACK[i]}" | awk -F"/" '{ print $1 }' \
 						| sed 's/^0*//')"
+	tag_disc_proper="$(echo "${TAG_DISC[i]}" | awk -F"/" '{ print $1 }' \
+						| sed 's/^0*//')"
 
 	# If no tag tracknumber - use TAG_TRACK_COUNT
 	if [[ -z "${TAG_TRACK[i]}" ]]; then
 		ParsedTrack="${TAG_TRACK_COUNT[i]}"
-
 	# If tag tracknumber
 	else
-
 		# If integer
 		if [[ "${tag_track_proper}" =~ ^-?[0-9]+$ ]]; then
 			# Lead 0 condition
@@ -6624,7 +6625,6 @@ for i in "${!LSTAUDIO[@]}"; do
 				ParsedTrack="$tag_track_proper"
 			fi
 		fi
-
 	fi
 
 	# If no tag title
@@ -6656,7 +6656,7 @@ for i in "${!LSTAUDIO[@]}"; do
 			mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 		elif [[ "$rename_option" = "drename" ]]; then
 			if [[ -n "${TAG_DISC[i]}" ]]; then
-				mv "${LSTAUDIO[i]}" "${TAG_DISC[i]}"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
+				mv "${LSTAUDIO[i]}" "$tag_disc_proper"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 			else
 				mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
 			fi
@@ -6770,8 +6770,9 @@ elif [[ "$tag_track_string_length" -eq "0" ]]; then
 fi
 # Separator
 separator_string_length=$(( filename_string_length + tag_disk_string_length \
-							+ tag_track_string_length + tag_title_string_length + tag_artist_string_length \
-							+ tag_album_string_length + tag_date_string_length + horizontal_separator_string_length ))
+							+ tag_track_string_length + tag_title_string_length \
+							+ tag_artist_string_length + tag_album_string_length \
+							+ tag_date_string_length + horizontal_separator_string_length ))
 
 # Loading off
 StopLoading $?
