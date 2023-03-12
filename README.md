@@ -345,13 +345,13 @@ su -c "make install" -m "root"
 * https://github.com/BtbN/FFmpeg-Builds/wiki/Latest#latest-autobuilds
 	* pro: compiled
 	* pro: lgpl compliant (include vaapi & more)
-	* con: non-free codec
+	* con: without non-free codec
 * https://johnvansickle.com/ffmpeg/
 	* pro: compiled
 	* pro: official
-	* con: non-free codec
+	* con: without non-free codec
 * https://github.com/markus-perl/ffmpeg-build-script
-	* pro: non-free codec
+	* pro: with non-free codec
 	* con: not compiled
 
 --------------------------------------------------------------------------------------------------

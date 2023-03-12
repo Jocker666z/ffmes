@@ -6677,15 +6677,12 @@ wait
 Audio_Tag_Editor() {					# Option 30 	- Tag editor
 # Local variables
 local tag_date_raw
-local Cut
 local ParsedAlbum
 local ParsedArtist
 local ParsedDate
 local ParsedDisc
 local ParsedTitle
 local ParsedTrack
-local PrtSep
-local TitlePattern
 local tag_artist_string_length
 local tag_disk_string_length
 local tag_track_string_length
@@ -6704,7 +6701,6 @@ TAG_ALBUM=()
 TAG_DATE=()
 TAG_TRACK_COUNT=()
 PrtSep=()
-
 
 # Loading on
 StartLoading "Grab current tags" ""
@@ -6867,90 +6863,90 @@ shopt -s nocasematch
 while :
 do
 read -r -e -p "-> " rpstag
-case $rpstag in
 
-	rename)
-		Audio_Tag_Rename "rename"
-		Audio_Tag_Editor
-	;;
-	arename)
-		Audio_Tag_Rename "arename"
-		Audio_Tag_Editor
-	;;
-	drename)
-		Audio_Tag_Rename "drename"
-		Audio_Tag_Editor
-	;;
-	disc?[0-9])
-		ParsedDisc="${rpstag##* }"
-		Audio_Tag_cmd "disk" "$ParsedDisc"
-		Audio_Tag_Editor
-	;;
-	track)
-		Audio_Tag_cmd "track" "" "track"
-		Audio_Tag_Editor
-	;;
-	album*)
-		ParsedAlbum=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
-		Audio_Tag_cmd "album" "$ParsedAlbum"
-		Audio_Tag_Editor
-	;;
-	artist*)
-		ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
-		Audio_Tag_cmd "artist" "$ParsedArtist"
-		Audio_Tag_Editor
-	;;
-	uartist*)
-		ParsedArtist="[unknown]"
-		Audio_Tag_cmd "artist" "$ParsedArtist"
-		Audio_Tag_Editor
-	;;
-	date*)
-		ParsedDate="${rpstag##* }"
-		Audio_Tag_cmd "date" "$ParsedDate"
-		Audio_Tag_Editor
-	;;
-	ftitle)
-		Audio_Tag_cmd "title" "" "ftitle"
-		Audio_Tag_Editor
-	;;
-	utitle)
-		Audio_Tag_cmd "title" "[untitled]"
-		Audio_Tag_Editor
-	;;
-	stitle?[0-9])
-		Cut=$(echo "$rpstag" | awk '{print $2+1}')
-		Audio_Tag_cmd "title" "" "stitle" "$Cut"
-		Audio_Tag_Editor
-	;;
-	etitle?[0-9])
-		Cut=$(echo "$rpstag" | awk '{print $2+1}')
-		Audio_Tag_cmd "title" "" "etitle" "$Cut"
-		Audio_Tag_Editor
-	;;
-	ptitle*)
-		TitlePattern=$(echo "$rpstag" | awk -F'"' '$0=$2')
-		Audio_Tag_cmd "title" "" "ptitle" "$TitlePattern"
-		Audio_Tag_Editor
-	;;
-	"r"|"R")
-		Audio_Tag_Editor
-		break
-	;;
-	"q"|"Q")
-		Restart
-		break
-	;;
-		*)
-			echo
-			Echo_Mess_Invalid_Answer
-			echo
+	case $rpstag in
+		rename)
+			Audio_Tag_Rename "rename"
+			Audio_Tag_Editor
 		;;
-esac
+		arename)
+			Audio_Tag_Rename "arename"
+			Audio_Tag_Editor
+		;;
+		drename)
+			Audio_Tag_Rename "drename"
+			Audio_Tag_Editor
+		;;
+		disc?[0-9])
+			ParsedDisc="${rpstag##* }"
+			Audio_Tag_cmd "disk" "$ParsedDisc"
+			Audio_Tag_Editor
+		;;
+		track)
+			Audio_Tag_cmd "track" "" "track"
+			Audio_Tag_Editor
+		;;
+		album*)
+			ParsedAlbum=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+			Audio_Tag_cmd "album" "$ParsedAlbum"
+			Audio_Tag_Editor
+		;;
+		artist*)
+			ParsedArtist=$(echo "$rpstag" | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+			Audio_Tag_cmd "artist" "$ParsedArtist"
+			Audio_Tag_Editor
+		;;
+		uartist*)
+			ParsedArtist="[unknown]"
+			Audio_Tag_cmd "artist" "$ParsedArtist"
+			Audio_Tag_Editor
+		;;
+		date*)
+			ParsedDate="${rpstag##* }"
+			Audio_Tag_cmd "date" "$ParsedDate"
+			Audio_Tag_Editor
+		;;
+		ftitle)
+			Audio_Tag_cmd "title" "" "ftitle"
+			Audio_Tag_Editor
+		;;
+		utitle)
+			Audio_Tag_cmd "title" "[untitled]"
+			Audio_Tag_Editor
+		;;
+		stitle?[0-9])
+			ParsedTitle=$(echo "$rpstag" | awk '{print $2+1}')
+			Audio_Tag_cmd "title" "" "stitle" "$ParsedTitle"
+			Audio_Tag_Editor
+		;;
+		etitle?[0-9])
+			ParsedTitle=$(echo "$rpstag" | awk '{print $2+1}')
+			Audio_Tag_cmd "title" "" "etitle" "$ParsedTitle"
+			Audio_Tag_Editor
+		;;
+		ptitle*)
+			ParsedTitle=$(echo "$rpstag" | awk -F'"' '$0=$2')
+			Audio_Tag_cmd "title" "" "ptitle" "$ParsedTitle"
+			Audio_Tag_Editor
+		;;
+		"r"|"R")
+			Audio_Tag_Editor
+			break
+		;;
+		"q"|"Q")
+			Restart
+			break
+		;;
+			*)
+				echo
+				Echo_Mess_Invalid_Answer
+				echo
+			;;
+	esac
+
 done
 
 shopt -u nocasematch
-
 }
 
 # Arguments variables
