@@ -131,7 +131,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 		* HDR to SDR (except hevc_vaapi & mpeg4)
 		* codecs:
 			* libx264: profile, tune, preset & bitrate (video stream total size, crf & cbr)
-			* libx265: profile, tune, preset & bitrate (video stream total size, crf & cbr)
+			* libx265: profile, tune, preset, bitrate (video stream total size, crf & cbr), 1 or 2 pass encoding (not in batch)
 			* hevc_vaapi: profile, bitrate (video stream total size, qp & cbr); need ffmpeg --enable-vaapi & proper system configuration; note at same bitrate low quality than libx265 but the encoding speed is much faster
 			* AV1:
 				* libaom-av1: cpu-used (preset), bitrate (video stream total size, crf & cbr)

@@ -1177,8 +1177,8 @@ if [[ "$ENCODV" = "1" ]]; then
 			echo "   * HDR to SDR: $chsdr2hdr"
 		fi
 	fi
-	echo "   * Codec: $chvcodec${chpreset}${chtune}${chprofile}"
-	echo "   * Bitrate: $vkb"
+	echo "   * Codec: ${chvcodec}${chpreset}${chtune}${chprofile}"
+	echo "   * Bitrate: ${vkb}${chpass}"
 fi
 echo "  Audio stream: $chsoundstream"
 if [[ "$ENCODA" = "1" ]]; then
@@ -2882,25 +2882,69 @@ for i in "${!LSTVIDEO[@]}"; do
 	fi
 	(
 	if [[ "$VERBOSE" = "1" ]]; then
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
-		-analyzeduration 1G -probesize 1G \
-		$GPUDECODE \
-		-y -i "${LSTVIDEO[i]}" \
-		$FFMPEG_PROGRESS \
-		-threads 0 \
-		$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
-		-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
-		| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		if [[ "$PASS2" = "1" ]]; then
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+			-analyzeduration 1G -probesize 1G \
+			$GPUDECODE \
+			-y -i "${LSTVIDEO[i]}" \
+			$FFMPEG_PROGRESS \
+			-threads 0 \
+			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+			-x265-params pass=1 -f null /dev/null \
+			| ProgressBar "${LSTVIDEO[i]} Pass 1" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+			-analyzeduration 1G -probesize 1G \
+			$GPUDECODE \
+			-y -i "${LSTVIDEO[i]}" \
+			$FFMPEG_PROGRESS \
+			-threads 0 \
+			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+			-x265-params pass=2 \
+			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
+			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		else
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+			-analyzeduration 1G -probesize 1G \
+			$GPUDECODE \
+			-y -i "${LSTVIDEO[i]}" \
+			$FFMPEG_PROGRESS \
+			-threads 0 \
+			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
+			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		fi
 	else
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
-		-analyzeduration 1G -probesize 1G \
-		$GPUDECODE \
-		-y -i "${LSTVIDEO[i]}" \
-		$FFMPEG_PROGRESS \
-		-threads 0 \
-		$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
-		-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont 2>/dev/null \
-		| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		if [[ "$PASS2" = "1" ]]; then
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+			-analyzeduration 1G -probesize 1G \
+			$GPUDECODE \
+			-y -i "${LSTVIDEO[i]}" \
+			$FFMPEG_PROGRESS \
+			-threads 0 \
+			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+			-x265-params pass=1 -f null /dev/null 2>/dev/null \
+			| ProgressBar "${LSTVIDEO[i]} Pass 1" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+			-analyzeduration 1G -probesize 1G \
+			$GPUDECODE \
+			-y -i "${LSTVIDEO[i]}" \
+			$FFMPEG_PROGRESS \
+			-threads 0 \
+			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+			-x265-params pass=2 \
+			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont 2>/dev/null \
+			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		else
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+			-analyzeduration 1G -probesize 1G \
+			$GPUDECODE \
+			-y -i "${LSTVIDEO[i]}" \
+			$FFMPEG_PROGRESS \
+			-threads 0 \
+			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
+			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont 2>/dev/null \
+			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
+		fi
 	fi
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NVENC ]]; then
@@ -3578,6 +3622,7 @@ fi
 }
 Video_x264_5_Config() {					# Option 1  	- Conf x264/x265
 # Local variables
+local pass
 local rpvkb
 local rpvkb_unit
 local video_stream_kb
@@ -3806,7 +3851,8 @@ fi
 Display_Video_Custom_Info_choice
 echo " Choose a CRF number, video strem size, or enter the desired bitrate:"
 echo " Note: * This settings influences size and quality, crf is a better choise in 90% of cases."
-echo "       * libx265 which can offer 25–50% bitrate savings compared to libx264."
+echo "       * libx265: which can offer 25–50% bitrate savings compared to libx264."
+echo "       * libx265: one input & cbr (or total size choise) allow 2 pass encoding."
 echo
 echo " [1200k]     Example of input for cbr desired bitrate in kb/s"
 echo " [1500m]     Example of input for aproximative total size of video stream in Mb (not recommended in batch)"
@@ -3863,6 +3909,26 @@ elif [[ "$rpvkb" = "q" ]]; then
 	Restart
 else
 	vkb="-crf 20"
+fi
+
+# Pass question if CBR & HEVC & one file
+rpvkb_unit="${vkb: -1}"
+if [[ "$rpvkb_unit" = "k" ]] \
+&& [[ "$chvcodec" = "HEVC" ]] \
+&& [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
+	read -r -p " 1 or 2 pass encoding? [*1/2]: " pass
+	case $pass in
+		"2")
+			PASS2="1"
+			chpass="; 2 pass"
+		;;
+		*)
+			unset PASS2
+			chpass="; 1 pass"
+		;;
+	esac
+else
+	chpass="; 1 pass"
 fi
 }
 Video_hevc_vaapi_Config() {				# Option 1  	- Conf hevc_vaapi
@@ -7092,7 +7158,8 @@ SetGlobalVariables
 DetectDVD
 StopLoading $?
 # Set Ctrl+c clean trap for exit all script
-trap TrapExit SIGINT SIGQUIT
+trap TrapExit INT TERM
+trap "kill 0" EXIT
 # Set Ctrl+z clean trap for exit current loop (for debug)
 trap TrapStop SIGTSTP
 # By-pass main menu if using command argument
