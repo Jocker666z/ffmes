@@ -1622,6 +1622,7 @@ local source_files
 local duration_type
 local media_type
 local duration
+local false_positive_test
 
 # Array
 filesPass=()
@@ -1651,17 +1652,28 @@ if (( "${#source_files[@]}" )); then
 		if [[ "${source_files[$i]##*.}" =~ ${VIDEO_EXT_AVAILABLE[*]} ]] \
 		|| [[ "${source_files[$i]##*.}" =~ ${AUDIO_EXT_AVAILABLE[*]} ]]; then
 
-			## File test & error log generation
+			# File test & error log generation
 			tmp_error=$(mktemp)
 			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" \
 				-max_muxing_queue_size 9999 -f null - 2> "$tmp_error"
-			## File fail
+
+			# False positive test
+			if [[ -s "$tmp_error" ]]; then
+				# not blocking, rather a warning: "non monotonically increasing dts to muxer"
+				false_positive_test=$(cat "$tmp_error" \
+										| grep "non monotonically increasing dts to muxer")
+				if [[ -n "$false_positive_test" ]]; then
+					rm "$tmp_error"
+				fi
+			fi
+
+			# File fail
 			if [[ -s "$tmp_error" ]]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
 				# File fail array
 				filesReject+=( "${source_files[$i]}" )
 				rm "${source_files[$i]}" 2>/dev/null
-			## File pass
+			# File pass
 			else
 				# File pass array
 				filesPass+=("${source_files[$i]}")
