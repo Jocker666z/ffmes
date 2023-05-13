@@ -52,7 +52,7 @@ FFPROBE_CUSTOM_BIN=""
 ## BD command needed
 BLURAY_COMMAND_NEEDED=(bluray_copy bluray_info)
 ## DVD command needed
-DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd pv)
+DVD_COMMAND_NEEDED=(dvdbackup dvdxchap lsdvd setcd pv)
 ## DVD & Blu-ray input extension available
 ISO_EXT_AVAILABLE="iso"
 VOB_EXT_AVAILABLE="vob"
@@ -1999,15 +1999,13 @@ local pcm_dvd
 local VIDEO_EXT_AVAILABLE
 local qtitle
 
-# Local Array
-qtitle=()
-
 clear
 echo
 echo " DVD rip"
 echo " notes: * for DVD, launch ffmes in directory without ISO & VOB, if you have more than one drive, insert only one DVD."
 echo "        * for ISO, launch ffmes in directory with ISO (without VOB)"
-echo "        * for VOB, launch ffmes in directory with VOB (in VIDEO_TS/)"
+echo "        * for VOB, launch ffmes in directory with VOB (in VIDEO_TS/) "
+echo "        * for VOB, launch ffmes in directory with VIDEO_TS/"
 echo
 Echo_Separator_Light
 while :
@@ -2024,7 +2022,9 @@ esac
 done
 
 # Assign input
-if [[ "${#LSTVOB[@]}" -ge "1" ]]; then
+if [[ -d VIDEO_TS ]]; then
+	DVD="VIDEO_TS/"
+elif [[ "${#LSTVOB[@]}" -ge "1" ]]; then
 	DVD="./"
 elif [[ "${#LSTISO[@]}" -eq "1" ]]; then
 	DVD="${LSTISO[0]}"
@@ -2058,15 +2058,22 @@ if ! [[ "$lsdvd_result" -eq 0 ]]; then
 	exit
 fi
 
-# Grep stat
-lsdvd -a -s "$DVD" 2>/dev/null | awk -F', AP:' '{print $1}' | awk -F', Subpictures' '{print $1}' \
-	| awk ' {gsub("Quantization: drc, ","");print}' | sed 's/^/    /' > "$LSDVD_CACHE"
+# Get stats
+lsdvd -a -s "$DVD" 2>/dev/null \
+	| awk '/Disc Title/,0' \
+	| awk -F', AP:' '{print $1}' \
+	| awk -F', Subpictures' '{print $1}' \
+	| awk ' {gsub("Quantization: drc, ","");print}' \
+	| sed 's/^/    /' > "$LSDVD_CACHE"
+# Parse titles
 DVDtitle=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null \
-			| grep "DVD with title" | tail -1 | awk -F'"' '{print $2}')
-# Extract all title
-mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | grep Title | awk '{print $2}' |  grep -o '[[:digit:]]*')
+			| grep "DVD with title" \
+			| tail -1 \
+			| awk -F'"' '{print $2}')
+# All titles to array
+mapfile -t DVD_TITLES < <(lsdvd "$DVD" 2>/dev/null | awk '/Disc Title/,0' | grep Title | awk '{print $2}' |  grep -o '[[:digit:]]*')
 
-# Question
+# Question: Title to rip
 echo
 if [[ "${#LSTVOB[@]}" -ge "1" ]]; then
 	echo " ${#LSTVIDEO[@]} VOB file(s) are been detected, choice one or more title to rip:"
@@ -2100,7 +2107,7 @@ while true; do
 	esac
 done 
 
-# DVD Title question
+# Question: DVD title name
 if [[ -z "$DVDtitle" ]]; then
 	while true; do
 		read -r -e -p "  What is the name of the DVD?: " qdvd
@@ -2116,61 +2123,77 @@ if [[ -z "$DVDtitle" ]]; then
 	done
 fi
 
+# Rip loop
 for title in "${qtitle[@]}"; do
 	RipFileName=$(echo "${DVDtitle}-${title}")
 
 	# Get aspect ratio
 	TitleParsed="${title##*0}"
 	AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null \
-					| grep "The aspect ratio of title set $TitleParsed" | tail -1 | awk '{print $NF}')
+					| grep "The aspect ratio of title set $TitleParsed" \
+					| tail -1 \
+					| awk '{print $NF}')
 	# If aspect ratio empty, get main feature aspect
 	if [[ -z "$AspectRatio" ]]; then
 		AspectRatio=$(env -u LANGUAGE LC_ALL=C dvdbackup -i "$DVD" -I 2>/dev/null \
-						| grep "The aspect ratio of the main feature is" | tail -1 | awk '{print $NF}')
+						| grep "The aspect ratio of the main feature is" \
+						| tail -1 \
+						| awk '{print $NF}')
 	fi
 
 	# Extract chapters
 	Echo_Separator_Light
 	echo " Extract chapters - $DVDtitle - title $title"
-	dvdxchap -t "$title" "$DVD" > "$RipFileName".chapters 2>/dev/null
+	dvdxchap -t "$title" "$DVD" 2>/dev/null \
+		| awk '/CHAPTER/,0' > "$RipFileName".chapters
 
-	# Extract vob
+	# Extract VOB
 	Echo_Separator_Light
 	echo " Extract VOB - $DVDtitle - title $title"
-	dvdbackup -p -t "$title" -i "$DVD" -n "$RipFileName" 2>/dev/null
+	dvdbackup -p -t "$title" -i "$DVD" -n "$RipFileName" &>/dev/null
 
-	# Populate array with VOB
+	# Concatenate VOB
 	Echo_Separator_Light
 	mapfile -t LSTVOB < <(find ./"$RipFileName" -maxdepth 3 -type f -regextype posix-egrep -iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null \
 		| sort | sed 's/^..//')
-
-	# Concatenate
 	echo " Concatenate VOB - $DVDtitle - title $title"
 	cat -- "${LSTVOB[@]}" | pv -p -t -e -r -b > "$RipFileName".VOB
 
 	# Remove data stream, fix DAR, add chapters, and change container
 	Echo_Separator_Light
 	echo " Make clean mkv - $DVDtitle - title $title"
-	# Fix pcm_dvd is present
+	# Fix pcm_dvd stream
 	PCM=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G -v error -show_entries stream=codec_name -print_format csv=p=0 "$RipFileName".VOB \
 			| grep pcm_dvd)
-	# pcm_dvd audio track trick
+	# pcm_dvd to pcm (trick)
 	if [[ -n "$PCM" ]]; then
 		pcm_dvd="-c:a pcm_s16le"
 	fi
 
+	# FFmpeg - clean mkv
 	# For progress bar
 	FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
 	FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
-	# FFmpeg - clean mkv
-	FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
+	#FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
 	Media_Source_Info_Record "${RipFileName}.VOB"
-	"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts+igndts -analyzeduration 1G -probesize 1G -i "$RipFileName".VOB \
-		$FFMPEG_PROGRESS \
-		-map 0:v -map 0:a? -map 0:s? -c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv \
-		| ProgressBar "${RipFileName}.mkv" "" "" ""
+	if [[ "$VERBOSE" = "1" ]]; then
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts+igndts \
+			-analyzeduration 1G -probesize 1G \
+			-i "$RipFileName".VOB \
+			$FFMPEG_PROGRESS \
+			-map 0:v -map 0:a? -map 0:s? \
+			-c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv
+	else
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y -fflags +genpts+igndts \
+			-analyzeduration 1G -probesize 1G \
+			-i "$RipFileName".VOB \
+			$FFMPEG_PROGRESS \
+			-map 0:v -map 0:a? -map 0:s? \
+			-c copy $pcm_dvd -aspect $AspectRatio "$RipFileName".mkv \
+			| ProgressBar "${RipFileName}.mkv" "1" "1" "Encoding"
+	fi
 
-	# mkvpropedit - add chapters
+	# Add chapters mkvpropedit
 	Echo_Separator_Light
 	echo " Add chapters - $DVDtitle - title $title"
 	if [[ "$VERBOSE" = "1" ]]; then

@@ -20,7 +20,7 @@ Source media files, supported extension:
 ### CUE Splitting
 `cuetools flac monkeys-audio shntool wavpack`
 ### DVD rip
-`dvdbackup lsdvd ogmtools pv`
+`dvdbackup lsdvd ogmtools setcd pv`
 ### DVD Subtitle
 `ogmrip tesseract-ocr tesseract-ocr-all wget`
 ### Blu-Ray rip
