@@ -6678,6 +6678,7 @@ local tag_disc_proper
 local ParsedTrack
 local ParsedTitle
 local ParsedArtist
+local ParsedFilename
 
 # Argument
 rename_option="$1"
@@ -6686,7 +6687,6 @@ rename_option="$1"
 tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | awk -F"/" '{ print $1 }' | wc -L)
 
 for i in "${!LSTAUDIO[@]}"; do
-	StartLoading "" "Rename: ${LSTAUDIO[i]}"
 
 	# Remove leading 0, ignore slash
 	tag_track_proper="$(echo "${TAG_TRACK[i]}" | awk -F"/" '{ print $1 }' \
@@ -6749,22 +6749,28 @@ for i in "${!LSTAUDIO[@]}"; do
 		ParsedArtist="${ParsedArtist//\"/-}"
 	fi
 
-	# Rename
+	# Filename construct
 	(
 	if [[ -f "${LSTAUDIO[i]}" && -s "${LSTAUDIO[i]}" ]]; then
 		if [[ "$rename_option" = "rename" ]]; then
-			mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
+			ParsedFilename="$ParsedTrack - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
 		elif [[ "$rename_option" = "arename" ]]; then
-			mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedArtist"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
+			ParsedFilename="$ParsedTrack - $ParsedArtist - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
 		elif [[ "$rename_option" = "drename" ]]; then
 			if [[ -n "${TAG_DISC[i]}" ]]; then
-				mv "${LSTAUDIO[i]}" "$tag_disc_proper"-"$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
+				ParsedFilename="${tag_disc_proper}-${ParsedTrack} - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
 			else
-				mv "${LSTAUDIO[i]}" "$ParsedTrack"\ -\ "$ParsedTitle"."${LSTAUDIO[i]##*.}" &>/dev/null
+				ParsedFilename="$ParsedTrack - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
 			fi
 		fi
 	fi
-	StopLoading $?
+	# Rename
+	if [[ "${LSTAUDIO[i]}" != "$ParsedFilename" ]]; then
+		StartLoading "" "Rename: ${LSTAUDIO[i]}"
+		mv "${LSTAUDIO[i]}" "$ParsedFilename" &>/dev/null
+		StopLoading $?
+	fi
+
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 		wait -n
