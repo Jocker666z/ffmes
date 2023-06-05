@@ -1054,14 +1054,16 @@ if ! [[ "${source_files[0]}" = "$source_files_backup" ]]; then
 				read -r -p " mkvpropedit statistics seems to be missing, do you want to generate them? [Y/n]" qarm
 				case $qarm in
 					"N"|"n")
-						continue
+						mkv_regenerate_stats="0"
 					;;
 					*)
 						mkv_regenerate_stats="1"
 						Media_Source_Info_Record "${source_files[0]}"
 					;;
 				esac
-
+			fi
+			if [[ -n "$mkv_regenerate_stats" ]]; then
+				break
 			fi
 		done
 	fi
