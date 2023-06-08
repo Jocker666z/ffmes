@@ -6960,6 +6960,7 @@ else
 	echo '  [rename]   > rename files in "Track - Title"'
 	echo '  [arename]  > rename files in "Track - Artist - Title"'
 	echo '  [drename]  > rename files in "Disc-Track - Title"'
+	echo '  [darename]  > rename files in "Disc-Track - Artist - Title"'
 	echo "  [disc]     > change or add disk number"
 	echo "  [track]    > change or add tag track (alphabetic sorting)"
 	echo "  [album x]  > change or add tag album"
