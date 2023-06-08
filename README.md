@@ -253,6 +253,8 @@ Options:
 * Change or add tag disc number
 * Rename files in "Track - Title"
 * Rename files in "Track - Artist - Title"
+* Rename files in "Disc-Track - Title"
+* Rename files in "Disc-Track - Artist - Title"
 * Change or add tag track, by alphabetic sorting
 * Change or add tag album
 * Change or add tag disc number

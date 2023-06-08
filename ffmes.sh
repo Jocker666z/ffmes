@@ -6764,6 +6764,12 @@ for i in "${!LSTAUDIO[@]}"; do
 			else
 				ParsedFilename="$ParsedTrack - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
 			fi
+		elif [[ "$rename_option" = "darename" ]]; then
+			if [[ -n "${TAG_DISC[i]}" ]]; then
+				ParsedFilename="${tag_disc_proper}-${ParsedTrack} - $ParsedArtist - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
+			else
+				ParsedFilename="$ParsedTrack - $ParsedArtist - ${ParsedTitle}.${LSTAUDIO[i]##*.}"
+			fi
 		fi
 	fi
 	# Rename
@@ -6934,6 +6940,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 	echo '  [rename]     > | rename files               | rename in "Track - Title"                                         |'
 	echo '  [arename]    > | rename files with artist   | rename in "Track - Artist - Title"                                |'
 	echo '  [drename]    > | rename files with disc     | rename in "Disc-Track - Title"                                    |'
+	echo '  [darename]   > | rename with disc & artist  | rename in "Disc-Track - Artist - Title"                           |'
 	echo "  [disc]       > | change or add disc number  | ex. of input [disk 1]                                             |"
 	echo "  [track]      > | change or add tag track    | apply to all files by alphabetic sorting                          |"
 	echo "  [album x]    > | change or add tag album    | ex. of input [album Conan the Barbarian]                          |"
@@ -6986,6 +6993,10 @@ read -r -e -p "-> " rpstag
 		;;
 		drename)
 			Audio_Tag_Rename "drename"
+			Audio_Tag_Editor
+		;;
+		darename)
+			Audio_Tag_Rename "darename"
 			Audio_Tag_Editor
 		;;
 		disc?[0-9])
