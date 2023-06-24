@@ -6872,7 +6872,7 @@ tag_disk_string_length="1"
 tag_track_string_length=$(Calc_Table_width "${TAG_TRACK[@]}")
 tag_title_string_length="20"
 tag_album_string_length="20"
-tag_date_string_length="5"
+tag_date_string_length="4"
 horizontal_separator_string_length=$(( 6 * 5 ))
 
 # Length min/max value correction
@@ -6908,13 +6908,20 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 			<(printf "%-${tag_album_string_length}.${tag_album_string_length}s\n" "Album") <(printf "%s\n" "|") \
 			<(printf "%-${tag_date_string_length}.${tag_date_string_length}s\n" "date") | column -s $'\t' -t
 	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
-	paste <(printf "%-${filename_string_length}.${filename_string_length}s\n" "${LSTAUDIO[@]}") <(printf "%s\n" "${PrtSep[@]}") \
-			<(printf "%-${tag_disk_string_length}.${tag_disk_string_length}s\n" "${TAG_DISC[@]}") <(printf "%s\n" "${PrtSep[@]}") \
-			<(printf "%-${tag_track_string_length}.${tag_track_string_length}s\n" "${TAG_TRACK[@]}") <(printf "%s\n" "${PrtSep[@]}") \
-			<(printf "%-${tag_title_string_length}.${tag_title_string_length}s\n" "${TAG_TITLE[@]}") <(printf "%s\n" "${PrtSep[@]}") \
-			<(printf "%-${tag_artist_string_length}.${tag_artist_string_length}s\n" "${TAG_ARTIST[@]}") <(printf "%s\n" "${PrtSep[@]}") \
-			<(printf "%-${tag_album_string_length}.${tag_album_string_length}s\n" "${TAG_ALBUM[@]}") <(printf "%s\n" "${PrtSep[@]}") \
-			<(printf "%-${tag_date_string_length}.${tag_date_string_length}s\n" "${TAG_DATE[@]}") | column -s $'\t' -t 2>/dev/null
+	paste <(printf "%-${filename_string_length}.${filename_string_length}s\n" "${LSTAUDIO[@]}" | iconv -c -s -f utf-8 -t utf-8) \
+			<(printf "%s\n" "${PrtSep[@]}") \
+			<(printf "%-${tag_disk_string_length}.${tag_disk_string_length}s\n" "${TAG_DISC[@]}") \
+			<(printf "%s\n" "${PrtSep[@]}") \
+			<(printf "%-${tag_track_string_length}.${tag_track_string_length}s\n" "${TAG_TRACK[@]}") \
+			<(printf "%s\n" "${PrtSep[@]}") \
+			<(printf "%-${tag_title_string_length}.${tag_title_string_length}s\n" "${TAG_TITLE[@]}" | iconv -c -s -f utf-8 -t utf-8) \
+			<(printf "%s\n" "${PrtSep[@]}") \
+			<(printf "%-${tag_artist_string_length}.${tag_artist_string_length}s\n" "${TAG_ARTIST[@]}" | iconv -c -s -f utf-8 -t utf-8) \
+			<(printf "%s\n" "${PrtSep[@]}") \
+			<(printf "%-${tag_album_string_length}.${tag_album_string_length}s\n" "${TAG_ALBUM[@]}" | iconv -c -s -f utf-8 -t utf-8) \
+			<(printf "%s\n" "${PrtSep[@]}") \
+			<(printf "%-${tag_date_string_length}.${tag_date_string_length}s\n" "${TAG_DATE[@]}") \
+			| column -s $'\t' -t 2>/dev/null
 	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 else
 	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
