@@ -6792,7 +6792,10 @@ wait
 }
 Audio_Tag_Editor() {					# Option 30 	- Tag editor
 # Local variables
-local tag_date_raw
+local tag_date_raw0
+local tag_date_raw1
+local tag_date_raw2
+local tag_date_raw3
 local ParsedAlbum
 local ParsedArtist
 local ParsedDate
@@ -6847,11 +6850,22 @@ for i in "${!LSTAUDIO[@]}"; do
 	TAG_TITLE+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:title=" | awk -F'=' '{print $NF}')" )
 	TAG_ARTIST+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:artist=" | awk -F'=' '{print $NF}')" )
 	TAG_ALBUM+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:album=" | awk -F'=' '{print $NF}')" )
-	tag_date_raw=$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:date=" | awk -F'=' '{print $NF}')
-	if [[ -n "$tag_date_raw" ]]; then
-		TAG_DATE+=( "$tag_date_raw" )
+	tag_date_raw0=$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:date=" | awk -F'=' '{print $NF}')
+	if [[ -n "$tag_date_raw0" ]]; then
+		TAG_DATE+=( "$tag_date_raw0" )
 	else
-		TAG_DATE+=( "$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:Year=" | awk -F'=' '{print $NF}')" )
+		tag_date_raw1=$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:Year=" | awk -F'=' '{print $NF}')
+		tag_date_raw2=$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:Originaldate=" | awk -F'=' '{print $NF}')
+		tag_date_raw3=$(cat "$FFMES_CACHE_TAG-[$i]" | grep -i "TAG:ORIGINALYEAR=" | awk -F'=' '{print $NF}')
+		if [[ -n "$tag_date_raw1" ]]; then
+			TAG_DATE+=( "$tag_date_raw1" )
+		elif [[ -n "$tag_date_raw2" ]]; then
+			TAG_DATE+=( "$tag_date_raw2" )
+		elif [[ -n "$tag_date_raw3" ]]; then
+			TAG_DATE+=( "$tag_date_raw3" )
+		else
+			TAG_DATE+=( " " )
+		fi
 	fi
 	# Table separator trick
 	PrtSep+=("|")
