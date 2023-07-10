@@ -2319,12 +2319,15 @@ DVDSub2Srt() {							# Option 16 	- DVD sub to srt
 # Local variables
 local pair_error
 local rpspalette
+local sub_id
 local SubLang
 local Tesseract_Arg
+local total_sub_id
 local COUNTER
 local TIFF_NB
 local TOTAL
 
+list_sub_id=()
 pair_error_list=()
 
 # Test idx/sub pair
@@ -2347,10 +2350,43 @@ if [[ "$pair_error" = "1" ]]; then
 
 else
 
+	# Choose sub id function
+	subid_choose() {
+		printf '  %s\n' "${LSTSUB[0]}"
+		printf '   %s\n' "${list_sub_id[@]}"
+		echo
+		while true; do
+			read -r -e -p "-> " rps
+			# Not integer retry
+			if ! [[ $rps =~ ^[0-9]+$ ]]; then
+				Echo_Mess_Error "Index must be an integer"
+			elif [[ "$rps" -lt "${#list_sub_id[@]}" ]]; then
+				sub_id="$rps"
+				break
+			fi
+		done
+		echo " Select subtitle language for:"
+	}
+
+	# SUB id count
+	mapfile -t list_sub_id < <(cat "${LSTSUB[0]}" | grep "id:")
+
 	clear
 	echo
-	echo " Select subtitle language for:"
-	printf '  %s\n' "${LSTSUB[@]}"
+	if [[ "${#list_sub_id[@]}" -gt "1" ]] && [[ "${#LSTSUB[@]}" -gt "1" ]]; then
+		echo "Choose the index to convert:"
+		echo "notes:  * below the list of languages for the first file"
+		echo "        * if the id is not present on the other files, they won't be processed."
+		echo "        * if the language is different, the processing will be bad."
+		subid_choose
+	elif [[ "${#list_sub_id[@]}" -gt "1" ]] && [[ "${#LSTSUB[@]}" -eq "1" ]]; then
+		echo "Choose the index to convert:"
+		subid_choose
+	else
+		echo " Select subtitle language for:"
+		printf '  %s\n' "${LSTSUB[@]}"
+		sub_id="0"
+	fi
 	echo
 	echo "   [0] > eng     - english"
 	echo "   [1] > fra     - french"
@@ -2509,9 +2545,9 @@ else
 		# Extract tiff
 		StartLoading "${files%.*}: Extract tiff files"
 		if [[ "$VERBOSE" = "1" ]]; then
-			subp2tiff --sid=0 -n "${files%.*}"
+			subp2tiff --sid="$sub_id" -n "${files%.*}"
 		else
-			subp2tiff --sid=0 -n "${files%.*}" &>/dev/null
+			subp2tiff --sid="$sub_id" -n "${files%.*}" &>/dev/null
 		fi
 		StopLoading $?
 
@@ -2540,13 +2576,13 @@ else
 
 		# Convert text in srt
 		if [[ "$VERBOSE" = "1" ]]; then
-			subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt
+			subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}_${sub_id}_${SubLang}".srt
 		else
-			subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}".srt &>/dev/null
+			subptools -s -w -t srt -i "${files%.*}".xml -o "${files%.*}_${sub_id}_${SubLang}".srt &>/dev/null
 		fi
 
 		# Remove ^L/\f/FF/form-feed/page-break character
-		sed -i 's/\o14//g' "${files%.*}".srt &>/dev/null
+		sed -i 's/\o14//g' "${files%.*}_${sub_id}_${SubLang}".srt &>/dev/null
 
 		StopLoading $?
 		echo
@@ -2556,6 +2592,7 @@ else
 		rm -- *.tif &>/dev/null
 		rm -- *.txt &>/dev/null
 		rm -- *.xml &>/dev/null
+
 	done
 
 fi
