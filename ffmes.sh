@@ -2365,7 +2365,8 @@ else
 				break
 			fi
 		done
-		echo " Select subtitle language for:"
+		echo
+		echo " Select subtitle language for this index:"
 	}
 
 	# SUB id count
