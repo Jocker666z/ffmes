@@ -2554,6 +2554,8 @@ else
 					sub_id="0"
 				fi
 			done
+		else
+			sub_id="0"
 		fi
 
 		# Extract tiff
