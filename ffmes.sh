@@ -2473,9 +2473,9 @@ else
 	case $rpspalette in
 		"0")
 			if [[ "$SubLang" = "chi_sim" ]];then
-				Tesseract_Arg="--oem 2 --psm 6 -c preserve_interword_spaces=1 --tessdata-dir ${FFMES_SHARE}/tesseract"
+				Tesseract_Arg="--oem 1 --psm 6 -c preserve_interword_spaces=1 --tessdata-dir ${FFMES_SHARE}/tesseract"
 			else
-				Tesseract_Arg="--oem 2 --tessdata-dir ${FFMES_SHARE}/tesseract"
+				Tesseract_Arg="--oem 1 --tessdata-dir ${FFMES_SHARE}/tesseract"
 			fi
 			break
 		;;

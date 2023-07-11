@@ -183,7 +183,9 @@ Colors palette available:
 #### Option 16 details - convert DVD subtitle (idx/sub) to srt
 You must have installed tesseract-ocr, and ogmrip package (includes subp2tiff and subptools binaries).
 
-Language supported: english, french, deutsch, spanish, portuguese, italian, japanese, chinese simplified, arabic, korean, russian.
+Support :
+* Language: english, french, deutsch, spanish, portuguese, italian, japanese, chinese simplified, arabic, korean, russian.
+* multi index idx/sub
 
 Tesseract engine available:
 * By recognizing character patterns, fast but not reliable
