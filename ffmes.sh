@@ -2319,10 +2319,10 @@ DVDSub2Srt() {							# Option 16 	- DVD sub to srt
 # Local variables
 local pair_error
 local rpspalette
+local sub_id_selected
 local sub_id
 local SubLang
 local Tesseract_Arg
-local total_sub_id
 local COUNTER
 local TIFF_NB
 local TOTAL
@@ -2361,7 +2361,7 @@ else
 			if ! [[ $rps =~ ^[0-9]+$ ]]; then
 				Echo_Mess_Error "Index must be an integer"
 			elif [[ "$rps" -lt "${#list_sub_id[@]}" ]]; then
-				sub_id="$rps"
+				sub_id_selected="$rps"
 				break
 			fi
 		done
@@ -2370,14 +2370,14 @@ else
 	}
 
 	# SUB id count
-	mapfile -t list_sub_id < <(cat "${LSTSUB[0]}" | grep "id:")
+	mapfile -t list_sub_id < <(< "${LSTSUB[0]}" grep "id:")
 
 	clear
 	echo
 	if [[ "${#list_sub_id[@]}" -gt "1" ]] && [[ "${#LSTSUB[@]}" -gt "1" ]]; then
 		echo "Choose the index to convert:"
 		echo "notes:  * below the list of languages for the first file"
-		echo "        * if the id is not present on the other files, they won't be processed."
+		echo "        * if the id is not present on the other files, 0 will be used."
 		echo "        * if the language is different, the processing will be bad."
 		subid_choose
 	elif [[ "${#list_sub_id[@]}" -gt "1" ]] && [[ "${#LSTSUB[@]}" -eq "1" ]]; then
@@ -2386,7 +2386,7 @@ else
 	else
 		echo " Select subtitle language for:"
 		printf '  %s\n' "${LSTSUB[@]}"
-		sub_id="0"
+		sub_id_selected="0"
 	fi
 	echo
 	echo "   [0] > eng     - english"
@@ -2542,6 +2542,19 @@ else
 	echo
 	Echo_Separator_Light
 	for files in "${LSTSUB[@]}"; do
+
+		# Test idx index choose exist, if not use 0
+		if [[ "$sub_id_selected" != "0" ]]; then
+			mapfile -t list_sub_id < <(< "$files" grep "id:" )
+			for i in "${!list_sub_id[@]}"; do
+				if [[ $i -eq $sub_id_selected ]]; then
+					sub_id="$sub_id_selected"
+					break
+				else
+					sub_id="0"
+				fi
+			done
+		fi
 
 		# Extract tiff
 		StartLoading "${files%.*}: Extract tiff files"
