@@ -2207,11 +2207,11 @@ for title in "${qtitle[@]}"; do
 	# Check Target if valid (size test) and clean
 	if [[ $(stat --printf="%s" "$RipFileName".mkv 2>/dev/null) -gt 30720 ]]; then		# if file>30 KBytes accepted
 		rm "$RipFileName".chapters 2>/dev/null
-		rm -f "$RipFileName".VOB 2> /dev/null
-		rm -R -f "$RipFileName" 2> /dev/null
+		rm -f "$RipFileName".VOB 2>/dev/null
+		rm -R -f "$RipFileName" 2>/dev/null
 	else																				# if file<30 KBytes rejected
 		echo "X FFmpeg pass of DVD Rip fail"
-		rm -R -f "$RipFileName".mkv 2> /dev/null
+		rm -R -f "$RipFileName".mkv 2>/dev/null
 		rm "$RipFileName".chapters 2>/dev/null
 	fi
 done
@@ -2244,7 +2244,14 @@ fi
 }
 DVDSubColor() {							# Option 15 	- Change color of DVD sub
 # Local variables
+local rps
 local palette
+
+# Set available ext.
+SUBTI_EXT_AVAILABLE="idx"
+# Regen list of sub
+mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 
 clear
 echo
@@ -2260,8 +2267,8 @@ echo "  [3] > yellow font / white border"
 echo "  [q] > for exit"
 while :
 do
-read -r -e -p "-> " rpspalette
-case $rpspalette in
+read -r -e -p "-> " rps
+case $rps in
 
 	"0")
 		for files in "${LSTSUB[@]}"; do
@@ -2318,7 +2325,8 @@ done
 DVDSub2Srt() {							# Option 16 	- DVD sub to srt
 # Local variables
 local pair_error
-local rpspalette
+local rps
+local proper_filename
 local sub_id_selected
 local sub_id
 local SubLang
@@ -2330,26 +2338,52 @@ local TOTAL
 list_sub_id=()
 pair_error_list=()
 
+# Set available ext.
+SUBTI_EXT_AVAILABLE="idx"
+# Regen list of sub
+mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+	-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+
 # Test idx/sub pair
 for files in "${LSTSUB[@]}"; do
-
 	if ! [[ -f "${files%.*}.sub" ]] && [[ -f "${files%.*}.idx" ]]; then
 		pair_error="1"
 		pair_error_list+=( "$files" )
 	fi
-
 done
 
-# Main if pair
+# Fail if not pair
 if [[ "$pair_error" = "1" ]]; then
+
 	echo
 	Echo_Mess_Error "The pair idx/sub must have the exact same file name"
 	echo "  File(s) without sub pair:"
 	Display_List_Truncate "${pair_error_list[@]}"
 	echo
 
+# Main if pair
 else
 
+	# Backup original files
+	if [[ ! -d IDX_Backup/ ]]; then
+		mkdir IDX_Backup 2>/dev/null
+	fi
+	for files in "${LSTSUB[@]}"; do
+		cp "${files%.*}".idx IDX_Backup/
+		cp "${files%.*}".sub IDX_Backup/
+	done
+	# Test filename/rename for prevent subptools fail
+	for files in "${LSTSUB[@]}"; do
+		proper_filename="${files[$i]//&/and}"
+		proper_filename="${proper_filename//[ '"'"'"()@$:]/_}"
+		mv "${files%.*}".idx "${proper_filename%.*}".idx
+		mv "${files%.*}".sub "${proper_filename%.*}".sub
+	done
+
+	# Regen list of sub
+	mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+		-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+		
 	# Choose sub id function
 	subid_choose() {
 		printf '  %s\n' "${LSTSUB[0]}"
@@ -2403,8 +2437,8 @@ else
 	echo "   [q] > for exit"
 	while :
 	do
-	read -r -e -p "-> " rpspalette
-	case $rpspalette in
+	read -r -e -p "-> " rps
+	case $rps in
 
 		"0")
 			SubLang="eng"
@@ -2469,8 +2503,8 @@ else
 	echo "  [q] > for exit"
 	while :
 	do
-	read -r -e -p "-> " rpspalette
-	case $rpspalette in
+	read -r -e -p "-> " rps
+	case $rps in
 		"0")
 			if [[ "$SubLang" = "chi_sim" ]];then
 				Tesseract_Arg="--oem 1 --psm 6 -c preserve_interword_spaces=1 --tessdata-dir ${FFMES_SHARE}/tesseract"
@@ -4448,10 +4482,10 @@ Echo_Separator_Light
 if (( "${#LSTSUB[@]}" )); then
 	for files in "${LSTSUB[@]}"; do
 		if [[ "${files##*.}" != "idx" ]] && [[ "${files##*.}" != "sup" ]]; then
-			CHARSET_DETECT=$(uchardet "$files" 2> /dev/null)
+			CHARSET_DETECT=$(uchardet "$files" 2>/dev/null)
 			if [[ "$CHARSET_DETECT" != "UTF-8" ]]; then
 				iconv -c -f "$CHARSET_DETECT" -t UTF-8 "$files" > utf-8-"$files"
-				mkdir SUB_BACKUP 2> /dev/null
+				mkdir SUB_BACKUP 2>/dev/null
 				mv "$files" SUB_BACKUP/"$files".back
 				mv -f utf-8-"$files" "$files"
 			fi
@@ -6440,10 +6474,10 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	START=$(date +%s)
 
 	# UTF-8 convert
-	CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2> /dev/null)
+	CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2>/dev/null)
 	if [[ "$CHARSET_DETECT" != "UTF-8" ]]; then
 		iconv -c -f "$CHARSET_DETECT" -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
-		mkdir BACK 2> /dev/null
+		mkdir BACK 2>/dev/null
 		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
 		mv -f utf-8.cue "${LSTCUE[0]}"
 	fi
@@ -6462,9 +6496,9 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		# Clean
 		if test $? -eq 0; then
 			if [[ ! -d BACK/ ]]; then
-				mkdir BACK 2> /dev/null
+				mkdir BACK 2>/dev/null
 			fi
-			mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2> /dev/null
+			mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2>/dev/null
 			LSTAUDIO=( "${LSTAUDIO[0]%.*}.wav" )
 		else
 			Echo_Separator_Light
@@ -6479,22 +6513,22 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 
 	# Clean
 	if test $? -eq 0; then
-		rm 00*.flac 2> /dev/null
+		rm 00*.flac 2>/dev/null
 		if [[ ! -d BACK/ ]]; then
-			mkdir BACK 2> /dev/null
+			mkdir BACK 2>/dev/null
 		fi
 
 		# Move source audio file
-		mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2> /dev/null
+		mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2>/dev/null
 
 		# Generate target file array
 		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
 			-iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
 		# Tag target
-		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2> /dev/null
+		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2>/dev/null
 
 		# Move source cue
-		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".utf8.back 2> /dev/null
+		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".utf8.back 2>/dev/null
 	else
 		Echo_Separator_Light
 		echo "  CUE Splitting fail on shnsplit file"
