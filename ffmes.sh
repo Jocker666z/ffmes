@@ -360,7 +360,7 @@ for index in "${StreamIndex[@]}"; do
 				ffprobe_FieldOrder+=( "$(ff_jqparse_stream "$index" "field_order")" )
 				ffprobe_fps_raw=$(ff_jqparse_stream "$index" "r_frame_rate")
 				ffprobe_fps+=( "$(bc <<< "scale=2; $ffprobe_fps_raw" 2>/dev/null | sed 's!\.0*$!!')" )
-				ffprobe_AttachedPic+=( "$(ff_jqparse_disposition "$index" "attached_pic")" )1
+				ffprobe_AttachedPic+=( "$(ff_jqparse_disposition "$index" "attached_pic")" )
 				# HDR detection
 				if [[ "${ffprobe_ColorSpace[-1]}" = "bt2020nc" ]] \
 					&& [[ "${ffprobe_ColorTransfert[-1]}" = "smpte2084" ]] \
@@ -2965,29 +2965,29 @@ START=$(date +%s)
 EnterKeyDisable
 
 # Test timestamp
-if ! [[ "$ENCODV" = "1" ]]; then
-	# Progress
-	ProgressBar "" "0" "${#LSTVIDEO[@]}" "Test timestamp" "1"
+#if ! [[ "$ENCODV" = "1" ]]; then
+	## Progress
+	#ProgressBar "" "0" "${#LSTVIDEO[@]}" "Test timestamp" "1"
 
-	for i in "${!LSTVIDEO[@]}"; do
-		TimestampTest=$("$ffprobe_bin" -analyzeduration 512M -probesize 512M -loglevel error -select_streams v:0 \
-						-show_entries packet=pts_time,flags -of csv=print_section=0 "${LSTVIDEO[i]}" \
-						2>/dev/null | awk -F',' '/K/ {print $1}' | tail -1)
+	#for i in "${!LSTVIDEO[@]}"; do
+		#TimestampTest=$("$ffprobe_bin" -analyzeduration 512M -probesize 512M -loglevel error -select_streams v:0 \
+						#-show_entries packet=pts_time,flags -of csv=print_section=0 "${LSTVIDEO[i]}" \
+						#2>/dev/null | awk -F',' '/K/ {print $1}' | tail -1)
 
-		# Progress
-		ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
+		## Progress
+		#ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
 
-		shopt -s nocasematch
-		if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
-			TimestampRegen+=( "-fflags +genpts" )
-		else
-			TimestampRegen+=( "" )
-		fi
-		shopt -u nocasematch
+		#shopt -s nocasematch
+		#if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
+			#TimestampRegen+=( "-fflags +genpts" )
+		#else
+			#TimestampRegen+=( "" )
+		#fi
+		#shopt -u nocasematch
 
-	done
-	Echo_Separator_Light
-fi
+	#done
+	#Echo_Separator_Light
+#fi
 
 # Encoding
 for i in "${!LSTVIDEO[@]}"; do
