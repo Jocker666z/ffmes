@@ -4040,15 +4040,15 @@ rpvkb_unit="${vkb: -1}"
 if [[ "$rpvkb_unit" = "k" ]] \
 && [[ "$chvcodec" = "HEVC" ]] \
 && [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
-	read -r -p " 1 or 2 pass encoding? [1/2*]: " pass
+	read -r -p " 1 or 2 pass encoding? [*1/2]: " pass
 	case $pass in
-		"1")
-			unset PASS2
-			chpass="; 1 pass"
-		;;
-		*)
+		"2")
 			PASS2="1"
 			chpass="; 2 pass"
+		;;
+		*)
+			unset PASS2
+			chpass="; 1 pass"
 		;;
 	esac
 else
