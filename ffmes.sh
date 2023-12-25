@@ -2653,8 +2653,6 @@ BLURAYrip() {							# Option 0  	- Blu-ray Rip
 # Local variables
 local BD_disk
 local bd_disk_name
-local bd_main_title
-local bd_show_list
 local bd_track_audio_test
 local bd_track_subtitle_test
 local temp_bd_title_audio
@@ -2724,151 +2722,135 @@ if [[ -n "$BD_disk" ]]; then
 	if [[ -z "$bd_disk_name" ]]; then
 		bd_disk_name="UnknownBD"
 	fi
-	# Main tittle
-	bd_main_title=$(bd_jqparse_main_info "main_title")
 
-	# Display message for rip main track only
+	# Extract view Stat
 	echo
 	Display_Line_Truncate " Blu-ray: $bd_disk_name"
-	read -r -p " Extract only main title or view list? [y/N]:" qarm
-	case $qarm in
-		"Y"|"y")
-			# Extract argument
-			bd_title_pass_extract+=( "${bd_main_title}" )
-		;;
-		*)
-			bd_show_list="1"
-		;;
-	esac
 
-	# If no main extract view Stat
-	if [[ "$bd_show_list" = "1" ]]; then
-		# Size of table
-		horizontal_separator_string_length=$(( 7 * 5 ))
-		separator_string_length=$(( 3 + 4 + 8 + 5 + 5 + 32 + 8 + horizontal_separator_string_length ))
+	# Size of table
+	horizontal_separator_string_length=$(( 7 * 5 ))
+	separator_string_length=$(( 3 + 4 + 8 + 5 + 5 + 32 + 8 + horizontal_separator_string_length ))
 
-		# Print title raw of table0
-		echo
-		printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
-		paste <(printf "%-3.3s\n" "") <(printf "%s\n" "|") \
-				<(printf "%-4.4s\n" "Size") <(printf "%s\n" "|") \
-				<(printf "%-8.8s\n" "Duration") <(printf "%s\n" "|") \
-				<(printf "%-5.5s\n" "Fmt") <(printf "%s\n" "|") \
-				<(printf "%-5.5s\n" "Codec") <(printf "%s\n" "|") \
-				<(printf "%-32b" "Audio") <(printf "%s\n" "|") \
-				<(printf "%-8b\n" "Subtitle") | column -s $'\t' -t
-		printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
+	# Print title raw of table0
+	echo
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
+	paste <(printf "%-3.3s\n" "") <(printf "%s\n" "|") \
+			<(printf "%-4.4s\n" "Size") <(printf "%s\n" "|") \
+			<(printf "%-8.8s\n" "Duration") <(printf "%s\n" "|") \
+			<(printf "%-5.5s\n" "Fmt") <(printf "%s\n" "|") \
+			<(printf "%-5.5s\n" "Codec") <(printf "%s\n" "|") \
+			<(printf "%-32b" "Audio") <(printf "%s\n" "|") \
+			<(printf "%-8b\n" "Subtitle") | column -s $'\t' -t
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 
-		# Titles stats
-		mapfile -t bd_titles < <("$json_parser" -r '.titles[] | .title' "$BDINFO_CACHE")
-		for title in "${bd_titles[@]}"; do
+	# Titles stats
+	mapfile -t bd_titles < <("$json_parser" -r '.titles[] | .title' "$BDINFO_CACHE")
+	for title in "${bd_titles[@]}"; do
 
-			# Raw duration for exclude no interesting data (10s)
-			bd_title_raw_duration=$(bd_jqparse_title "$title" "msecs")
-			if [[ "$bd_title_raw_duration" -gt "1000" ]]; then
+		# Raw duration for exclude no interesting data (10s)
+		bd_title_raw_duration=$(bd_jqparse_title "$title" "msecs")
+		if [[ "$bd_title_raw_duration" -gt "1000" ]]; then
 
-				# Add title in the available files array
-				bd_title_pass+=( "$title" )
+			# Add title in the available files array
+			bd_title_pass+=( "$title" )
 
-				# Shared
-				bd_title_duration+=( "$(bd_jqparse_title "$title" "length" | awk -F"." '{ print $1 }')" )
-				bd_title_filesize+=( "$(bd_jqparse_title "$title" "filesize" | numfmt --to=iec)" )
+			# Shared
+			bd_title_duration+=( "$(bd_jqparse_title "$title" "length" | awk -F"." '{ print $1 }')" )
+			bd_title_filesize+=( "$(bd_jqparse_title "$title" "filesize" | numfmt --to=iec)" )
 
-				# Video
-				bd_title_video_format+=( "$("$json_parser" -r ".titles[] \
-										| select(.title==$title) | .video[] \
-										| .format" "$BDINFO_CACHE" 2>/dev/null)" )
-				bd_title_video_codec+=( "$("$json_parser" -r ".titles[] \
-										| select(.title==$title) | .video[] \
-										| .codec" "$BDINFO_CACHE" 2>/dev/null)" )
+			# Video
+			bd_title_video_format+=( "$("$json_parser" -r ".titles[] \
+									| select(.title==$title) | .video[] \
+									| .format" "$BDINFO_CACHE" 2>/dev/null)" )
+			bd_title_video_codec+=( "$("$json_parser" -r ".titles[] \
+									| select(.title==$title) | .video[] \
+									| .codec" "$BDINFO_CACHE" 2>/dev/null)" )
 
-				# Audio
-				bd_track_audio_test=$("$json_parser" -r ".titles[] \
-									| select(.title==$title) | .audio[] \
+			# Audio
+			bd_track_audio_test=$("$json_parser" -r ".titles[] \
+								| select(.title==$title) | .audio[] \
+								| select(.track==1)" "$BDINFO_CACHE")
+			if [[ -n "$bd_track_audio_test" ]]; then
+				mapfile -t bd_title_audio_tracks < <("$json_parser" -r ".titles[] \
+													| select(.title==$title) | .audio[] \
+													| .track" "$BDINFO_CACHE" 2>/dev/null \
+													| sed s#null##g)
+				for audio_track in "${bd_title_audio_tracks[@]}"; do
+					if [[ "${bd_title_audio_tracks[-1]}" != "$audio_track" ]]; then
+						temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")\n"
+					else
+						temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")"
+					fi
+				done
+			else
+				temp_bd_title_audio="~"
+			fi
+			bd_title_audio+=( "$temp_bd_title_audio" )
+			unset temp_bd_title_audio
+
+			# Subtitle
+			bd_track_subtitle_test=$("$json_parser" -r ".titles[] \
+									| select(.title==$title) | .subtitles[] \
 									| select(.track==1)" "$BDINFO_CACHE")
-				if [[ -n "$bd_track_audio_test" ]]; then
-					mapfile -t bd_title_audio_tracks < <("$json_parser" -r ".titles[] \
-														| select(.title==$title) | .audio[] \
+			if [[ -n "$bd_track_subtitle_test" ]]; then
+				mapfile -t bd_title_subtitle_tracks < <("$json_parser" -r ".titles[] \
+														| select(.title==$title) | .subtitles[] \
 														| .track" "$BDINFO_CACHE" 2>/dev/null \
 														| sed s#null##g)
-					for audio_track in "${bd_title_audio_tracks[@]}"; do
-						if [[ "${bd_title_audio_tracks[-1]}" != "$audio_track" ]]; then
-							temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")\n"
+				for subtitle_track in "${bd_title_subtitle_tracks[@]}"; do
+					if [[ "${bd_title_subtitle_tracks[-1]}" != "$subtitle_track" ]]; then
+						if [[ "${temp_bd_title_subtitle: -1}" = " " ]]; then
+							temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track")\n"
 						else
-							temp_bd_title_audio+="$(bd_jqparse_title_audio "$title" "$audio_track")"
+							temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track"), "
 						fi
-					done
-				else
-					temp_bd_title_audio="~"
-				fi
-				bd_title_audio+=( "$temp_bd_title_audio" )
-				unset temp_bd_title_audio
-
-				# Subtitle
-				bd_track_subtitle_test=$("$json_parser" -r ".titles[] \
-										| select(.title==$title) | .subtitles[] \
-										| select(.track==1)" "$BDINFO_CACHE")
-				if [[ -n "$bd_track_subtitle_test" ]]; then
-					mapfile -t bd_title_subtitle_tracks < <("$json_parser" -r ".titles[] \
-															| select(.title==$title) | .subtitles[] \
-															| .track" "$BDINFO_CACHE" 2>/dev/null \
-															| sed s#null##g)
-					for subtitle_track in "${bd_title_subtitle_tracks[@]}"; do
-						if [[ "${bd_title_subtitle_tracks[-1]}" != "$subtitle_track" ]]; then
-							if [[ "${temp_bd_title_subtitle: -1}" = " " ]]; then
-								temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track")\n"
-							else
-								temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track"), "
-							fi
-						else
-							temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track")"
-						fi
-					done
-				else
-					temp_bd_title_subtitle="~"
-				fi
-				bd_title_subtitle+=( "$temp_bd_title_subtitle" )
-				unset temp_bd_title_subtitle
-
-				# Print title stats
-				paste <(printf "%-3.3s\n" "${title}") <(printf "%s\n" ".") \
-						<(printf "%-4.4s\n" "${bd_title_filesize[-1]}") <(printf "%s\n" ".") \
-						<(printf "%-8.8s\n" "${bd_title_duration[-1]}") <(printf "%s\n" ".") \
-						<(printf "%-5.5s\n" "${bd_title_video_format[-1]}") <(printf "%s\n" ".") \
-						<(printf "%-5.5s\n" "${bd_title_video_codec[-1]}") <(printf "%s\n" ".") \
-						<(printf "%-32b" "${bd_title_audio[-1]}") <(printf "%s\n" ".") \
-						<(printf "%-8b\n" "${bd_title_subtitle[-1]}") | column -s $'\t' -t
-				printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "."; echo
-
+					else
+						temp_bd_title_subtitle+="$(bd_jqparse_title_subtitles "$title" "$subtitle_track")"
+					fi
+				done
+			else
+				temp_bd_title_subtitle="~"
 			fi
-		done
+			bd_title_subtitle+=( "$temp_bd_title_subtitle" )
+			unset temp_bd_title_subtitle
 
-		echo " Select one or all files:"
-		echo " Note: * The main title is ${bd_main_title}"
-		echo "       * Some titles are duplicates, with a few variations"
-		echo
-		echo "  [a] > for all"
-		echo "  [n] > for n as title number"
-		echo "  [q] > for exit"
-		while true; do
-			read -r -e -p "  -> " bdtitlerep
-			if [[ "$bdtitlerep" = "q" ]]; then
-				Restart
-			fi
-			if [[ "$bdtitlerep" = "a" ]]; then
-				bd_title_pass_extract=( "${bd_title_pass[@]}" )
+			# Print title stats
+			paste <(printf "%-3.3s\n" "${title}") <(printf "%s\n" ".") \
+					<(printf "%-4.4s\n" "${bd_title_filesize[-1]}") <(printf "%s\n" ".") \
+					<(printf "%-8.8s\n" "${bd_title_duration[-1]}") <(printf "%s\n" ".") \
+					<(printf "%-5.5s\n" "${bd_title_video_format[-1]}") <(printf "%s\n" ".") \
+					<(printf "%-5.5s\n" "${bd_title_video_codec[-1]}") <(printf "%s\n" ".") \
+					<(printf "%-32b" "${bd_title_audio[-1]}") <(printf "%s\n" ".") \
+					<(printf "%-8b\n" "${bd_title_subtitle[-1]}") | column -s $'\t' -t
+			printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "."; echo
+
+		fi
+	done
+
+	echo " Select one or all files:"
+	echo " Note: * The main title is ${bd_main_title}"
+	echo "       * Some titles are duplicates, with a few variations"
+	echo
+	echo "  [a] > for all"
+	echo "  [n] > for n as title number"
+	echo "  [q] > for exit"
+	while true; do
+		read -r -e -p "  -> " bdtitlerep
+		if [[ "$bdtitlerep" = "q" ]]; then
+			Restart
+		fi
+		if [[ "$bdtitlerep" = "a" ]]; then
+			bd_title_pass_extract=( "${bd_title_pass[@]}" )
+			break 2
+		fi
+		for test in "${bd_title_pass[@]}"; do
+			if [[ "$test" = "$bdtitlerep" ]]; then
+				bd_title_pass_extract+=( "${bdtitlerep}" )
 				break 2
 			fi
-			for test in "${bd_title_pass[@]}"; do
-				if [[ "$test" = "$bdtitlerep" ]]; then
-					bd_title_pass_extract+=( "${bdtitlerep}" )
-					break 2
-				fi
-			done
-			Echo_Mess_Error "Please select a title number display in the table."
 		done
-
-	fi
+		Echo_Mess_Error "Please select a title number display in the table."
+	done
 
 	for title in "${bd_title_pass_extract[@]}"; do
 
