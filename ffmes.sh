@@ -1538,6 +1538,7 @@ rm "$FFMES_CACHE_INTEGRITY" &>/dev/null
 rm "$FFMES_CACHE_TAG" &>/dev/null
 rm "$LSDVD_CACHE" &>/dev/null
 rm "$BDINFO_CACHE" &>/dev/null
+rm "$tmp_error" &>/dev/null
 }
 ffmesUpdate() {							# Option 99  	- ffmes update to lastest version (hidden option)
 curl https://raw.githubusercontent.com/Jocker666z/ffmes/master/ffmes.sh > /home/"$USER"/.local/bin/ffmes && chmod +rx /home/"$USER"/.local/bin/ffmes
@@ -6618,9 +6619,14 @@ for i in "${!LSTAUDIO[@]}"; do
 	if [[ "$tag_option" = "ftitle" ]]; then
 		tag_value="${LSTAUDIO[$i]%.*}"
 	elif [[ "$tag_option" = "stitle" ]]; then
-		tag_value=$(echo "${TAG_TITLE[$i]}" | cut -c "$tag_cut"-)
+		tag_value="${TAG_TITLE[$i]:${tag_cut}}"
+		tag_value="${tag_value#"${tag_value%%[![:space:]]*}"}"
 	elif [[ "$tag_option" = "etitle" ]]; then
-		tag_value=$(echo "${TAG_TITLE[$i]}" | rev | cut -c "$tag_cut"- | rev)
+		# Prevent negative sub error
+		if [[ "${tag_cut}" -gt "${#TAG_TITLE[$i]}" ]]; then
+			tag_cut="${#TAG_TITLE[$i]}"
+		fi
+		tag_value="${TAG_TITLE[$i]:0:-${tag_cut}}"
 	elif [[ "$tag_option" = "ptitle" ]]; then
 		tag_value="${TAG_TITLE[$i]//$tag_cut}"
 	elif [[ "$tag_option" = "track" ]]; then
@@ -7026,22 +7032,22 @@ echo " Notes: it is not at all recommended to threat more than one album at a ti
 if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 	echo
 	echo "                 | actions                    | descriptions"
-	echo "                 |----------------------------|-------------------------------------------------------------------|"
-	echo '  [rename]     > | rename files               | rename in "Track - Title"                                         |'
-	echo '  [arename]    > | rename files with artist   | rename in "Track - Artist - Title"                                |'
-	echo '  [drename]    > | rename files with disc     | rename in "Disc-Track - Title"                                    |'
-	echo '  [darename]   > | rename with disc & artist  | rename in "Disc-Track - Artist - Title"                           |'
-	echo "  [disc]       > | change or add disc number  | ex. of input [disk 1]                                             |"
-	echo "  [track]      > | change or add tag track    | apply to all files by alphabetic sorting                          |"
-	echo "  [album x]    > | change or add tag album    | ex. of input [album Conan the Barbarian]                          |"
-	echo "  [artist x]   > | change or add tag artist   | ex. of input [artist Basil Poledouris]                            |"
-	echo "  [uartist]    > | change artist by [unknown] |                                                                   |"
-	echo "  [date x]     > | change or add tag date     | ex. of input [date 1982]                                          |"
-	echo "  [ftitle]     > | change title by [filename] |                                                                   |"
-	echo "  [utitle]     > | change title by [untitled] |                                                                   |"
-	echo "  [stitle x]   > | remove N at begin of title | ex. [stitle 3] -> remove 3 first characters at start (limit to 9) |"
-	echo "  [etitle x]   > | remove N at end of title   | ex. [etitle 1] -> remove 1 first characters at end (limit to 9)   |"
-	echo '  [ptitle "x"] > | remove pattern in title    | ex. [ptitle "test"] -> remove test pattern in title               |'
+	echo "                 |----------------------------|------------------------------------------------------|"
+	echo '  [rename]     > | rename files               | rename in "Track - Title"                            |'
+	echo '  [arename]    > | rename files with artist   | rename in "Track - Artist - Title"                   |'
+	echo '  [drename]    > | rename files with disc     | rename in "Disc-Track - Title"                       |'
+	echo '  [darename]   > | rename with disc & artist  | rename in "Disc-Track - Artist - Title"              |'
+	echo "  [disc]       > | change or add disc number  | ex. of input [disk 1]                                |"
+	echo "  [track]      > | change or add tag track    | apply to all files by alphabetic sorting             |"
+	echo "  [album x]    > | change or add tag album    | ex. of input [album Conan the Barbarian]             |"
+	echo "  [artist x]   > | change or add tag artist   | ex. of input [artist Basil Poledouris]               |"
+	echo "  [uartist]    > | change artist by [unknown] |                                                      |"
+	echo "  [date x]     > | change or add tag date     | ex. of input [date 1982]                             |"
+	echo "  [ftitle]     > | change title by [filename] |                                                      |"
+	echo "  [utitle]     > | change title by [untitled] |                                                      |"
+	echo "  [stitle x]   > | remove N at begin of title | ex. [stitle 3] -> remove 3 first characters at start |"
+	echo "  [etitle x]   > | remove N at end of title   | ex. [etitle 1] -> remove 1 first characters at end   |"
+	echo '  [ptitle "x"] > | remove pattern in title    | ex. [ptitle "test"] -> remove test pattern in title  |'
 	echo "  [r]          > | for restart tag editor"
 	echo "  [q]          > | for exit"
 	echo
@@ -7059,8 +7065,8 @@ else
 	echo "  [uartist]  > change artist by [unknown]"
 	echo "  [ftitle]   > change title by [filename]"
 	echo "  [utitle]   > change title by [untitled]"
-	echo "  [stitle x] > remove N at begin of title (limit to 9)"
-	echo "  [etitle x] > remove N at end of title (limit to 9)"
+	echo "  [stitle x] > remove N at begin of title"
+	echo "  [etitle x] > remove N at end of title"
 	echo "  [ptitle x] > remove pattern in title"
 	echo "  [r]        > for restart tag editor"
 	echo "  [q]        > for exit"
@@ -7127,13 +7133,13 @@ read -r -e -p "-> " rpstag
 			Audio_Tag_cmd "title" "[untitled]"
 			Audio_Tag_Editor
 		;;
-		stitle?[0-9])
-			ParsedTitle=$(echo "$rpstag" | awk '{print $2+1}')
+		stitle?[1-9]|stitle?[1-9][0-9])
+			ParsedTitle=$(echo "$rpstag" | awk '{print $2}')
 			Audio_Tag_cmd "title" "" "stitle" "$ParsedTitle"
 			Audio_Tag_Editor
 		;;
-		etitle?[0-9])
-			ParsedTitle=$(echo "$rpstag" | awk '{print $2+1}')
+		etitle?[1-9]|etitle?[1-9][0-9])
+			ParsedTitle=$(echo "$rpstag" | awk '{print $2}')
 			Audio_Tag_cmd "title" "" "etitle" "$ParsedTitle"
 			Audio_Tag_Editor
 		;;

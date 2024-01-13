@@ -265,8 +265,8 @@ Options:
 * Change or add tag date
 * Change tag title for filename
 * Change tag title for "untitled"
-* Remove N character at begin in tag title (9 characters at once)
-* Remove N character at end in tag title (9 characters at once)
+* Remove N character at begin in tag title
+* Remove N character at end in tag title
 * Remove text pattern in tag title.
 
 Restriction:
