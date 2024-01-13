@@ -122,16 +122,16 @@ done
 }
 SetGlobalVariables() {					# Construct arrays with files accepted
 # Array
-LSTVIDEO=()
-LSTVIDEOEXT=()
-LSTAUDIO=()
-LSTAUDIOEXT=()
-LSTISO=()
-LSTAUDIOTAG=()
-LSTSUBEXT=()
-LSTCUE=()
-LSTVOB=()
-LSTM3U=()
+unset LSTVIDEO
+unset LSTVIDEOEXT
+unset LSTAUDIO
+unset LSTAUDIOEXT
+unset LSTISO
+unset LSTAUDIOTAG
+unset LSTSUBEXT
+unset LSTCUE
+unset LSTVOB
+unset LSTM3U
 
 # Populate arrays
 if [[ -n "$InputFileArg" ]]; then
@@ -193,43 +193,43 @@ local Interlaced_frames_progressive
 local Interlaced_frames_TFF
 
 # Array
-StreamIndex=()
-ffprobe_StreamIndex=()
-ffprobe_StreamType=()
-ffprobe_Codec=()
-ffprobe_StreamSize=()
-ffprobe_StreamSize_Raw=()
+unset StreamIndex
+unset ffprobe_StreamIndex
+unset ffprobe_StreamType
+unset ffprobe_Codec
+unset ffprobe_StreamSize
+unset ffprobe_StreamSize_Raw
 ## Video
-ffprobe_v_StreamIndex=()
-ffprobe_Profile=()
-ffprobe_Width=()
-ffprobe_Height=()
-ffprobe_SAR=()
-ffprobe_DAR=()
-ffprobe_Pixfmt=()
-ffprobe_ColorRange=()
-ffprobe_ColorSpace=()
-ffprobe_ColorTransfert=()
-ffprobe_ColorPrimaries=()
-ffprobe_FieldOrder=()
-ffprobe_fps=()
+unset ffprobe_v_StreamIndex
+unset ffprobe_Profile
+unset ffprobe_Width
+unset ffprobe_Height
+unset ffprobe_SAR
+unset ffprobe_DAR
+unset ffprobe_Pixfmt
+unset ffprobe_ColorRange
+unset ffprobe_ColorSpace
+unset ffprobe_ColorTransfert
+unset ffprobe_ColorPrimaries
+unset ffprobe_FieldOrder
+unset ffprobe_fps
 ## Audio
-ffprobe_a_StreamIndex=()
-ffprobe_SampleFormat=()
-ffprobe_SampleRate=()
-ffprobe_Channel=()
-ffprobe_ChannelLayout=()
-ffprobe_Bitrate=()
+unset ffprobe_a_StreamIndex
+unset ffprobe_SampleFormat
+unset ffprobe_SampleRate
+unset ffprobe_Channel
+unset ffprobe_ChannelLayout
+unset ffprobe_Bitrate
 # Subtitle
-ffprobe_s_StreamIndex=()
-ffprobe_forced=()
+unset ffprobe_s_StreamIndex
+unset ffprobe_forced
 ## Data
-ffprobe_d_StreamIndex=()
+unset ffprobe_d_StreamIndex
 ## Tag
-ffprobe_language=()
+unset ffprobe_language
 # Disposition
-ffprobe_AttachedPic=()
-ffprobe_default=()
+unset ffprobe_AttachedPic
+unset ffprobe_default
 
 # File to list
 source_files="$1"
@@ -847,8 +847,8 @@ local pass_files
 local source_size
 local target_size
 
-filesPassLabel=()
-filesRejectLabel=()
+unset filesPassLabel
+unset filesRejectLabel
 
 pass_files="$1"
 total_files="$2"
@@ -1511,7 +1511,7 @@ unset soundconf
 ### videoconf & this sub variable
 unset videoconf
 unset framerate
-vfilter=()
+unset vfilter
 unset vfilter_final
 unset vcodec
 unset preset
@@ -1628,10 +1628,10 @@ local duration
 local false_positive_test
 
 # Array
-filesPass=()
-filesReject=()
-filesSourcePass=()
-source_files=()
+unset filesPass
+unset filesReject
+unset filesSourcePass
+unset source_files
 
 # Arguments
 ## duration_type = 1 = full duration test
@@ -1663,8 +1663,8 @@ if (( "${#source_files[@]}" )); then
 			# False positive test
 			if [[ -s "$tmp_error" ]]; then
 				# not blocking, rather a warning: "non monotonically increasing dts to muxer"
-				false_positive_test=$(cat "$tmp_error" \
-										| grep "non monotonically increasing dts to muxer")
+				false_positive_test=$(< "$tmp_error" \
+										grep "non monotonically increasing dts to muxer")
 				if [[ -n "$false_positive_test" ]]; then
 					rm "$tmp_error"
 				fi
@@ -2336,8 +2336,8 @@ local COUNTER
 local TIFF_NB
 local TOTAL
 
-list_sub_id=()
-pair_error_list=()
+unset list_sub_id
+unset pair_error_list
 
 # Set available ext.
 SUBTI_EXT_AVAILABLE="idx"
@@ -2661,20 +2661,20 @@ local temp_bd_title_subtitle
 local stream_counter
 
 # Arrays
-bd_title_pass_extract=()
-bd_title_pass=()
-bd_title_duration=()
-bd_title_filesize=()
-bd_title_video_format=()
-bd_title_video_codec=()
-bd_title_audio=()
-bd_track_audio_nb=()
-bd_title_audio_stream=()
-bd_title_subtitle=()
-bd_track_subtitle_nb=()
-bd_title_subtitle_tracks_lang=()
-bd_title_subtitle_metadata=()
-bd_title_subtitle_stream=()
+unset bd_title_pass_extract
+unset bd_title_pass
+unset bd_title_duration
+unset bd_title_filesize
+unset bd_title_video_format
+unset bd_title_video_codec
+unset bd_title_audio
+unset bd_track_audio_nb
+unset bd_title_audio_stream
+unset bd_title_subtitle
+unset bd_track_subtitle_nb
+unset bd_title_subtitle_tracks_lang
+unset bd_title_subtitle_metadata
+unset bd_title_subtitle_stream
 
 clear
 echo
@@ -2829,8 +2829,6 @@ if [[ -n "$BD_disk" ]]; then
 	done
 
 	echo " Select one or all files:"
-	echo " Note: * The main title is ${bd_main_title}"
-	echo "       * Some titles are duplicates, with a few variations"
 	echo
 	echo "  [a] > for all"
 	echo "  [n] > for n as title number"
@@ -2856,11 +2854,11 @@ if [[ -n "$BD_disk" ]]; then
 	for title in "${bd_title_pass_extract[@]}"; do
 
 		# Reset array
-		bd_title_audio_stream=()
-		bd_track_subtitle_nb=()
-		bd_title_subtitle_stream=()
-		bd_title_subtitle_tracks_lang=()
-		bd_title_subtitle_metadata=()
+		unset bd_title_audio_stream
+		unset bd_track_subtitle_nb
+		unset bd_title_subtitle_stream
+		unset bd_title_subtitle_tracks_lang
+		unset bd_title_subtitle_metadata
 
 		# Extract audio stream
 		mapfile -t bd_track_audio_nb < <("$json_parser" -r ".titles[] \
@@ -2931,46 +2929,19 @@ fi
 ## VIDEO
 Video_FFmpeg_cmd() {					# FFmpeg video encoding command
 # Local variables
-local TimestampTest
 local PERC
 local total_source_files_size
 local total_target_files_size
 local START
 local END
 # Array
-TimestampRegen=()
-filesInLoop=()
+unset filesInLoop
 
 # Start time counter
 START=$(date +%s)
 
 # Disable the enter key
 EnterKeyDisable
-
-# Test timestamp
-#if ! [[ "$ENCODV" = "1" ]]; then
-	## Progress
-	#ProgressBar "" "0" "${#LSTVIDEO[@]}" "Test timestamp" "1"
-
-	#for i in "${!LSTVIDEO[@]}"; do
-		#TimestampTest=$("$ffprobe_bin" -analyzeduration 512M -probesize 512M -loglevel error -select_streams v:0 \
-						#-show_entries packet=pts_time,flags -of csv=print_section=0 "${LSTVIDEO[i]}" \
-						#2>/dev/null | awk -F',' '/K/ {print $1}' | tail -1)
-
-		## Progress
-		#ProgressBar "" "$((i+1))" "${#LSTVIDEO[@]}" "Test timestamp" "1"
-
-		#shopt -s nocasematch
-		#if [[ "${files##*.}" = "vob" || "$TimestampTest" = "N/A" ]]; then
-			#TimestampRegen+=( "-fflags +genpts" )
-		#else
-			#TimestampRegen+=( "" )
-		#fi
-		#shopt -u nocasematch
-
-	#done
-	#Echo_Separator_Light
-#fi
 
 # Encoding
 for i in "${!LSTVIDEO[@]}"; do
@@ -2990,7 +2961,7 @@ for i in "${!LSTVIDEO[@]}"; do
 	(
 	if [[ "$VERBOSE" = "1" ]]; then
 		if [[ "$PASS2" = "1" ]]; then
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL \
 			-analyzeduration 1G -probesize 1G \
 			$GPUDECODE \
 			-y -i "${LSTVIDEO[i]}" \
@@ -2999,7 +2970,7 @@ for i in "${!LSTVIDEO[@]}"; do
 			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
 			-x265-params pass=1 -f null /dev/null \
 			| ProgressBar "${LSTVIDEO[i]} Pass 1" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL \
 			-analyzeduration 1G -probesize 1G \
 			$GPUDECODE \
 			-y -i "${LSTVIDEO[i]}" \
@@ -3010,7 +2981,7 @@ for i in "${!LSTVIDEO[@]}"; do
 			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont \
 			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
 		else
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL \
 			-analyzeduration 1G -probesize 1G \
 			$GPUDECODE \
 			-y -i "${LSTVIDEO[i]}" \
@@ -3022,7 +2993,7 @@ for i in "${!LSTVIDEO[@]}"; do
 		fi
 	else
 		if [[ "$PASS2" = "1" ]]; then
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL\
 			-analyzeduration 1G -probesize 1G \
 			$GPUDECODE \
 			-y -i "${LSTVIDEO[i]}" \
@@ -3031,7 +3002,7 @@ for i in "${!LSTVIDEO[@]}"; do
 			$vstream $videoconf $soundconf $subtitleconf -max_muxing_queue_size 4096 \
 			-x265-params pass=1 -f null /dev/null 2>/dev/null \
 			| ProgressBar "${LSTVIDEO[i]} Pass 1" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL \
 			-analyzeduration 1G -probesize 1G \
 			$GPUDECODE \
 			-y -i "${LSTVIDEO[i]}" \
@@ -3042,7 +3013,7 @@ for i in "${!LSTVIDEO[@]}"; do
 			-f $container "${LSTVIDEO[i]%.*}".$videoformat.$extcont 2>/dev/null \
 			| ProgressBar "${LSTVIDEO[i]}" "$((i+1))" "${#LSTVIDEO[@]}" "Encoding"
 		else
-		"$ffmpeg_bin" $FFMPEG_LOG_LVL ${TimestampRegen[i]} \
+		"$ffmpeg_bin" $FFMPEG_LOG_LVL \
 			-analyzeduration 1G -probesize 1G \
 			$GPUDECODE \
 			-y -i "${LSTVIDEO[i]}" \
@@ -3536,9 +3507,9 @@ local rpstreamch_parsed
 local streams_invalid
 
 # Array
-VINDEX=()
-VCODECTYPE=()
-stream=()
+unset VINDEX
+unset VCODECTYPE
+unset stream
 
 # Display summary target if in profile 0 or 1
 if [[ "$ffmes_option" -le "1" ]]; then
@@ -3578,8 +3549,8 @@ while true; do
 		unset streams_invalid
 
 		# Construct arrays
-		VINDEX=()
-		VCODECTYPE=()
+		unset VINDEX
+		unset VCODECTYPE
 		# Codec type
 		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
 		for i in "${VINDEX[@]}"; do
@@ -4235,8 +4206,8 @@ Video_Add_OPUS_NightNorm() {			# Option 3		- Add audio stream with night normali
 # Local variables
 local subtitleconf
 # Array
-INDEX=()
-VINDEX=()
+unset INDEX
+unset VINDEX
 
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 
@@ -4322,8 +4293,8 @@ Video_Custom_One_Audio() {				# Option 4		- One audio stream encoding
 local astream
 local subtitleconf
 # Array
-VINDEX=()
-stream=()
+unset VINDEX
+unset stream
 
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 
@@ -4564,9 +4535,9 @@ local MOV_TEXT_EXTRACT
 local FILE_EXT
 
 # Array
-VINDEX=()
-VCODECNAME=()
-filesInLoop=()
+unset VINDEX
+unset VCODECNAME
+unset filesInLoop
 
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 
@@ -4597,8 +4568,8 @@ while true; do
 		unset streams_invalid
 
 		# Construct arrays
-		VINDEX=()
-		VCODECNAME=()
+		unset VINDEX
+		unset VCODECNAME
 		IFS=" " read -r -a VINDEX <<< "$rpstreamch"
 		for i in "${VINDEX[@]}"; do
 			VCODECNAME+=("${ffprobe_Codec[$i]}")
@@ -4736,7 +4707,7 @@ local CutEnd
 local split_output
 local CutSegment
 # Array
-filesInLoop=()
+unset filesInLoop
 
 Display_Media_Stats_One "${LSTVIDEO[@]}"
 
@@ -4914,20 +4885,20 @@ local total_target_files_size
 local START
 local END
 # Array
-filesInLoop=()
-filesOverwrite=()
-filesToTest=()
-filesPass=()
-filesSourcePass=()
-filesReject=()
-filesPassSizeReduction=()
+unset filesInLoop
+unset filesOverwrite
+unset filesToTest
+unset filesPass
+unset filesSourcePass
+unset filesReject
+unset filesPassSizeReduction
 ## Encoding array
-FilesTargetAfilter=()
-FilesTargetAconfchan=()
-FilesTargetAkb=()
-FilesTargetAsamplerate=()
-FilesTargetAbitdeph=()
-FilesTargetAstream=()
+unset FilesTargetAfilter
+unset FilesTargetAconfchan
+unset FilesTargetAkb
+unset FilesTargetAsamplerate
+unset FilesTargetAbitdeph
+unset FilesTargetAstream
 
 # Start time counter
 START=$(date +%s)
@@ -6144,8 +6115,8 @@ local total_target_files_size
 local START
 local END
 # Array
-filesPass=()
-filesReject=()
+unset filesPass
+unset filesReject
 
 clear
 echo
@@ -6263,7 +6234,7 @@ local END
 local split_output
 local CutSegment
 # Array
-filesInLoop=()
+unset filesInLoop
 
 # Display stats
 Display_Media_Stats_One "${LSTAUDIO[@]}"
@@ -6887,14 +6858,14 @@ local tag_date_string_length
 local filename_string_length
 local horizontal_separator_string_length
 # Array
-TAG_DISC=()
-TAG_TRACK=()
-TAG_TITLE=()
-TAG_ARTIST=()
-TAG_ALBUM=()
-TAG_DATE=()
-TAG_TRACK_COUNT=()
-PrtSep=()
+unset TAG_DISC
+unset TAG_TRACK
+unset TAG_TITLE
+unset TAG_ARTIST
+unset TAG_ALBUM
+unset TAG_DATE
+unset TAG_TRACK_COUNT
+unset PrtSep
 
 # Loading on
 StartLoading "Grab current tags" ""
