@@ -1247,10 +1247,8 @@ else
 fi
 }
 Display_Term_Size() {					# Get terminal size
-local term_size_raw
-term_size_raw=$(stty size)
-
-TERM_WIDTH="${term_size_raw##* }"
+TERM_WIDTH=$(stty size)
+TERM_WIDTH="${TERM_WIDTH##* }"
 TERM_WIDTH_TRUNC=$(( TERM_WIDTH - 8 ))
 TERM_WIDTH_PROGRESS_TRUNC=$(( TERM_WIDTH - 32 ))
 }
@@ -6591,6 +6589,7 @@ for i in "${!LSTAUDIO[@]}"; do
 		tag_value="${LSTAUDIO[$i]%.*}"
 	elif [[ "$tag_option" = "stitle" ]]; then
 		tag_value="${TAG_TITLE[$i]:${tag_cut}}"
+		# Remove leading space
 		tag_value="${tag_value#"${tag_value%%[![:space:]]*}"}"
 	elif [[ "$tag_option" = "etitle" ]]; then
 		# Prevent negative sub error
@@ -6737,9 +6736,11 @@ tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | awk -F"/" '{ print $1 
 for i in "${!LSTAUDIO[@]}"; do
 
 	# Remove leading 0, ignore slash
-	tag_track_proper="$(echo "${TAG_TRACK[i]}" | awk -F"/" '{ print $1 }' \
+	tag_track_proper="$(echo "${TAG_TRACK[i]}" \
+						| awk -F"/" '{ print $1 }' \
 						| sed 's/^0*//')"
-	tag_disc_proper="$(echo "${TAG_DISC[i]}" | awk -F"/" '{ print $1 }' \
+	tag_disc_proper="$(echo "${TAG_DISC[i]}" \
+						| awk -F"/" '{ print $1 }' \
 						| sed 's/^0*//')"
 
 	# If no tag tracknumber - use TAG_TRACK_COUNT
@@ -6785,6 +6786,12 @@ for i in "${!LSTAUDIO[@]}"; do
 		ParsedTitle="${TAG_TITLE[i]////-}"
 		ParsedTitle="${ParsedTitle//:/-}"
 		ParsedTitle="${ParsedTitle//\"/-}"
+		# Remove leading space
+		ParsedTitle="${ParsedTitle#"${ParsedTitle%%[![:space:]]*}"}"
+		# Remove ending space
+		shopt -s extglob
+		ParsedTitle="${ParsedTitle%%+([[:space:]])}"
+		shopt -u extglob
 	fi
 
 	# If no tag artist
@@ -6795,6 +6802,12 @@ for i in "${!LSTAUDIO[@]}"; do
 		ParsedArtist="${TAG_ARTIST[i]////-}"
 		ParsedArtist="${ParsedArtist//:/-}"
 		ParsedArtist="${ParsedArtist//\"/-}"
+		# Remove leading space
+		ParsedArtist="${ParsedArtist#"${ParsedArtist%%[![:space:]]*}"}"
+		# Remove ending space
+		shopt -s extglob
+		ParsedArtist="${ParsedArtist%%+([[:space:]])}"
+		shopt -u extglob
 	fi
 
 	# Filename construct
