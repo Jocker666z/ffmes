@@ -270,7 +270,7 @@ Options:
 * Remove text pattern in tag title.
 
 Restriction:
-* Max depth directory 1
+* Max depth directory 2
 * Asian character not supported (display degrading)
 
 #### Option 35 details - split or cut audio file by time

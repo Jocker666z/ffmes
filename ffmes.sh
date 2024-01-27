@@ -91,7 +91,7 @@ PeakNormDB="1"
 
 # Tag variables
 ## Tag command needed
-TAG_COMMAND_NEEDED=(AtomicParsley mac metaflac mid3v2 vorbiscomment wvtag)
+TAG_COMMAND_NEEDED=(AtomicParsley mac metaflac mid3v2 opustags vorbiscomment wvtag)
 ## Tag input extension available
 AUDIO_TAG_EXT_AVAILABLE="ape|flac|m4a|mp3|ogg|opus|wv"
 
@@ -159,7 +159,7 @@ else
 		-iregex '.*\.('$ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 fi
 # List source(s) audio file(s) that can be tagged
-mapfile -t LSTAUDIOTAG < <(find . -maxdepth 1 -type f -regextype posix-egrep \
+mapfile -t LSTAUDIOTAG < <(find . -maxdepth 2 -type f -regextype posix-egrep \
 	-iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
 # List source(s) subtitle file(s)
 mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
@@ -6603,57 +6603,10 @@ for i in "${!LSTAUDIO[@]}"; do
 		tag_value="${TAG_TRACK_COUNT[$i]}"
 	fi
 
-
-	# Opus - No parallel -> break files
-	if [[ "${LSTAUDIO[$i]##*.}" = "opus" ]]; then
-		# Proper tag
-		if [[ "$tag_label" = "track" ]]; then
-			TAG_TRACK[i]="$tag_value"
-		fi
-		if [[ "$tag_label" = "album" ]]; then
-			TAG_ALBUM[i]="$tag_value"
-		fi
-		if [[ "$tag_label" = "artist" ]]; then
-			TAG_ARTIST[i]="$tag_value"
-		fi
-		if [[ "$tag_label" = "date" ]]; then
-			TAG_DATE[i]="$tag_value"
-		fi
-		if [[ "$tag_label" = "title" ]]; then
-			TAG_TITLE[i]="$tag_value"
-		fi
-		if [[ "$tag_label" = "disk" ]]; then
-			TAG_DISC[i]="$tag_value"
-		fi
-
-		# Remove all tag
-		ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[$i]}" -c:v copy -c:a copy \
-			-map_metadata -1 \
-			"${LSTAUDIO[$i]%.*}"_temp0.opus
-
-		# Tag
-		ffmpeg $FFMPEG_LOG_LVL -y -i "${LSTAUDIO[$i]%.*}"_temp0.opus -c:v copy -c:a copy \
-			-metadata "TRACKNUMBER"="${TAG_TRACK[$i]}" \
-			-metadata "ALBUM"="${TAG_ALBUM[$i]}" \
-			-metadata "ARTIST"="${TAG_ARTIST[$i]}" \
-			-metadata "DATE"="${TAG_DATE[$i]}" \
-			-metadata "TITLE"="${TAG_TITLE[$i]}" \
-			-metadata "DISCNUMBER"="${TAG_DISC[$i]}" \
-			"${LSTAUDIO[$i]%.*}"_temp.opus
-
-		# If temp-file exist remove source and rename
-		if [[ -f "${LSTAUDIO[$i]%.*}"_temp0.opus ]]; then
-			rm "${LSTAUDIO[$i]%.*}"_temp0.opus  &>/dev/null
-		fi
-		if [[ -f "${LSTAUDIO[$i]%.*}"_temp.opus ]]; then
-			rm "${LSTAUDIO[$i]}" &>/dev/null
-			mv "${LSTAUDIO[$i]%.*}"_temp.opus "${LSTAUDIO[$i]}" &>/dev/null
-		fi
-	fi
-
 	(
 	# APEv2
-	if [[ "${LSTAUDIO[$i]##*.}" == "wv" || "${LSTAUDIO[$i]##*.}" == "ape" ]]; then
+	if [[ "${LSTAUDIO[$i]##*.}" = "wv" ]] \
+	|| [[ "${LSTAUDIO[$i]##*.}" = "ape" ]]; then
 		# Proper tag
 		tag_label="${tag_label//track/Track}"
 		tag_label="${tag_label//album/Album}"
@@ -6663,13 +6616,19 @@ for i in "${!LSTAUDIO[@]}"; do
 		tag_label="${tag_label//disk/Disc}"
 		# Tag
 		if [[ "${LSTAUDIO[$i]##*.}" = "wv" ]]; then
-			wvtag -q -d "$tag_label" -w "$tag_label"="$tag_value" "${LSTAUDIO[$i]}" &>/dev/null
+			wvtag -q \
+				-d "$tag_label" \
+				-w "$tag_label"="$tag_value" \
+				"${LSTAUDIO[$i]}" &>/dev/null
 		elif [[ "${LSTAUDIO[$i]##*.}" = "ape" ]]; then
-			mac "${LSTAUDIO[$i]}" -t "$tag_label"="$tag_value" &>/dev/null
+			mac "${LSTAUDIO[$i]}" \
+				-t "$tag_label"="$tag_value" &>/dev/null
 		fi
 
 	# Vorbis comment
-	elif [[ "${LSTAUDIO[$i]##*.}" = "flac" || "${LSTAUDIO[$i]##*.}" == "ogg" ]]; then
+	elif [[ "${LSTAUDIO[$i]##*.}" = "flac" ]] \
+	  || [[ "${LSTAUDIO[$i]##*.}" = "ogg" ]] \
+	  || [[ "${LSTAUDIO[$i]##*.}" = "opus" ]]; then
 		# Proper tag
 		tag_label="${tag_label//track/TRACKNUMBER}"
 		tag_label="${tag_label//album/ALBUM}"
@@ -6679,9 +6638,19 @@ for i in "${!LSTAUDIO[@]}"; do
 		tag_label="${tag_label//disk/DISCNUMBER}"
 		# Tag
 		if [[ "${LSTAUDIO[$i]##*.}" = "flac" ]]; then
-			metaflac --remove-tag="$tag_label" --set-tag="$tag_label"="$tag_value" "${LSTAUDIO[$i]}" &>/dev/null
+			metaflac \
+				--remove-tag="$tag_label" \
+				--set-tag="$tag_label"="$tag_value" \
+				"${LSTAUDIO[$i]}" &>/dev/null
 		elif [[ "${LSTAUDIO[$i]##*.}" = "ogg" ]]; then
-			vorbiscomment -d "$tag_label" -a -t "$tag_label"="$tag_value" "${LSTAUDIO[$i]}" &>/dev/null
+			vorbiscomment \
+				-d "$tag_label" \
+				-a -t "$tag_label"="$tag_value" \
+				"${LSTAUDIO[$i]}" &>/dev/null
+		elif [[ "${LSTAUDIO[$i]##*.}" = "opus" ]]; then
+			opustags -i \
+				-s "$tag_label"="$tag_value" \
+				"${LSTAUDIO[$i]}" &>/dev/null
 		fi
 
 	# iTunes
@@ -6694,7 +6663,8 @@ for i in "${!LSTAUDIO[@]}"; do
 		tag_label="${tag_label//title/title}"
 		tag_label="${tag_label//disk/disk}"
 		# Tag
-		AtomicParsley "${LSTAUDIO[$i]}"  --"$tag_label" "$tag_value" --overWrite &>/dev/null
+		AtomicParsley "${LSTAUDIO[$i]}" --"$tag_label" "$tag_value" \
+			--overWrite &>/dev/null
 
 	# ID3v2
 	elif [[ "${LSTAUDIO[$i]##*.}" = "mp3" ]]; then
@@ -6706,7 +6676,8 @@ for i in "${!LSTAUDIO[@]}"; do
 		tag_label="${tag_label//title/TIT2}"
 		tag_label="${tag_label//disk/TPOS}"
 		# Tag
-		mid3v2 --"$tag_label" "$tag_value" "${LSTAUDIO[$i]}" &>/dev/null
+		mid3v2 --"$tag_label" "$tag_value" \
+			"${LSTAUDIO[$i]}" &>/dev/null
 
 	fi
 	StopLoading $?
@@ -6884,7 +6855,7 @@ unset PrtSep
 StartLoading "Grab current tags" ""
 
 # Limit to current directory & audio file ext. tested
-mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex \
+mapfile -t LSTAUDIO < <(find . -maxdepth 2 -type f -regextype posix-egrep -iregex \
 						'.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort -V | sed 's/^..//')
 
 # Get tag with ffprobe
