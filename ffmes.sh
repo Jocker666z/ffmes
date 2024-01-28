@@ -5153,7 +5153,7 @@ if [[ "$AdaptedBitrate" = "1" ]]; then
 	if [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
 		if [[ "$confchan" = "-channel_layout mono" ]]; then
 			if [[ "$TestBitrate" -ge 320000 ]]; then
-				akb_modified="-b:a 256K"
+				akb_modified="-b:a 96K"
 			fi
 		else
 			if (( "${#mediainfo_bin}" )); then
@@ -5165,7 +5165,7 @@ if [[ "$AdaptedBitrate" = "1" ]]; then
 								-of default=noprint_wrappers=1:nokey=1 "$files")
 			fi
 			if [[ "$TestChannel" = "1" ]]; then
-				akb_modified="-b:a 256K"
+				akb_modified="-b:a 96K"
 			fi
 		fi
 	fi
@@ -5186,23 +5186,11 @@ if [[ "$AdaptedBitrate" = "1" ]]; then
 		elif [[ "$TestBitrate" -ge 161001 ]] && [[ "$TestBitrate" -le 193000 ]]; then
 			akb_modified="-b:a 160K"
 			asamplerate_modified="-cutoff 17000"
-		elif [[ "$TestBitrate" -ge 193001 ]] && [[ "$TestBitrate" -le 257000 ]]; then
+		elif [[ "$TestBitrate" -ge 193001 ]]; then
 			akb_modified="-b:a 192K"
 			asamplerate_modified="-cutoff 18000"
-		elif [[ "$TestBitrate" -ge 257001 ]] && [[ "$TestBitrate" -le 281000 ]]; then
-			akb_modified="-b:a 220K"
-			asamplerate_modified="-cutoff 19000"
-		elif [[ "$TestBitrate" -ge 281001 ]] && [[ "$TestBitrate" -le 321000 ]]; then
-			akb_modified="-b:a 256K"
-			asamplerate_modified="-cutoff 20000"
-		elif [[ "$TestBitrate" -ge 321001 ]] && [[ "$TestBitrate" -le 401000 ]]; then
-			akb_modified="-b:a 280K"
-			asamplerate_modified="-cutoff 20000"
-		elif [[ "$TestBitrate" -ge 401001 ]]; then
-			akb_modified="-b:a 320K"
-			asamplerate_modified="-cutoff 20000"
 		else
-			akb_modified="-b:a 320K"
+			akb_modified="-b:a 192K"
 			asamplerate_modified="-cutoff 20000"
 		fi
 	fi
@@ -5676,32 +5664,24 @@ else
 	Audio_Source_Info_Detail_Question
 fi
 
-echo " Choose Opus (${AudioCodecType}) desired configuration:"
-echo " Note: * Codec bitrate limitation to 256k per channel."
-echo '       * With the "adaptive bitrate" option, ffmes will choose'
-echo "         each target file the number of kb/s to apply according"
-echo "         to the table."
-echo '       * "adaptive bitrate" is recommended only for stereo files'
 echo
-echo "         | kb/s | Descriptions            |"
-echo "         |------|-------------------------|"
-echo "  [1]  > |  64k | comparable to mp3 96k   |"
-echo "  [2]  > |  96k | comparable to mp3 120k  |"
-echo "  [3]  > | 128k | comparable to mp3 160k  |"
-echo "  [4]  > | 160k | comparable to mp3 192k  |"
-echo "  [5]  > | 192k | comparable to mp3 280k  |"
+echo "        | kb/s | Descriptions            |"
+echo "        |------|-------------------------|"
+echo "  [1] > |  64k | Audiobooks / Podcasts   |"
+echo "  [2] > |  96k | Music Streaming / Radio |"
+echo "  [3] > | 128k | Music Storage           |"
+echo "  [4] > | 160k | Music Storage           |"
 if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
-	echo "  [6]  > | 220k | comparable to mp3 320k  |"
+	echo "  [5] > | 192k | Music (transparent)     |"
 else
-	echo " *[6]  > | 220k | comparable to mp3 320k  |"
+	echo " *[5] > | 192k | Music (transparent)     |"
 fi
-echo "  [7]  > | 256k | 5.1 audio source        |"
-echo "  [8]  > | 320k | 7.1 audio source        |"
-echo "  [9]  > | 450k | 7.1 audio source        |"
-echo "  [10] > | 510k | highest bitrate of opus |"
+echo "  [6] > | 256k | 5.1 audio source        |"
+echo "  [7] > | 450k | 7.1 audio source        |"
+echo "  [8] > | 510k | highest bitrate of opus |"
 if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 	echo "  -----------------------------------------"
-	echo " *[X]  > |    adaptive bitrate     |"
+	echo " *[X] > |    adaptive bitrate     |"
 	echo "         |-------------------------|"
 	echo "         | Target |     Source     |"
 	echo "         |--------|----------------|"
@@ -5709,11 +5689,7 @@ if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 	echo "         |   96k  |  97kb -> 128kb |"
 	echo "         |  128k  | 129kb -> 160kb |"
 	echo "         |  160k  | 161kb -> 192kb |"
-	echo "         |  192k  | 193kb -> 256kb |"
-	echo "         |  220k  | 257kb -> 280kb |"
-	echo "         |  256k  | 281kb -> 320kb |"
-	echo "         |  280k  | 321kb -> 400kb |"
-	echo "         |  320k  | 401kb -> ∞     |"
+	echo "         |  192k  | 193kb -> ∞     |"
 fi
 echo "  [q]  > | for exit"
 read -r -e -p "-> " rpakb
@@ -5730,14 +5706,10 @@ elif [[ "$rpakb" = "4" ]]; then
 elif [[ "$rpakb" = "5" ]]; then
 	akb="-b:a 192K"
 elif [[ "$rpakb" = "6" ]]; then
-	akb="-b:a 220K"
-elif [[ "$rpakb" = "7" ]]; then
 	akb="-b:a 256K"
-elif [[ "$rpakb" = "8" ]]; then
-	akb="-b:a 320K"
-elif [[ "$rpakb" = "9" ]]; then
+elif [[ "$rpakb" = "7" ]]; then
 	akb="-b:a 450K"
-elif [[ "$rpakb" = "10" ]]; then
+elif [[ "$rpakb" = "8" ]]; then
 	akb="-b:a 510K"
 elif [[ "$rpakb" = "X" ]] \
   && [[ "$acodec" = "libopus" || "$AudioCodecType" = "libopus" ]]; then
@@ -5746,7 +5718,7 @@ else
 	if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
 		AdaptedBitrate="1"
 	else
-		akb="-b:a 220K"
+		akb="-b:a 192K"
 	fi
 fi
 }
@@ -5887,46 +5859,28 @@ fi
 
 # Question
 echo " Choose AAC (${AudioCodecType}) desired configuration:"
-echo ' Notes: * With the "adaptive bitrate" option, ffmes will choose'
-echo '          each target file the number of kb/s to apply according'
-echo '          to the table.'
-echo '       * "adaptive bitrate" is recommended only for stereo files'
-echo "        * The cutoff allows to lose bitrate on high frequencies,"
+echo " Notes: * The cutoff allows to lose bitrate on high frequencies,"
 echo "          to gain bitrate on audible frequencies."
 echo
-echo "                |  cut  |"
-echo "         | kb/s |  off  | Descriptions      |"
-echo "         |------|-------|-------------------|"
-echo "  [1]  > |  64k | 14kHz | 2.0 ~ mp3 96k     |"
-echo "  [2]  > |  96k | 15kHz | 2.0 ~ mp3 120k    |"
-echo "  [3]  > | 128k | 16kHz | 2.0 ~ mp3 160k    |"
-echo "  [4]  > | 160k | 17kHz | 2.0 ~ mp3 192k    |"
-echo "  [5]  > | 192k | 18kHz | 2.0 ~ mp3 280k    |"
-echo "  [6]  > | 220k | 19kHz | 2.0 ~ mp3 320k    |"
-echo "  [7]  > | 320k | 20kHz | 2.0 > mp3         |"
-echo "  [8]  > | 384k | 20kHz | 5.1 audio source  |"
-echo "  [9]  > | 512k | 20kHz | 7.1 audio source  |"
-echo "  -------------------------------------------"
-echo " [10]  > | vbr1 | 15kHz | 20-32k  / channel |"
-echo " [11]  > | vbr2 | 15kHz | 32-40k  / channel |"
-echo " [12]  > | vbr3 | 16kHz | 48-56k  / channel |"
-echo " [13]  > | vbr4 | 17kHz | 64-72k  / channel |"
-echo " [14]  > | vbr5 | 19kHz | 96-112k / channel |"
-echo "  -------------------------------------------"
-echo " *[X]  > |    adaptive bitrate     |"
-echo "         |-------------------------|  cut  |"
-echo "         | Target |     Source     |  off  |"
-echo "         |--------|----------------|-------|"
-echo "         |   64k  |   1kb ->  96kb | 15kHz |"
-echo "         |   96k  |  97kb -> 128kb | 16kHz |"
-echo "         |  128k  | 129kb -> 160kb | 16kHz |"
-echo "         |  160k  | 161kb -> 192kb | 17kHz |"
-echo "         |  192k  | 193kb -> 256kb | 18kHz |"
-echo "         |  220k  | 257kb -> 280kb | 19kHz |"
-echo "         |  256k  | 281kb -> 320kb | 20kHz |"
-echo "         |  280k  | 321kb -> 400kb | 20kHz |"
-echo "         |  320k  | 400kb -> ∞     | 20kHz |"
-echo "  [q]  > | for exit"
+echo "                 |  cut  |"
+echo "          | kb/s |  off  | Descriptions      |"
+echo "          |------|-------|-------------------|"
+echo "   [1]  > |  64k | 14kHz | 2.0 ~ mp3 96k     |"
+echo "   [2]  > |  96k | 15kHz | 2.0 ~ mp3 120k    |"
+echo "   [3]  > | 128k | 16kHz | 2.0 ~ mp3 160k    |"
+echo "   [4]  > | 160k | 17kHz | 2.0 ~ mp3 192k    |"
+echo "   [5]  > | 192k | 18kHz | 2.0 ~ mp3 280k    |"
+echo "   [6]  > | 220k | 19kHz | 2.0 ~ mp3 320k    |"
+echo "   [7]  > | 320k | 20kHz | 2.0 > mp3         |"
+echo "   [8]  > | 384k | 20kHz | 5.1 audio source  |"
+echo "   [9]  > | 512k | 20kHz | 7.1 audio source  |"
+echo "   -------------------------------------------"
+echo "  [10]  > | vbr1 | 15kHz | 20-32k  / channel |"
+echo "  [11]  > | vbr2 | 15kHz | 32-40k  / channel |"
+echo "  [12]  > | vbr3 | 17kHz | 48-56k  / channel |"
+echo "  [13]  > | vbr4 | 18kHz | 64-72k  / channel |"
+echo " *[14]  > | vbr5 | 20kHz | 96-112k / channel |"
+echo "   [q]  > | for exit"
 read -r -e -p "-> " rpakb
 if [[ "$rpakb" = "q" ]]; then
 	Restart
@@ -5965,17 +5919,16 @@ elif [[ "$rpakb" = "11" ]]; then
 	asamplerate="-cutoff 15000"
 elif [[ "$rpakb" = "12" ]]; then
 	akb="-vbr 3"
-	asamplerate="-cutoff 16000"
+	asamplerate="-cutoff 17000"
 elif [[ "$rpakb" = "13" ]]; then
 	akb="-vbr 4"
-	asamplerate="-cutoff 17000"
+	asamplerate="-cutoff 18000"
 elif [[ "$rpakb" = "14" ]]; then
 	akb="-vbr 5"
-	asamplerate="-cutoff 19000"
-elif [[ "$rpakb" = "X" ]]; then
-	AdaptedBitrate="1"
+	asamplerate="-cutoff 20000"
 else
-	AdaptedBitrate="1"
+	akb="-vbr 5"
+	asamplerate="-cutoff 20000"
 fi
 }
 Audio_AC3_Config() {					# Option 1 		- Conf audio/video AC3

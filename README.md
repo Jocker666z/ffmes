@@ -234,7 +234,7 @@ Tesseract engine available:
 * Encoding options:
 	* Bitrate
 		* vbr, 64kb to 510kb
-		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files
+		* OR mode "auto adapted bitrate from source", particularly useful for processing very large batches of files
 	* Channels layout 1.0, 2.0, 3.0, 5.1
 	* After encoding, option for remove all source files, if not for remove created files
 
@@ -244,7 +244,6 @@ Tesseract engine available:
 	* Bitrate
 		* vbr 1 to 5
 		* cbr 64kb to 560kb
-		* OR mode "accurate auto adapted bitrate from source", particularly useful for processing very large batches of files
 	* Channels layout 1.0 to 5.1
 	* After encoding, option for remove all source files, if not for remove created files
 
