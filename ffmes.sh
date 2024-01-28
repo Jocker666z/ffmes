@@ -5667,14 +5667,14 @@ fi
 echo
 echo "        | kb/s | Descriptions            |"
 echo "        |------|-------------------------|"
-echo "  [1] > |  64k | Audiobooks / Podcasts   |"
-echo "  [2] > |  96k | Music Streaming / Radio |"
-echo "  [3] > | 128k | Music Storage           |"
-echo "  [4] > | 160k | Music Storage           |"
+echo "  [1] > |  64k | audiobooks / podcasts   |"
+echo "  [2] > |  96k | music streaming / radio |"
+echo "  [3] > | 128k | music storage           |"
+echo "  [4] > | 160k | music storage           |"
 if [[ "$AudioCodecType" = "libopus" ]] && [[ "$ENCODA" != "1" ]]; then
-	echo "  [5] > | 192k | Music (transparent)     |"
+	echo "  [5] > | 192k | music (transparent)     |"
 else
-	echo " *[5] > | 192k | Music (transparent)     |"
+	echo " *[5] > | 192k | music (transparent)     |"
 fi
 echo "  [6] > | 256k | 5.1 audio source        |"
 echo "  [7] > | 450k | 7.1 audio source        |"
