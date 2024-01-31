@@ -6761,7 +6761,6 @@ for i in "${!LSTAUDIO[@]}"; do
 		mv "${LSTAUDIO[i]}" "$ParsedFilename" &>/dev/null
 		StopLoading $?
 	fi
-
 	) &
 	if [[ $(jobs -r -p | wc -l) -gt $NPROC ]]; then
 		wait -n
@@ -6772,6 +6771,7 @@ for i in "${!LSTAUDIO[@]}"; do
 
 done
 wait
+exit
 }
 Audio_Tag_Editor() {					# Option 30 	- Tag editor
 # Local variables
@@ -6981,8 +6981,6 @@ else
 	echo
 fi
 
-shopt -s nocasematch
-
 while :
 do
 read -r -e -p "-> " rpstag
@@ -7072,8 +7070,6 @@ read -r -e -p "-> " rpstag
 	esac
 
 done
-
-shopt -u nocasematch
 }
 
 # Arguments variables
