@@ -6771,7 +6771,6 @@ for i in "${!LSTAUDIO[@]}"; do
 
 done
 wait
-exit
 }
 Audio_Tag_Editor() {					# Option 30 	- Tag editor
 # Local variables
