@@ -1560,7 +1560,7 @@ read -r -p " Remove backup directory with cue/audio files? [y/N]:" qarm
 case $qarm in
 	"Y"|"y")
 		# Remove source files
-		rm -R BACK/
+		rm -R backup/
 		echo
 	;;
 	*)
@@ -6323,9 +6323,9 @@ Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$
 }
 Audio_CUE_Split() {						# Option 20 	- CUE Splitter to flac
 # Local variables
-local CHARSET_DETECT
-local empty_line_detect
+local charset_detect
 local flac_level
+local backup_dir
 local total_source_files_size
 local total_target_files_size
 local PERC
@@ -6358,7 +6358,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	echo "  [1] > |   -0"
 	echo "  [2] > |   -5"
 	echo " *[3] > |   -8"
-	echo "  [4] > |   -8 -e -p"
+	echo "  [4] > |   --lax -8pl32"
 	echo "  [q] > | for exit"
 	read -r -e -p "-> " rpakb
 	if [[ "$rpakb" = "q" ]]; then
@@ -6370,7 +6370,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	elif [[ "$rpakb" = "3" ]]; then
 		flac_level="-8"
 	elif [[ "$rpakb" = "4" ]]; then
-		flac_level="-8 -e -p"
+		flac_level="--lax -8pl32"
 	else
 		flac_level="-8"
 	fi
@@ -6378,32 +6378,34 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	# Start time counter
 	START=$(date +%s)
 
+	# Backup dir
+	backup_dir="backup"
+	if [[ ! -d "$backup_dir" ]]; then
+		mkdir "$backup_dir" 2>/dev/null
+	fi
+	
+	# Backup Original CUE
+	cp "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]}".originalbackup
+
 	# UTF-8 convert
-	CHARSET_DETECT=$(uchardet "${LSTCUE[0]}" 2>/dev/null)
-	if [[ "$CHARSET_DETECT" != "UTF-8" ]]; then
+	charset_detect=$(uchardet "${LSTCUE[0]}" 2>/dev/null)
+	if [[ "$charset_detect" != "UTF-8" ]]; then
 		iconv -c -f "$CHARSET_DETECT" -t UTF-8 "${LSTCUE[0]}" > utf-8.cue
-		mkdir BACK 2>/dev/null
-		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".back
+		rm "${LSTCUE[0]}" 2>/dev/null
 		mv -f utf-8.cue "${LSTCUE[0]}"
 	fi
 
 	# Remove empty line in CUE
-	empty_line_detect=$(grep -cvP '\S' "${LSTCUE[0]}")
-	if [[ "$empty_line_detect" -gt "0" ]]; then
-		sed '/^[[:space:]]*$/d' "${LSTCUE[0]}" > /tmp/cleanCUE.cue
-		cp /tmp/cleanCUE.cue "${LSTCUE[0]}"
-		rm /tmp/cleanCUE.cue
-	fi
+	sed -i '/^[[:space:]]*$/d' "${LSTCUE[0]}"
+	# Replace '' by ' = prevent cuetag error
+	sed -i "s/''/'/g" "${LSTCUE[0]}"
 
 	# If wavpack file -> unpack
 	if [[ "${LSTAUDIO[0]##*.}" = "wv" ]]; then
 		wvunpack -w "${LSTAUDIO[0]}"
 		# Clean
 		if test $? -eq 0; then
-			if [[ ! -d BACK/ ]]; then
-				mkdir BACK 2>/dev/null
-			fi
-			mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2>/dev/null
+			mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}".backup 2>/dev/null
 			LSTAUDIO=( "${LSTAUDIO[0]%.*}.wav" )
 		else
 			Echo_Separator_Light
@@ -6414,17 +6416,16 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	fi
 
 	# Split file
-	shnsplit -w -f "${LSTCUE[0]}" -t "%n - %t" "${LSTAUDIO[0]}" -o "flac flac $flac_level -s -o %f -"
+	shnsplit -w -f "${LSTCUE[0]}" \
+		-t "%n - %t" "${LSTAUDIO[0]}" \
+		-o "flac flac $flac_level -s -o %f -"
 
 	# Clean
 	if test $? -eq 0; then
 		rm 00*.flac 2>/dev/null
-		if [[ ! -d BACK/ ]]; then
-			mkdir BACK 2>/dev/null
-		fi
 
 		# Move source audio file
-		mv "${LSTAUDIO[0]}" BACK/"${LSTAUDIO[0]}".back 2>/dev/null
+		mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}".backup 2>/dev/null
 
 		# Generate target file array
 		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
@@ -6433,7 +6434,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2>/dev/null
 
 		# Move source cue
-		mv "${LSTCUE[0]}" BACK/"${LSTCUE[0]}".utf8.back 2>/dev/null
+		mv "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]}".backup 2>/dev/null
 	else
 		Echo_Separator_Light
 		echo "  CUE Splitting fail on shnsplit file"
