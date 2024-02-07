@@ -6759,7 +6759,11 @@ for i in "${!LSTAUDIO[@]}"; do
 	# Rename
 	if [[ "${LSTAUDIO[i]}" != "$ParsedFilename" ]]; then
 		StartLoading "" "Rename: ${LSTAUDIO[i]}"
-		mv "${LSTAUDIO[i]}" "$ParsedFilename" &>/dev/null
+		if [[ "${LSTAUDIO[i]}" = "${LSTAUDIO[i]%/*}" ]]; then
+			mv "${LSTAUDIO[i]}" "$ParsedFilename" &>/dev/null
+		else
+			mv "${LSTAUDIO[i]}" "${LSTAUDIO[i]%/*}"/"$ParsedFilename" &>/dev/null
+		fi
 		StopLoading $?
 	fi
 	) &
