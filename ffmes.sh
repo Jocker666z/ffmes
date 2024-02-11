@@ -75,7 +75,7 @@ SUBTI_EXT_AVAILABLE="ass|idx|srt|ssa|sup"
 
 # Audio variables
 ## Audio command needed
-CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit wvunpack)
+CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit)
 ## Audio input extension available
 AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aptx|aud|caf|dff|dsf|dts|eac3|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|oga|ogg|ops|opus|ra|ram|sbc|shn|spx|tak|thd|tta|w64|wav|wma|wv"
 ## Cue split input extension available
@@ -6400,20 +6400,10 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	# Replace '' by ' = prevent cuetag error
 	sed -i "s/''/'/g" "${LSTCUE[0]}"
 
-	# If wavpack file -> unpack
-	if [[ "${LSTAUDIO[0]##*.}" = "wv" ]]; then
-		wvunpack -w "${LSTAUDIO[0]}"
-		# Clean
-		if test $? -eq 0; then
-			mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}".backup 2>/dev/null
-			LSTAUDIO=( "${LSTAUDIO[0]%.*}.wav" )
-		else
-			Echo_Separator_Light
-			echo "  CUE Splitting fail on WavPack extraction"
-			Echo_Separator_Light
-			return 1
-		fi
-	elif [[ "${LSTAUDIO[0]##*.}" = "tta" ]]; then
+	# If tak, tta, wavpack -> WAV
+	if [[ "${LSTAUDIO[0]##*.}" = "tak" ]] \
+	|| [[ "${LSTAUDIO[0]##*.}" = "tta" ]] \
+	|| [[ "${LSTAUDIO[0]##*.}" = "wv" ]]; then
 		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y \
 			-i "${LSTAUDIO[0]}" \
 			-c:a pcm_s16le \
@@ -6424,7 +6414,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 			LSTAUDIO=( "${LSTAUDIO[0]%.*}.wav" )
 		else
 			Echo_Separator_Light
-			echo "  CUE Splitting fail on TTA extraction"
+			echo "  CUE Splitting fail on extraction"
 			Echo_Separator_Light
 			return 1
 		fi
@@ -6444,7 +6434,9 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 
 		# Generate target file array
 		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-			-iregex '.*\.('flac')$' 2>/dev/null | sort | sed 's/^..//')
+									-iregex '.*\.('flac')$' 2>/dev/null \
+									| sort \
+									| sed 's/^..//')
 		# Tag target
 		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2>/dev/null
 

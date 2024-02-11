@@ -18,7 +18,7 @@ Source media files, supported extension:
 * `gojq`: faster than jq
 * `mediainfo`: faster than ffmpeg & ffprobe
 ### CUE Splitting
-`cuetools flac monkeys-audio shntool wavpack`
+`cuetools flac monkeys-audio shntool`
 ### DVD rip
 `dvdbackup lsdvd ogmtools setcd pv`
 ### DVD Subtitle
