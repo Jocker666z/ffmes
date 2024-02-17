@@ -6728,7 +6728,7 @@ for i in "${!LSTAUDIO[@]}"; do
 
 	# If no tag artist
 	if [[ -z "${TAG_ARTIST[i]}" ]]; then
-		ParsedTitle="[unknown]"
+		ParsedArtist="[unknown]"
 	else
 		# Replace eventualy / , " , : in string
 		ParsedArtist="${TAG_ARTIST[i]////-}"
