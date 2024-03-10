@@ -75,7 +75,7 @@ SUBTI_EXT_AVAILABLE="ass|idx|srt|ssa|sup"
 
 # Audio variables
 ## Audio command needed
-CUE_SPLIT_COMMAND_NEEDED=(flac mac cueprint cuetag shnsplit)
+CUE_SPLIT_COMMAND_NEEDED=(flac cueprint cuetag shnsplit)
 ## Audio input extension available
 AUDIO_EXT_AVAILABLE="8svx|aac|aif|aiff|ac3|amb|ape|aptx|aud|caf|dff|dsf|dts|eac3|flac|m4a|mka|mlp|mp2|mp3|mod|mqa|mpc|mpg|oga|ogg|ops|opus|ra|ram|sbc|shn|spx|tak|thd|tta|w64|wav|wma|wv"
 ## Cue split input extension available
@@ -6401,7 +6401,8 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	sed -i "s/''/'/g" "${LSTCUE[0]}"
 
 	# If tak, tta, wavpack -> WAV
-	if [[ "${LSTAUDIO[0]##*.}" = "tak" ]] \
+	if [[ "${LSTAUDIO[0]##*.}" = "ape" ]] \
+	|| [[ "${LSTAUDIO[0]##*.}" = "tak" ]] \
 	|| [[ "${LSTAUDIO[0]##*.}" = "tta" ]] \
 	|| [[ "${LSTAUDIO[0]##*.}" = "wv" ]]; then
 		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y \
