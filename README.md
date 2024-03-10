@@ -26,7 +26,9 @@ Source media files, supported extension:
 ### Blu-Ray rip
 `bluray_copy bluray_info`
 ### Audio tag
-`atomicparsley flac monkeys-audio python-mutagen vorbis-tools wavpack`
+* Essential: `atomicparsley flac monkeys-audio python-mutagen vorbis-tools wavpack`
+* Optional: `monkeys-audio`
+
 
 ## Use
 ```

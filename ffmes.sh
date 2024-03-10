@@ -91,7 +91,7 @@ PeakNormDB="1"
 
 # Tag variables
 ## Tag command needed
-TAG_COMMAND_NEEDED=(AtomicParsley mac metaflac mid3v2 opustags vorbiscomment wvtag)
+TAG_COMMAND_NEEDED=(AtomicParsley metaflac mid3v2 opustags vorbiscomment wvtag)
 ## Tag input extension available
 AUDIO_TAG_EXT_AVAILABLE="ape|flac|m4a|mp3|ogg|opus|wv"
 
@@ -6581,7 +6581,8 @@ for i in "${!LSTAUDIO[@]}"; do
 				-d "$tag_label" \
 				-w "$tag_label"="$tag_value" \
 				"${LSTAUDIO[$i]}" &>/dev/null
-		elif [[ "${LSTAUDIO[$i]##*.}" = "ape" ]]; then
+		elif [[ "${LSTAUDIO[$i]##*.}" = "ape" ]] \
+		  && [[ -z "$apev2_error" ]]; then
 			mac "${LSTAUDIO[$i]}" \
 				-t "$tag_label"="$tag_value" &>/dev/null
 		fi
@@ -6805,7 +6806,7 @@ local tag_album_string_length
 local tag_date_string_length
 local filename_string_length
 local horizontal_separator_string_length
-# Array
+# Reset
 unset TAG_DISC
 unset TAG_TRACK
 unset TAG_TITLE
@@ -6814,6 +6815,7 @@ unset TAG_ALBUM
 unset TAG_DATE
 unset TAG_TRACK_COUNT
 unset PrtSep
+unset apev2_error
 
 # Loading on
 StartLoading "Grab current tags" ""
@@ -6989,6 +6991,11 @@ else
 	echo "  [ptitle x] > remove pattern in title"
 	echo "  [r]        > for restart tag editor"
 	echo "  [q]        > for exit"
+	echo
+fi
+if ! command -v mac &>/dev/null; then
+	apev2_error="1"
+	Echo_Mess_Error "mac (monkeys-audio) not installed, ape files will not be tagged"
 	echo
 fi
 
