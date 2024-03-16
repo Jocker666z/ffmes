@@ -1357,7 +1357,7 @@ duration_s="$2"
 
 if [[ -n "$size_bytes" ]] && [[ -n "$duration_s" ]]; then
 	if [[ "$size_bytes" =~ ^[0-9]+$ ]]; then
-		kbs=$(bc <<< "scale=0; ($size_bytes * 8) / 1024 / $duration_s")
+		kbs=$(bc <<< "scale=0; ($size_bytes * 8) / 1000 / $duration_s")
 
 		echo "$kbs"
 	fi
