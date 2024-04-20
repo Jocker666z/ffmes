@@ -5127,25 +5127,17 @@ if [[ "$AdaptedBitrate" = "1" ]]; then
 	files="$1"
 
 	# Test bitrate
-	# if source is lossless, fix value to 500kbs
-	if [[ "${files##*.}" = "flac" ]] \
-	|| [[ "${files##*.}" = "ape" ]] \
-	|| [[ "${files##*.}" = "wav" ]] \
-	|| [[ "${files##*.}" = "wv" ]]; then
-		TestBitrate="500000"
+	if (( "${#mediainfo_bin}" )); then
+		TestBitrate=$("$mediainfo_bin" --Language=raw \
+						--Inform="Audio;%BitRate%" "$files")
 	else
-		if (( "${#mediainfo_bin}" )); then
-			TestBitrate=$("$mediainfo_bin" --Language=raw \
-							--Inform="Audio;%BitRate%" "$files")
-		else
-			TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
-							-select_streams a -show_entries stream=bit_rate \
-							-of default=noprint_wrappers=1:nokey=1 "$files")
-			if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
-				TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
-								| sed -n -e 's/^.*bitrate: //p' \
-								| awk '{a = "000"; print $1a}')
-			fi
+		TestBitrate=$("$ffprobe_bin" -hide_banner -v quiet \
+						-select_streams a -show_entries stream=bit_rate \
+						-of default=noprint_wrappers=1:nokey=1 "$files")
+		if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
+			TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
+							| sed -n -e 's/^.*bitrate: //p' \
+							| awk '{a = "000"; print $1a}')
 		fi
 	fi
 
