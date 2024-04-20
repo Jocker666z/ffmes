@@ -5227,8 +5227,8 @@ if [[ "$extcont" = "flac" ]] \
 		TestSamplingRate=$("$mediainfo_bin" --Language=raw \
 							--Inform="Audio;%SamplingRate%" "$files")
 	else
-		TestSamplingRate=$("$ffprobe_bin" -analyzeduration 1G -probesize 1G \
-							-v panic -show_entries stream=sample_rate \
+		TestSamplingRate=$("$ffprobe_bin" -hide_banner -v quiet \
+							-select_streams a -show_entries stream=sample_rate \
 							-print_format csv=p=0 "$files")
 	fi
 
@@ -5289,8 +5289,9 @@ if [[ "$AudioCodecType" = "flac" ]] || [[ "$AudioCodecType" = "wavpack" ]]; then
 		# Argument = file
 		files="$1"
 
-		TestBitDepth=$("$ffprobe_bin" -v panic -show_entries \
-						stream=sample_fmt -print_format csv=p=0 "$files")
+		TestBitDepth=$("$ffprobe_bin" -hide_banner -v quiet \
+						-select_streams a -show_entries stream=sample_fmt \
+						-of default=noprint_wrappers=1:nokey=1 "$files")
 		if [[ "$TestBitDepth" == "u8"* ]]; then			# 8 bits
 			if [[ "$AudioCodecType" = "flac" ]]; then
 				abitdeph_modified="-sample_fmt s16"
