@@ -5135,9 +5135,9 @@ if [[ "$AdaptedBitrate" = "1" ]]; then
 						-select_streams a -show_entries stream=bit_rate \
 						-of default=noprint_wrappers=1:nokey=1 "$files")
 		if [[ "$TestBitrate" = "N/A" ]] || [[ -z "$TestBitrate" ]]; then
-			TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 | grep bitrate \
-							| sed -n -e 's/^.*bitrate: //p' \
-							| awk '{a = "000"; print $1a}')
+			TestBitrate=$("$ffmpeg_bin" -i "$files" 2>&1 \
+							| grep -Po "bitrate: \K.*" \
+							| cut -f1 -d" ")
 		fi
 	fi
 
