@@ -6378,7 +6378,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	fi
 	
 	# Backup Original CUE
-	cp "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]}".originalbackup
+	cp "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]}".original.backup
 
 	# UTF-8 convert
 	charset_detect=$(uchardet "${LSTCUE[0]}" 2>/dev/null)
@@ -6398,6 +6398,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	|| [[ "${LSTAUDIO[0]##*.}" = "tak" ]] \
 	|| [[ "${LSTAUDIO[0]##*.}" = "tta" ]] \
 	|| [[ "${LSTAUDIO[0]##*.}" = "wv" ]]; then
+		echo "[${LSTAUDIO[0]}] --> [${LSTAUDIO[0]%.*}.wav]"
 		"$ffmpeg_bin" $FFMPEG_LOG_LVL -y \
 			-i "${LSTAUDIO[0]}" \
 			-c:a pcm_s16le \
