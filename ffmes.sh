@@ -6760,12 +6760,13 @@ for i in "${!LSTAUDIO[@]}"; do
 		fi
 	fi
 	# Rename
-	if [[ "${LSTAUDIO[i]}" != "$ParsedFilename" ]]; then
+	if [[ "${LSTAUDIO[i]}" != "$ParsedFilename" ]] \
+	&& [[ "${LSTAUDIO[i]}" != "${LSTAUDIO[i]%/*}/${ParsedFilename}" ]]; then
 		StartLoading "" "Rename: ${LSTAUDIO[i]}"
 		if [[ "${LSTAUDIO[i]}" = "${LSTAUDIO[i]%/*}" ]]; then
 			mv "${LSTAUDIO[i]}" "$ParsedFilename" &>/dev/null
 		else
-			mv "${LSTAUDIO[i]}" "${LSTAUDIO[i]%/*}"/"$ParsedFilename" &>/dev/null
+			mv "${LSTAUDIO[i]}" "${LSTAUDIO[i]%/*}/${ParsedFilename}" &>/dev/null
 		fi
 		StopLoading $?
 	fi
