@@ -6659,7 +6659,9 @@ local ParsedFilename
 rename_option="$1"
 
 # Max total digit, ignore slash
-tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" | awk -F"/" '{ print $1 }' | wc -L)
+tag_track_total_digit=$(printf "%s\n" "${TAG_TRACK[@]}" \
+						| awk -F"/" '{ print $1 }' \
+						| wc -L)
 
 for i in "${!LSTAUDIO[@]}"; do
 
@@ -6703,6 +6705,9 @@ for i in "${!LSTAUDIO[@]}"; do
 			elif [[ "$tag_track_total_digit" -eq "4" ]] && [[ "${#tag_track_proper}" = "4" ]]; then
 				ParsedTrack="$tag_track_proper"
 			fi
+		# Used for vinyl type A, B...
+		else
+			ParsedTrack="${TAG_TRACK[i]}"
 		fi
 	fi
 
