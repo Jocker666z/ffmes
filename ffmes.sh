@@ -93,7 +93,7 @@ PeakNormDB="1"
 ## Tag command needed
 TAG_COMMAND_NEEDED=(AtomicParsley metaflac mid3v2 opustags vorbiscomment wvtag)
 ## Tag input extension available
-AUDIO_TAG_EXT_AVAILABLE="ape|flac|m4a|mp3|ogg|opus|wv"
+AUDIO_TAG_EXT_AVAILABLE="ape|flac|m4a|mp3|ogg|opus|wav|wv"
 
 # Error messages
 MESS_NO_VIDEO_FILE="No video file to process. Select one, or restart ffmes in a directory containing them"
