@@ -1545,11 +1545,7 @@ Restart
 TestVAAPI() {							# VAAPI device test
 if [[ -e "$VAAPI_device" ]]; then
 	if "$ffmpeg_bin" -init_hw_device vaapi=foo:"$VAAPI_device" -h &>/dev/null; then
-		if [[ "$chvcodec" = "hevc_vaapi" ]]; then
-			GPUDECODE="-init_hw_device vaapi=foo:$VAAPI_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device foo"
-		else
-			GPUDECODE="-vaapi_device $VAAPI_device"
-		fi
+		GPUDECODE="-vaapi_device $VAAPI_device"
 	else
 		unset GPUDECODE
 	fi
@@ -3109,7 +3105,7 @@ elif [[ "$qv" = "e" ]]; then
 		"hevc_vaapi")
 			codec="hevc_vaapi"
 			chvcodec="HEVC_VAAPI"
-			vfilter+=( "format=nv12|vaapi,hwupload" )
+			vfilter+=( "format=nv12,hwupload" )
 			Video_Custom_Filter_deinterlace
 			Video_Custom_Filter_resolution
 			Video_hevc_vaapi_Config
