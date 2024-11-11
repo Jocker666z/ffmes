@@ -1652,7 +1652,7 @@ if (( "${#source_files[@]}" )); then
 			# File test & error log generation
 			tmp_error=$(mktemp)
 			"$ffmpeg_bin" -v error $duration -i "${source_files[$i]}" \
-				-max_muxing_queue_size 9999 -f null - 2> "$tmp_error"
+				-f null - 2> "$tmp_error"
 
 			# False positive test
 			if [[ -s "$tmp_error" ]]; then
@@ -6484,7 +6484,7 @@ for files in "${LSTAUDIO[@]}"; do
 	# Test integrity
 	(
 	tmp_error=$(mktemp)
-	"$ffmpeg_bin" -v error -i "$files" -max_muxing_queue_size 9999 -f null - 2>"$tmp_error"
+	"$ffmpeg_bin" -v error -i "$files" -f null - 2>"$tmp_error"
 	if [[ -s "$tmp_error" ]]; then
 		cp "$tmp_error" "${files%.*}-error.log"
 		echo "  $files" >> "$FFMES_CACHE_INTEGRITY"
@@ -6711,10 +6711,11 @@ for i in "${!LSTAUDIO[@]}"; do
 	if [[ -z "${TAG_TITLE[i]}" ]]; then
 		ParsedTitle="[untitled]"
 	else
-		# Replace eventualy / , " , : in string
+		# Replace eventualy / , " , :, \ in string
 		ParsedTitle="${TAG_TITLE[i]////-}"
 		ParsedTitle="${ParsedTitle//:/-}"
 		ParsedTitle="${ParsedTitle//\"/-}"
+		ParsedTitle="${ParsedTitle//\\/-}"
 		# Remove leading space
 		ParsedTitle="${ParsedTitle#"${ParsedTitle%%[![:space:]]*}"}"
 		# Remove ending space
@@ -6727,10 +6728,11 @@ for i in "${!LSTAUDIO[@]}"; do
 	if [[ -z "${TAG_ARTIST[i]}" ]]; then
 		ParsedArtist="[unknown]"
 	else
-		# Replace eventualy / , " , : in string
+		# Replace eventualy / , " , :, \ in string
 		ParsedArtist="${TAG_ARTIST[i]////-}"
 		ParsedArtist="${ParsedArtist//:/-}"
 		ParsedArtist="${ParsedArtist//\"/-}"
+		ParsedArtist="${ParsedArtist//\\/-}"
 		# Remove leading space
 		ParsedArtist="${ParsedArtist#"${ParsedArtist%%[![:space:]]*}"}"
 		# Remove ending space
