@@ -315,11 +315,12 @@ su -c "make install" -m "root"
 ```
 
 --------------------------------------------------------------------------------------------------
-## Known errors
+## Known errors / unsupported
 * ffmpeg output error with CIFS mount solutions:
-	* in your `/etc/fstab`, add option `cache=none`
-	* or use NFS instead samba
-* CUE split fail with 24bits audio (shnsplit bug)
+	* in your `/etc/fstab`, add option `cache=none`.
+	* or use NFS instead samba.
+* CUE split fail with 24bits audio (shnsplit bug).
+* Encoding from Dolby Vision not supported for now.
 
 --------------------------------------------------------------------------------------------------
 ## Holy reading

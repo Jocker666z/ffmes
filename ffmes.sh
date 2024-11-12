@@ -213,6 +213,8 @@ unset ffprobe_ColorTransfert
 unset ffprobe_ColorPrimaries
 unset ffprobe_FieldOrder
 unset ffprobe_fps
+unset ffprobe_hdr
+unset ffprobe_DolbyVision
 ## Audio
 unset ffprobe_a_StreamIndex
 unset ffprobe_SampleFormat
@@ -337,14 +339,6 @@ for index in "${StreamIndex[@]}"; do
 		# Video specific
 		if ! [[ "$audio_list" = "1" ]]; then
 			if [[ "${ffprobe_StreamType[-1]}" = "video" ]]; then
-				## Fix black screen + green line (https://trac.ffmpeg.org/ticket/6668)
-				#if [[ "${ffprobe_Codec[-1]}" = "mpeg2video" ]]; then
-					#unset GPUDECODE
-				#else
-					#if [[ -z "$GPUDECODE" ]] && [[ -n "$VAAPI_device" ]]; then
-						#TestVAAPI
-					#fi
-				#fi
 				ffprobe_v_StreamIndex+=( "$video_index" )
 				video_index=$((video_index+1))
 				ffprobe_Profile+=( "$(ff_jqparse_stream "$index" "profile")" )
@@ -366,6 +360,14 @@ for index in "${StreamIndex[@]}"; do
 					&& [[ "${ffprobe_ColorTransfert[-1]}" = "smpte2084" ]] \
 					&& [[ "${ffprobe_ColorPrimaries[-1]}" = "bt2020" ]]; then 
 					ffprobe_hdr="1"
+				fi
+				# Dolby Vision detection
+				ffprobe_DolbyVision=$("$json_parser" -r ".streams[] \
+						| select(.index==$index) \
+						| .side_data_list[].side_data_type" "$FFMES_FFPROBE_CACHE_STATS" 2>/dev/null \
+						| sed s#null##g)
+				if [[ "$ffprobe_DolbyVision" = "DOVI configuration record" ]]; then
+					ffprobe_DolbyVision="1"
 				fi
 			else
 				ffprobe_v_StreamIndex+=( "" )
@@ -3054,7 +3056,11 @@ if [[ "${#LSTVIDEO[@]}" -gt "1" ]]; then
 	echo " Note: * The settings made here will be applied to the ${#LSTVIDEO[@]} videos in the batch."
 fi
 echo
-echo "  [e] > for encode"
+if [[ "$ffprobe_DolbyVision" = 1 ]]; then
+	echo -e "  \e[9m[e] > for encode\e[0m -> Dolby Vision is not supported"
+else
+	echo "  [e] > for encode"
+fi
 echo " *[↵] > for copy"
 echo "  [q] > for exit"
 read -r -e -p "-> " qv
@@ -3064,94 +3070,105 @@ if [[ "$qv" = "q" ]]; then
 # Video stream edition
 elif [[ "$qv" = "e" ]]; then
 
-	# Set video encoding
-	ENCODV="1"
+	if [[ "$ffprobe_DolbyVision" = 1 ]]; then
 
-	# Codec choice
-	Display_Video_Custom_Info_choice
-	echo " Choice the video codec to use:"
-	echo
-	echo "  [x264]       > for libx264 codec"
-	echo " *[x265]       > for libx265 codec"
-	if [[ -n "$VAAPI_device" ]] && [[ -n "$GPUDECODE" ]]; then
-		echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding"
-	fi
-	echo "  [libaom]     > for AV1 libaom-av1 codec"
-	if [[ -n "$ffmpeg_test_libsvtav1_codec" ]]; then
-		echo "  [libsvtav1]  > for AV1 libsvtav1 codec"
-	fi
-	echo "  [mpeg4]      > for xvid codec"
-	echo "  [q]          > for exit"
-	read -r -e -p "-> " yn
-	case $yn in
-		"x264")
-			codec="libx264"
-			chvcodec="H264"
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_Custom_Filter_rotation
-			Video_Custom_Filter_hdr
-			Video_x264_5_Config
-		;;
-		"x265")
-			codec="libx265"
-			chvcodec="HEVC"
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_Custom_Filter_rotation
-			Video_Custom_Filter_hdr
-			Video_x264_5_Config
-		;;
-		"hevc_vaapi")
-			codec="hevc_vaapi"
-			chvcodec="HEVC_VAAPI"
-			vfilter+=( "format=nv12,hwupload" )
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_hevc_vaapi_Config
-		;;
-		"libaom")
-			codec="libaom-av1"
-			chvcodec="AV1"
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_Custom_Filter_rotation
-			Video_Custom_Filter_hdr
-			Video_av1_Config
-		;;
-		"libsvtav1")
-			codec="libsvtav1"
-			chvcodec="AV1"
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_Custom_Filter_rotation
-			Video_Custom_Filter_hdr
-			Video_av1_Config
-		;;
-		"mpeg4")
-			codec="mpeg4 -vtag xvid"
-			chvcodec="XVID"
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_Custom_Filter_rotation
-			Video_MPEG4_Config
-		;;
-		"q"|"Q")
-			Restart
-		;;
-		*)
-			codec="libx265"
-			chvcodec="HEVC"
-			Video_Custom_Filter_deinterlace
-			Video_Custom_Filter_resolution
-			Video_Custom_Filter_rotation
-			Video_Custom_Filter_hdr
-			Video_x264_5_Config
-		;;
-	esac
+		# Set video configuration variable
+		chvidstream="Copy (Dolby Vision)"
+		chvcodec="vcopy"
+		codec="copy"
 
-# Tune VAAPI ffmpeg argument for encoding or decoding
-TestVAAPI
+	else
+
+		# Set video encoding
+		ENCODV="1"
+
+		# Codec choice
+		Display_Video_Custom_Info_choice
+		echo " Choice the video codec to use:"
+		echo
+		echo "  [x264]       > for libx264 codec"
+		echo " *[x265]       > for libx265 codec"
+		if [[ -n "$VAAPI_device" ]] && [[ -n "$GPUDECODE" ]]; then
+			echo "  [hevc_vaapi] > for hevc_vaapi codec; GPU encoding"
+		fi
+		echo "  [libaom]     > for AV1 libaom-av1 codec"
+		if [[ -n "$ffmpeg_test_libsvtav1_codec" ]]; then
+			echo "  [libsvtav1]  > for AV1 libsvtav1 codec"
+		fi
+		echo "  [mpeg4]      > for xvid codec"
+		echo "  [q]          > for exit"
+		read -r -e -p "-> " yn
+		case $yn in
+			"x264")
+				codec="libx264"
+				chvcodec="H264"
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_Custom_Filter_rotation
+				Video_Custom_Filter_hdr
+				Video_x264_5_Config
+			;;
+			"x265")
+				codec="libx265"
+				chvcodec="HEVC"
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_Custom_Filter_rotation
+				Video_Custom_Filter_hdr
+				Video_x264_5_Config
+			;;
+			"hevc_vaapi")
+				codec="hevc_vaapi"
+				chvcodec="HEVC_VAAPI"
+				vfilter+=( "format=nv12,hwupload" )
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_hevc_vaapi_Config
+			;;
+			"libaom")
+				codec="libaom-av1"
+				chvcodec="AV1"
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_Custom_Filter_rotation
+				Video_Custom_Filter_hdr
+				Video_av1_Config
+			;;
+			"libsvtav1")
+				codec="libsvtav1"
+				chvcodec="AV1"
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_Custom_Filter_rotation
+				Video_Custom_Filter_hdr
+				Video_av1_Config
+			;;
+			"mpeg4")
+				codec="mpeg4 -vtag xvid"
+				chvcodec="XVID"
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_Custom_Filter_rotation
+				Video_MPEG4_Config
+			;;
+			"q"|"Q")
+				Restart
+			;;
+			*)
+				codec="libx265"
+				chvcodec="HEVC"
+				Video_Custom_Filter_deinterlace
+				Video_Custom_Filter_resolution
+				Video_Custom_Filter_rotation
+				Video_Custom_Filter_hdr
+				Video_x264_5_Config
+			;;
+		esac
+
+		# Tune VAAPI ffmpeg argument for encoding or decoding
+		TestVAAPI
+
+	fi
 
 # No video change
 else
