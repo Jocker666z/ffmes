@@ -1844,13 +1844,16 @@ if [[ -z "$VERBOSE" && "${#LSTVIDEO[@]}" = "1" && -z "$ProgressBarOption" && "$f
 	TimeOut="30000"
 	start_TimeOut=$(( $(date +%s%N) / 1000000 ))
 	while true; do
-
 		# Get main value
 		CurrentState=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
 						| grep "progress" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
 		CurrentDuration=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
 						| grep "out_time_ms" 2>/dev/null | tail -1 | awk -F"=" '{ print $2 }')
-		CurrentDuration=$(( CurrentDuration/1000000 ))
+		if [[ "${#CurrentDuration}" = 0 ]]; then
+			CurrentDuration="1"
+		else
+			CurrentDuration=$(bc <<< "scale=0; $CurrentDuration / 1000000")
+		fi
 
 		# Get extra value
 		Currentfps=$(tail -n 13 "$FFMES_FFMPEG_PROGRESS" 2>/dev/null \
