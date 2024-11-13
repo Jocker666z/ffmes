@@ -3120,7 +3120,8 @@ elif [[ "$qv" = "e" ]]; then
 			"hevc_vaapi")
 				codec="hevc_vaapi"
 				chvcodec="HEVC_VAAPI"
-				vfilter+=( "format=nv12,hwupload" )
+				vfilter+=( "hwupload,scale_vaapi=format=nv12" )
+				#vfilter+=( "format=nv12,hwupload" )
 				Video_Custom_Filter_deinterlace
 				Video_Custom_Filter_resolution
 				Video_hevc_vaapi_Config
