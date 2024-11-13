@@ -4068,7 +4068,7 @@ elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	# Set cbr variable
 	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
 elif echo "$rpvkb" | grep -q 'qp'; then
-	vkb="-rc_mode 2 $rpvkb"
+	vkb="-rc_mode 1 $rpvkb"
 elif [[ "$rpvkb" = "1" ]]; then
 	vkb="-rc_mode 1 -qp 0"
 elif [[ "$rpvkb" = "2" ]]; then
