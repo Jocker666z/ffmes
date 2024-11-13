@@ -4026,6 +4026,8 @@ Video_hevc_vaapi_Config() {				# Option 1  	- Conf hevc_vaapi
 local rpvkb
 local rpvkb_unit
 local video_stream_kb
+local video_stream_max_kb
+local video_stream_buff_kb
 local video_stream_size
 
 # Bitrate
@@ -4057,40 +4059,48 @@ if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
 	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
 	video_stream_kb="${video_stream_kb%K*}"
+	# Set max maxrate & bufsize
+	video_stream_max_kb=$(bc <<< "scale=0; ($video_stream_kb * 1.5)")
+	video_stream_buff_kb=$(bc <<< "scale=0; $video_stream_max_kb * 1.5")
 	# Set cbr variable
-	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
+	vkb="-b:v ${video_stream_kb}k -maxrate:v ${video_stream_max_kb}k -bufsize:v ${video_stream_buff_kb}k -compression_level 29"
 elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
 	video_stream_size="${video_stream_size%M*}"
 	# Bitrate calculation
 	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
+	# Set max maxrate & bufsize with bitrate ponderation by 3%
+	video_stream_kb=$(bc <<<"scale=0; ($video_stream_kb * 97)/100")
+	video_stream_max_kb=$(bc <<< "scale=0; ($video_stream_kb * 1.5)")
+	video_stream_buff_kb=$(bc <<< "scale=0; $video_stream_max_kb * 1.5")
 	# Set cbr variable
-	vkb="-rc_mode 2 -b:v ${video_stream_kb}k"
+	#vkb="-b:v ${video_stream_kb}k -compression_level 29"
+	vkb="-b:v ${video_stream_kb}k -maxrate:v ${video_stream_max_kb}k -bufsize:v ${video_stream_buff_kb}k -compression_level 29"
 elif echo "$rpvkb" | grep -q 'qp'; then
-	vkb="-rc_mode 1 $rpvkb"
+	vkb="$rpvkb"
 elif [[ "$rpvkb" = "1" ]]; then
-	vkb="-rc_mode 1 -qp 0"
+	vkb="-qp 0 -compression_level 29"
 elif [[ "$rpvkb" = "2" ]]; then
-	vkb="-rc_mode 1 -qp 5"
+	vkb="-qp 5 -compression_level 29"
 elif [[ "$rpvkb" = "3" ]]; then
-	vkb="-rc_mode 1 -qp 10"
+	vkb="-qp 10 -compression_level 29"
 elif [[ "$rpvkb" = "4" ]]; then
-	vkb="-rc_mode 1 -qp 15"
+	vkb="-qp 15 -compression_level 29"
 elif [[ "$rpvkb" = "5" ]]; then
-	vkb="-rc_mode 1 -qp 20"
+	vkb="-qp 20 -compression_level 29"
 elif [[ "$rpvkb" = "6" ]]; then
-	vkb="-rc_mode 1 -qp 22"
+	vkb="-qp 22 -compression_level 29"
 elif [[ "$rpvkb" = "7" ]]; then
-	vkb="-rc_mode 1 -qp 25"
+	vkb="-qp 25 -compression_level 29"
 elif [[ "$rpvkb" = "8" ]]; then
-	vkb="-rc_mode 1 -qp 30"
+	vkb="-qp 30 -compression_level 29"
 elif [[ "$rpvkb" = "9" ]]; then
-	vkb="-rc_mode 1 -qp 35"
+	vkb="-qp 35 -compression_level 29"
 elif [[ "$rpvkb" = "q" ]]; then
 	Restart
 else
-	vkb="-rc_mode 1 -qp 25"
+	vkb="-qp 25 -compression_level 29"
 fi
 }
 Video_av1_Config() {					# Option 1  	- Conf av1
