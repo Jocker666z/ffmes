@@ -369,6 +369,10 @@ for index in "${StreamIndex[@]}"; do
 				if [[ "$ffprobe_DolbyVision" = "DOVI configuration record" ]]; then
 					ffprobe_DolbyVision="1"
 				fi
+				# Store video bitrate for maxrate/bufsize calculation
+				if [[ "${ffprobe_AttachedPic[-1]}" != "attached pic" ]]; then
+					ffprobe_V_Bitrate="$ffprobe_Bitrate"
+				fi
 			else
 				ffprobe_v_StreamIndex+=( "" )
 				ffprobe_Profile+=( "" )
@@ -4029,6 +4033,7 @@ Video_hevc_vaapi_Config() {				# Option 1  	- Conf hevc_vaapi
 # Local variables
 local rpvkb
 local rpvkb_unit
+local video_stream_kb_raw
 local video_stream_kb
 local video_stream_max_kb
 local video_stream_buff_kb
@@ -4063,24 +4068,71 @@ if [[ "$rpvkb_unit" = "k" ]] || [[ "$rpvkb_unit" = "K" ]]; then
 	# Remove all after k/K from variable for prevent syntax error
 	video_stream_kb="${rpvkb%k*}"
 	video_stream_kb="${video_stream_kb%K*}"
+
 	# Set max maxrate & bufsize
 	video_stream_max_kb=$(bc <<< "scale=0; ($video_stream_kb * 1.5)")
 	video_stream_buff_kb=$(bc <<< "scale=0; $video_stream_max_kb * 1.5")
+
+	# Ponderation if source kb > maxrate and/or bufsize
+	if [[ "${video_stream_max_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	&& [[ "${video_stream_buff_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "$video_stream_kb" -ge "$ffprobe_V_Bitrate" ]]; then
+		video_stream_max_kb="$video_stream_kb"
+		video_stream_buff_kb="$video_stream_kb"
+
+	elif [[ "${video_stream_max_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "${video_stream_buff_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "$video_stream_kb" -lt "$ffprobe_V_Bitrate" ]]; then
+		video_stream_max_kb="$ffprobe_V_Bitrate"
+		video_stream_buff_kb="$ffprobe_V_Bitrate"
+
+	elif [[ "${video_stream_max_kb%\.*}" -lt "$ffprobe_V_Bitrate" ]] \
+	  && [[ "${video_stream_buff_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "$video_stream_kb" -lt "$ffprobe_V_Bitrate" ]]; then
+		video_stream_buff_kb="$ffprobe_V_Bitrate"
+	fi
+
 	# Set cbr variable
 	vkb="-b:v ${video_stream_kb}k -maxrate:v ${video_stream_max_kb}k -bufsize:v ${video_stream_buff_kb}k -compression_level 29"
+
 elif [[ "$rpvkb_unit" = "m" ]] || [[ "$rpvkb_unit" = "M" ]]; then
 	# Remove all after m/M from variable
 	video_stream_size="${rpvkb%m*}"
 	video_stream_size="${video_stream_size%M*}"
+
 	# Bitrate calculation
-	video_stream_kb=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
+	video_stream_kb_raw=$(bc <<< "scale=0; ($video_stream_size * 8192)/$ffprobe_Duration")
+
 	# Set max maxrate & bufsize with bitrate ponderation by 3%
-	video_stream_kb=$(bc <<<"scale=0; ($video_stream_kb * 97)/100")
+	video_stream_kb=$(bc <<<"scale=0; ($video_stream_kb_raw * 97)/100")
 	video_stream_max_kb=$(bc <<< "scale=0; ($video_stream_kb * 1.5)")
 	video_stream_buff_kb=$(bc <<< "scale=0; $video_stream_max_kb * 1.5")
+
+	# Ponderation if source kb > maxrate and/or bufsize
+	if [[ "${video_stream_max_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	&& [[ "${video_stream_buff_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "$video_stream_kb" -ge "$ffprobe_V_Bitrate" ]]; then
+		video_stream_kb="$video_stream_kb_raw"
+		video_stream_max_kb="$video_stream_kb_raw"
+		video_stream_buff_kb="$video_stream_kb_raw"
+
+	elif [[ "${video_stream_max_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "${video_stream_buff_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "$video_stream_kb" -lt "$ffprobe_V_Bitrate" ]]; then
+		video_stream_kb=$(bc <<<"scale=0; ($video_stream_kb_raw * 98)/100")
+		video_stream_max_kb="$ffprobe_V_Bitrate"
+		video_stream_buff_kb="$ffprobe_V_Bitrate"
+
+	elif [[ "${video_stream_max_kb%\.*}" -lt "$ffprobe_V_Bitrate" ]] \
+	  && [[ "${video_stream_buff_kb%\.*}" -ge "$ffprobe_V_Bitrate" ]] \
+	  && [[ "$video_stream_kb" -lt "$ffprobe_V_Bitrate" ]]; then
+		video_stream_kb=$(bc <<<"scale=0; ($video_stream_kb_raw * 99)/100")
+		video_stream_buff_kb="$ffprobe_V_Bitrate"
+	fi
+
 	# Set cbr variable
-	#vkb="-b:v ${video_stream_kb}k -compression_level 29"
 	vkb="-b:v ${video_stream_kb}k -maxrate:v ${video_stream_max_kb}k -bufsize:v ${video_stream_buff_kb}k -compression_level 29"
+
 elif echo "$rpvkb" | grep -q 'qp'; then
 	vkb="$rpvkb"
 elif [[ "$rpvkb" = "1" ]]; then
