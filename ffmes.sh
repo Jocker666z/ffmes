@@ -120,12 +120,36 @@ for DEVICE in "${OPTICAL_DEVICE[@]}"; do
 	fi
 done
 }
-SetGlobalVariables() {					# Construct arrays with files accepted
+Find_Files() {							# Find files
+local extensions
+local maxdepth
+
+extensions="$1"
+maxdepth="$2"
+
+if command -v fdfind &>/dev/null; then
+	fdfind --type file --color never --unrestricted \
+		--max-depth "$maxdepth" '.*\.('$extensions')$' "$PWD" 2>/dev/null \
+		| sort -V
+elif command -v fd &>/dev/null; then
+	fdfind --type file --color never --unrestricted \
+		--max-depth "$maxdepth" '.*\.('$extensions')$' "$PWD" 2>/dev/null \
+		| sort -V
+else
+	find "$PWD" -maxdepth "$maxdepth" -type f -regextype posix-egrep \
+		-iregex '.*\.('$extensions')$' 2>/dev/null \
+		| sort -V
+fi
+
+}
+SetGlobalVariables() {					# Construct all arrays with files accepted
 # Array
 unset LSTVIDEO
 unset LSTVIDEOEXT
+unset NBVEXT
 unset LSTAUDIO
 unset LSTAUDIOEXT
+unset NBAEXT
 unset LSTISO
 unset LSTAUDIOTAG
 unset LSTSUBEXT
@@ -144,40 +168,33 @@ if [[ -n "$InputFileArg" ]]; then
 	elif [[ ${ISO_EXT_AVAILABLE[*]} =~ ${InputFileExt} ]]; then
 		LSTISO+=("$InputFileArg")
 	fi
-
 else
-	# List source(s) video file(s) & number of differents extentions
-	mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep \
-		-iregex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+	# List source(s) video file(s) & differents extentions
+	mapfile -t LSTVIDEO < <( Find_Files "$VIDEO_EXT_AVAILABLE" "1" )
 	mapfile -t LSTVIDEOEXT < <(echo "${LSTVIDEO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
-	# List source(s) audio file(s) & number of differents extentions
-	mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep \
-		-iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	# List source(s) audio file(s) & differents extentions
+	mapfile -t LSTAUDIO < <( Find_Files "$AUDIO_EXT_AVAILABLE" "5" )
 	mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 	# List source(s) ISO file(s)
-	mapfile -t LSTISO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-		-iregex '.*\.('$ISO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+	mapfile -t LSTISO < <( Find_Files "$ISO_EXT_AVAILABLE" "1" )
 fi
+
 # List source(s) audio file(s) that can be tagged
 mapfile -t LSTAUDIOTAG < <(find . -maxdepth 2 -type f -regextype posix-egrep \
 	-iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-# List source(s) subtitle file(s)
-mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+# List source(s) subtitle file(s) & differents extentions
+mapfile -t LSTSUB < <( Find_Files "$SUBTI_EXT_AVAILABLE" "1" )
 mapfile -t LSTSUBEXT < <(echo "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 # List source(s) CUE file(s)
-mapfile -t LSTCUE < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$CUE_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTCUE < <( Find_Files "$CUE_EXT_AVAILABLE" "1" )
 # List source(s) VOB file(s)
-mapfile -t LSTVOB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$VOB_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTVOB < <( Find_Files "$VOB_EXT_AVAILABLE" "1" )
 # List source(s) M3U file(s)
-mapfile -t LSTM3U < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$M3U_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTM3U < <( Find_Files "$M3U_EXT_AVAILABLE" "1" )
 
 # Count uniq extension
-NBVEXT=$(echo "${LSTVIDEOEXT[@]##*.}" | uniq -u | wc -w)
-NBAEXT=$(echo "${LSTAUDIOEXT[@]##*.}" | uniq -u | wc -w)
+NBVEXT=$(( "${#LSTVIDEOEXT[@]}" ))
+NBAEXT=$(( "${#LSTAUDIOEXT[@]}" ))
 }
 Media_Source_Info_Record() {			# Construct arrays with files stats
 # Local variables
@@ -999,7 +1016,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 					<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "$ffmpeg_meandb") <(printf "%s\n" ".") \
 					<(printf "%-${diffdb_string_lenght}.${diffdb_string_lenght}s\n" "$ffmpeg_diffdb") <(printf "%s\n" "|") \
 					<(printf "%-${FilesSize_string_length}.${FilesSize_string_length}s\n" "$FilesSize") <(printf "%s\n" "|") \
-					<(printf "%-${filename_string_length}.${filename_string_length}s\n" "$files") | column -s $'\t' -t 2>/dev/null
+					<(printf "%-${filename_string_length}.${filename_string_length}s\n" "$(basename "${files}")") | column -s $'\t' -t 2>/dev/null
 			fi
 		done
 
@@ -1016,7 +1033,7 @@ else
 
 		for i in "${!ffprobe_StreamIndex[@]}"; do
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
-				Display_Line_Truncate "  $files"
+				Display_Line_Truncate "  $(basename "${files}")"
 				echo "$(Display_Variable_Trick "$ffprobe_DurationFormated" "1" "kHz")\
 				$FilesSize Mb" \
 				| awk '{$2=$2};1' | awk '{print "  " $0}'
@@ -2222,8 +2239,7 @@ done
 
 # map
 unset TESTARGUMENT
-VIDEO_EXT_AVAILABLE="mkv"
-mapfile -t LSTVIDEO < <(find . -maxdepth 1 -type f -regextype posix-egrep -regex '.*\.('$VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTVIDEO < <( Find_Files "mkv" "1" )
 
 # encoding question
 if (( "${#LSTVIDEO[@]}" )); then
@@ -2254,8 +2270,7 @@ local palette
 # Set available ext.
 SUBTI_EXT_AVAILABLE="idx"
 # Regen list of sub
-mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTSUB < <( Find_Files "idx" "1" )
 
 clear
 echo
@@ -2342,11 +2357,8 @@ local TOTAL
 unset list_sub_id
 unset pair_error_list
 
-# Set available ext.
-SUBTI_EXT_AVAILABLE="idx"
 # Regen list of sub
-mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTSUB < <( Find_Files "idx" "1" )
 
 # Test idx/sub pair
 for files in "${LSTSUB[@]}"; do
@@ -2385,9 +2397,8 @@ else
 	done
 
 	# Regen list of sub
-	mapfile -t LSTSUB < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-		-iregex '.*\.('$SUBTI_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
-		
+	mapfile -t LSTSUB < <( Find_Files "idx" "1" )
+
 	# Choose sub id function
 	subid_choose() {
 		printf '  %s\n' "${LSTSUB[0]}"
@@ -4473,14 +4484,11 @@ local MERGE_LSTAUDIO
 local MERGE_LSTSUB
 
 # Keep extention with wildcard for current audio and sub
-mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep -iregex \
-						'.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null \
-						| sort | sed 's/^..//')
 if (( "${#LSTAUDIO[@]}" )); then
-	MERGE_LSTAUDIO=$(printf '*.%s ' "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
+	MERGE_LSTAUDIO=$(printf '*.%s ' "${LSTAUDIOEXT[@]}")
 fi
 if (( "${#LSTSUB[@]}" )); then
-	MERGE_LSTSUB=$(printf '*.%s ' "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
+	MERGE_LSTSUB=$(printf '*.%s ' "${LSTSUBEXT[@]##*.}")
 fi
 
 # Summary message
@@ -4488,10 +4496,10 @@ Display_Media_Stats_One "${LSTVIDEO[@]}"
 echo "  You will merge the following files:"
 echo "   ${LSTVIDEO[0]##*/}"
 if (( "${#LSTAUDIO[@]}" )); then
-	printf '   %s\n' "${LSTAUDIO[@]}"
+	printf '   %s\n' "${LSTAUDIO[@]##*/}"
 fi
 if (( "${#LSTSUB[@]}" )); then
-	printf '   %s\n' "${LSTSUB[@]}"
+	printf '   %s\n' "${LSTSUB[@]##*/}"
 fi
 echo
 read -r -e -p "Continue? [Y/n]:" qarm
@@ -4944,8 +4952,7 @@ if [[ "$NBVEXT" -gt "1" ]]; then
 	if [[ "$NEW_VIDEO_EXT_AVAILABLE" = "q" ]]; then
 		Restart
 	elif [[ -n "$NEW_VIDEO_EXT_AVAILABLE" ]]; then
-		mapfile -t LSTVIDEO < <(find "$PWD" -maxdepth 1 -type f -regextype posix-egrep \
-			-regex '.*\.('$NEW_VIDEO_EXT_AVAILABLE')$' 2>/dev/null | sort)
+		mapfile -t LSTVIDEO < <( Find_Files "$NEW_VIDEO_EXT_AVAILABLE" "1" )
 	fi
 fi
 }
@@ -6125,8 +6132,7 @@ if [[ "$NBAEXT" -gt "1" ]]; then
 		Restart
 	elif [[ -n "$NEW_AUDIO_EXT_AVAILABLE" ]]; then
 		StartLoading "Search the files processed"
-		mapfile -t LSTAUDIO < <(find . -maxdepth 5 -type f -regextype posix-egrep \
-			-regex '.*\.('$NEW_AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+		mapfile -t LSTAUDIO < <( Find_Files "$NEW_AUDIO_EXT_AVAILABLE" "5" )
 		mapfile -t LSTAUDIOEXT < <(echo "${LSTAUDIO[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
 		StopLoading $?
 	fi
@@ -6405,8 +6411,7 @@ local START
 local END
 
 # Limit to current directory
-mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-	-iregex '.*\.('$AUDIO_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTAUDIO < <( Find_Files "$AUDIO_EXT_AVAILABLE" "1" )
 
 if [[ "${#LSTAUDIO[@]}" -eq "0" ]]; then
 	Echo_Mess_Error "No audio file in the working directory"
@@ -6507,10 +6512,8 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}".backup 2>/dev/null
 
 		# Generate target file array
-		mapfile -t LSTAUDIO < <(find . -maxdepth 1 -type f -regextype posix-egrep \
-									-iregex '.*\.('flac')$' 2>/dev/null \
-									| sort \
-									| sed 's/^..//')
+		mapfile -t LSTAUDIO < <( Find_Files "flac" "1" )
+
 		# Tag target
 		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2>/dev/null
 
@@ -6902,9 +6905,8 @@ unset apev2_error
 # Loading on
 StartLoading "Grab current tags" ""
 
-# Limit to current directory & audio file ext. tested
-mapfile -t LSTAUDIO < <(find . -maxdepth 2 -type f -regextype posix-egrep -iregex \
-						'.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort -V | sed 's/^..//')
+# Limit to depth directory
+mapfile -t LSTAUDIO < <( Find_Files "$AUDIO_TAG_EXT_AVAILABLE" "2" )
 
 # Get tag with ffprobe
 for i in "${!LSTAUDIO[@]}"; do
@@ -6953,7 +6955,7 @@ done
 
 # Track populate in advance with lead zero if necessary
 for i in $(seq -w 1 "${#LSTAUDIO[@]}"); do
-			TAG_TRACK_COUNT+=( "$i" )
+	TAG_TRACK_COUNT+=( "$i" )
 done
 
 
@@ -7000,7 +7002,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 			<(printf "%-${tag_album_string_length}.${tag_album_string_length}s\n" "Album") <(printf "%s\n" "|") \
 			<(printf "%-${tag_date_string_length}.${tag_date_string_length}s\n" "date") | column -s $'\t' -t
 	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
-	paste <(printf "%-${filename_string_length}.${filename_string_length}s\n" "${LSTAUDIO[@]}" | iconv -c -s -f utf-8 -t utf-8) \
+	paste <(printf "%-${filename_string_length}.${filename_string_length}s\n" "${LSTAUDIO[@]##*/}" | iconv -c -s -f utf-8 -t utf-8) \
 			<(printf "%s\n" "${PrtSep[@]}") \
 			<(printf "%-${tag_disk_string_length}.${tag_disk_string_length}s\n" "${TAG_DISC[@]}") \
 			<(printf "%s\n" "${PrtSep[@]}") \
