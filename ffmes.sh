@@ -6456,13 +6456,13 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 	START=$(date +%s)
 
 	# Backup dir
-	backup_dir="backup"
+	backup_dir="${PWD}/backup"
 	if [[ ! -d "$backup_dir" ]]; then
 		mkdir "$backup_dir" 2>/dev/null
 	fi
 	
 	# Backup Original CUE
-	cp "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]}".original.backup
+	cp "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]##*/}".original.backup
 
 	# UTF-8 convert
 	charset_detect=$(uchardet "${LSTCUE[0]}" 2>/dev/null)
@@ -6489,7 +6489,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 			"${LSTAUDIO[0]%.*}.wav" 2>/dev/null
 		# Clean
 		if test $? -eq 0; then
-			mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}".backup 2>/dev/null
+			mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]##*/}".backup 2>/dev/null
 			LSTAUDIO=( "${LSTAUDIO[0]%.*}.wav" )
 		else
 			Echo_Separator_Light
@@ -6509,7 +6509,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		rm 00*.flac 2>/dev/null
 
 		# Move source audio file
-		mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}".backup 2>/dev/null
+		mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}##*/".backup 2>/dev/null
 
 		# Generate target file array
 		mapfile -t LSTAUDIO < <( Find_Files "flac" "1" )
@@ -6518,7 +6518,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		cuetag "${LSTCUE[0]}" "${LSTAUDIO[@]}" 2>/dev/null
 
 		# Move source cue
-		mv "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]}".backup 2>/dev/null
+		mv "${LSTCUE[0]}" "$backup_dir"/"${LSTCUE[0]##*/}".backup 2>/dev/null
 	else
 		Echo_Separator_Light
 		echo "  CUE Splitting fail on shnsplit file"
