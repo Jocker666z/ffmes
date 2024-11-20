@@ -15,6 +15,7 @@ Source media files, supported extension:
 ### Essential 
 `ffmpeg ffprobe jq mkvtoolnix uchardet coreutils findutils bc`
 ### Optional
+* `fd`: faster than GNU find
 * `gojq`: faster than jq
 * `mediainfo`: faster than ffmpeg & ffprobe
 ### CUE Splitting
