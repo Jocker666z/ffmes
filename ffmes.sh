@@ -180,8 +180,7 @@ else
 fi
 
 # List source(s) audio file(s) that can be tagged
-mapfile -t LSTAUDIOTAG < <(find . -maxdepth 2 -type f -regextype posix-egrep \
-	-iregex '.*\.('$AUDIO_TAG_EXT_AVAILABLE')$' 2>/dev/null | sort | sed 's/^..//')
+mapfile -t LSTAUDIOTAG < <( Find_Files "$AUDIO_TAG_EXT_AVAILABLE" "2" )
 # List source(s) subtitle file(s) & differents extentions
 mapfile -t LSTSUB < <( Find_Files "$SUBTI_EXT_AVAILABLE" "1" )
 mapfile -t LSTSUBEXT < <(echo "${LSTSUB[@]##*.}" | awk -v RS="[ \n]+" '!n[$0]++')
@@ -283,8 +282,10 @@ ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ;
 if ! [[ "$audio_list" = "1" ]]; then
 	# Interlaced test
 	ffprobe_Interlaced_raw=$(ffmpeg -v info -hide_banner -nostats \
-			-filter:v idet -frames:v 1000 -an -f rawvideo -y /dev/null -i vid.mp4 2>&1 \
-			| grep "Multi frame detection")
+								-filter:v idet -frames:v 1000 \
+								-an -f rawvideo -y /dev/null -i "$source_files" 2>&1 \
+								| grep "Multi frame detection"\
+								| tail -1)
 	Interlaced_frames_progressive=$(echo "$ffprobe_Interlaced_raw" \
 									| awk '{for(i=1; i<=NF; i++) if($i~/Progressive:/) print $(i+1)}')
 	Interlaced_frames_TFF=$(echo "$ffprobe_Interlaced_raw" \
@@ -1401,7 +1402,9 @@ if (( "${#files[@]}" )); then
 		size="${files[-1]}"
 	fi
 	# Mb convert
-	size_in_mb=$(bc <<< "scale=1; $size / 1024 / 1024" | sed 's!\.0*$!!')
+	size_in_mb=$(bc <<< "scale=1; $size / 1024 / 1024")
+	# remove ".0"
+	size_in_mb="${size_in_mb//.0/}"
 else
 	size_in_mb="0"
 fi
@@ -3332,7 +3335,8 @@ if [[ "${#LSTVIDEO[@]}" = "1" ]]; then
 		RATIO=$(bc -l <<< "${source_width} / $WIDTH")
 
 		# Height calculation, display decimal only if not integer
-		HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO" | sed 's!\.0*$!!')
+		HEIGHT=$(bc -l <<< "${source_heigh} / $RATIO")
+		HEIGHT="${HEIGHT//.0/}"
 
 		# Scale filter
 		if ! [[ "$HEIGHT" =~ ^[0-9]+$ ]]; then			# In not integer
@@ -4817,7 +4821,8 @@ do
 read -r -e -p "-> " qcut0
 case $qcut0 in
 	s.*)
-		qcut=$(echo "$qcut0" | sed -r 's/[.]+/ /g')												# Replace [.] by [ ] in variable
+		# Replace [.] by [ ] in variable
+		qcut=$(echo "$qcut0" | sed -r 's/[.]+/ /g')
 		CutStart="$ffprobe_StartTime"
 		CutEnd=$(echo "$qcut" | awk '{print $2;}')
 		break
@@ -6592,7 +6597,7 @@ EnterKeyEnable
 END=$(date +%s)
 
 # Make statistics of processed files
-Calc_Elapsed_Time "$START" "$END"								# Get elapsed time
+Calc_Elapsed_Time "$START" "$END"
 
 # End encoding messages
 echo
