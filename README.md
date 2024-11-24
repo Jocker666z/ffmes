@@ -78,8 +78,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 	* 0, DVD & Blu-ray rip
 	* 1, video encoding with custom options
 	* 2, copy stream to mkv with map option
-	* 3, add audio stream with night normalization
-	* 4, one audio stream encoding
+	* 3, one audio stream encoding
 * Video tools:
 	* 10, add audio stream or subtitle in video file
 	* 11, concatenate video files

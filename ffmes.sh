@@ -836,8 +836,7 @@ echo "  -----------------------------------------------------"
 echo "   0 - DVD & Blu-ray rip                              |"
 echo "   1 - video encoding with custom options             |-Video"
 echo "   2 - copy stream to mkv with map option             |"
-echo "   3 - add audio stream with night normalization      |"
-echo "   4 - one audio stream encoding                      |"
+echo "   3 - one audio stream encoding                      |"
 echo "  -----------------------------------------------------"
 echo "  10 - add audio stream or subtitle in video file     |"
 echo "  11 - concatenate video files                        |-Video Tools"
@@ -1155,11 +1154,6 @@ for files in "${source_files[@]}"; do
 	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
 
 done
-
-# Only display if launched in argument
-if [[ "$force_compare_audio" = "1" ]]; then
-	echo
-fi
 }
 Display_Media_Stats_One() {
 # Local variables
@@ -4401,93 +4395,7 @@ else
 	vkb="-crf 30 -b:v 0"
 fi
 }
-Video_Add_OPUS_NightNorm() {			# Option 3		- Add audio stream with night normalization in opus/stereo/320kb
-# Local variables
-local subtitleconf
-# Array
-unset INDEX
-unset VINDEX
-
-Display_Media_Stats_One "${LSTVIDEO[@]}"
-
-echo " Select one audio stream:"
-echo " Note: * The selected audio will be encoded in a new stream in opus/stereo/320kb."
-echo "       * Night normalization reduce amplitude between heavy and weak sounds."
-echo
-echo "  [0 3 1] > example for select stream"
-echo "  [q]     > for exit"
-while true; do
-	read -r -e -p "-> " rpstreamch
-	if [[ "$rpstreamch" == "q" ]]; then
-		Restart
-
-	elif ! [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
-		Echo_Mess_Error "Map option must be an integer"
-
-	elif [[ "$rpstreamch" =~ ^-?[0-9]+$ ]]; then
-		# Construct index array
-		IFS=" " read -r -a INDEX <<< "$rpstreamch"
-
-		# Test if selected stream is audio
-		for i in "${INDEX[@]}"; do
-			if [[ "${ffprobe_StreamType[i]}" != "audio" ]]; then
-				Echo_Mess_Error "The stream $i is not audio stream"
-			else
-				# Get audio map
-				for j in ${!ffprobe_StreamType[*]}; do
-					if [[ "${ffprobe_StreamIndex[j]}" = "${INDEX[*]}" ]]; then
-						VINDEX+=( "${ffprobe_a_StreamIndex[j]}" )
-					fi
-				done
-				break 2
-			fi
-		done
-
-	fi
-done
-
-# Start time counter
-START=$(date +%s)
-
-# Encoding
-for files in "${LSTVIDEO[@]}"; do
-
-	for i in ${!VINDEX[*]}; do
-
-		# For progress bar
-		FFMES_FFMPEG_PROGRESS="$FFMES_CACHE/ffmpeg-progress-$(date +%Y%m%s%N).info"
-		FFMPEG_PROGRESS="-stats_period 0.3 -progress $FFMES_FFMPEG_PROGRESS"
-	
-		# Encoding new track
-		"$ffmpeg_bin"  $FFMPEG_LOG_LVL -y -i "$files" \
-			$FFMPEG_PROGRESS \
-			-map 0:v -c:v copy -map 0:s? -c:s copy -map 0:a -map 0:a:${VINDEX[i]}? \
-			-c:a copy -metadata:s:a:${VINDEX[i]} title="Opus 2.0 Night Mode" -c:a:${VINDEX[i]} libopus \
-			-b:a:${VINDEX[i]} 320K -ac 2 \
-			-filter:a:${VINDEX[i]} acompressor=threshold=0.031623:attack=200:release=1000:detection=0,loudnorm \
-			"${files%.*}".OPUS-NightNorm.mkv \
-			| ProgressBar "$files" "" "" "Encoding"
-
-		# Check Target if valid
-		Test_Target_File "0" "video" "${files%.*}.OPUS-NightNorm.mkv"
-
-	done
-
-done
-
-# End time counter
-END=$(date +%s)
-
-# Make statistics of processed files
-Calc_Elapsed_Time "$START" "$END"
-total_source_files_size=$(Calc_Files_Size "${LSTVIDEO[@]}")
-total_target_files_size=$(Calc_Files_Size "${filesPass[@]}")
-PERC=$(Calc_Percent "$total_source_files_size" "$total_target_files_size")
-
-# End encoding messages "pass_files" "total_files" "target_size" "source_size"
-Display_End_Encoding_Message "${#filesPass[@]}" "" "$total_target_files_size" "$total_source_files_size"
-}
-Video_Custom_One_Audio() {				# Option 4		- One audio stream encoding
+Video_Custom_One_Audio() {				# Option 3		- One audio stream encoding
 # Local variables
 local astream
 local subtitleconf
@@ -7527,16 +7435,7 @@ while true; do
 		fi
 		;;
 
-	 3 ) # Audio night normalization
-		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
-			Video_Add_OPUS_NightNorm
-			Clean
-		else
-			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
-		fi
-		;;
-
-	 4 ) # One audio stream encoding
+	 3 ) # One audio stream encoding
 		if [[ "${#LSTVIDEO[@]}" -eq "1" ]]; then
 			Video_Custom_One_Audio
 			Remove_File_Source
