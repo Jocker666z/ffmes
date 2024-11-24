@@ -88,6 +88,7 @@ If you encounter bugs or have proposals, I'm open to discussion.
 	* 14, split mkv by chapter
 	* 15, change color of DVD subtitle (idx/sub)
 	* 16, convert DVD subtitle (idx/sub) to srt
+	* 17, view video files stats
 * Audio:
 	* 20, CUE splitter to flac
 	* 21, audio to wav (PCM)

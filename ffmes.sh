@@ -279,7 +279,8 @@ ffprobe_Duration=$(ff_jqparse_format "duration")
 ffprobe_DurationFormated="$(Calc_Time_s_2_hms "$ffprobe_Duration")"
 ffprobe_OverallBitrate=$(ff_jqparse_format "bit_rate" | awk '{ foo = $1 / 1000 ; print foo }' \
 						| awk -F"." '{ print $1 }')
-if ! [[ "$audio_list" = "1" ]]; then
+if [[ "$audio_list" != "1" ]] \
+&& [[ "$video_list" != "1" ]]; then
 	# Interlaced test
 	ffprobe_Interlaced_raw=$(ffmpeg -v info -hide_banner -nostats \
 								-filter:v idet -frames:v 1000 \
@@ -845,6 +846,7 @@ echo "  13 - split or cut video file by time                |"
 echo "  14 - split mkv by chapter                           |"
 echo "  15 - change color of DVD subtitle (idx/sub)         |"
 echo "  16 - convert DVD subtitle (idx/sub) to srt          |"
+echo "  17 - view video files stats                         |"
 echo "  -----------------------------------------------------"
 echo "  20 - CUE splitter to flac                           |"
 echo "  21 - audio to wav (PCM)                             |-Audio"
@@ -1017,7 +1019,7 @@ if [[ "$separator_string_length" -le "$TERM_WIDTH" ]]; then
 					<(printf "%-${meandb_string_length}.${meandb_string_length}s\n" "$ffmpeg_meandb") <(printf "%s\n" ".") \
 					<(printf "%-${diffdb_string_lenght}.${diffdb_string_lenght}s\n" "$ffmpeg_diffdb") <(printf "%s\n" "|") \
 					<(printf "%-${FilesSize_string_length}.${FilesSize_string_length}s\n" "$FilesSize") <(printf "%s\n" "|") \
-					<(printf "%-${filename_string_length}.${filename_string_length}s\n" "$(basename "${files}")") | column -s $'\t' -t 2>/dev/null
+					<(printf "%-${filename_string_length}.${filename_string_length}s\n" "${files##*/}") | column -s $'\t' -t 2>/dev/null
 			fi
 		done
 
@@ -1034,7 +1036,7 @@ else
 
 		for i in "${!ffprobe_StreamIndex[@]}"; do
 			if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
-				Display_Line_Truncate "  $(basename "${files}")"
+				Display_Line_Truncate "  ${files##*/}"
 				echo "$(Display_Variable_Trick "$ffprobe_DurationFormated" "1" "kHz")\
 				$FilesSize Mb" \
 				| awk '{$2=$2};1' | awk '{print "  " $0}'
@@ -1051,6 +1053,108 @@ else
 		done
 	done
 fi
+
+# Only display if launched in argument
+if [[ "$force_compare_audio" = "1" ]]; then
+	echo
+fi
+}
+Display_Video_Stats_List() {
+# File to list
+source_files=("$@")
+
+# Limit to audio files grab stats
+video_list="1"
+
+printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
+
+for files in "${source_files[@]}"; do
+	# Get stats
+	Media_Source_Info_Record "$files"
+
+	echo "  File: ${files##*/}"
+	echo "  Duration: $ffprobe_DurationFormated, Bitrate: $ffprobe_OverallBitrate kb/s, Size: ${FilesSize}Mb\
+			$(Display_Variable_Trick "$ffprobe_ChapterNumberFormated" "2")" \
+			| awk '{$2=$2};1' | awk '{print "  " $0}'
+
+	for i in "${!ffprobe_StreamIndex[@]}"; do
+
+		# Video
+		if [[ "${ffprobe_StreamType[$i]}" = "video" ]]; then
+
+			# Attached img
+			if [[ "${ffprobe_AttachedPic[$i]}" = "attached pic" ]]; then
+				echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}:\
+				$(Display_Variable_Trick "${ffprobe_Codec[i]}" "1")\
+				$(Display_Variable_Trick "${ffprobe_Width[i]}x${ffprobe_Height[i]}" "1")\
+				$(Display_Variable_Trick "${ffprobe_Pixfmt[i]}")\
+				$(Display_Variable_Trick "${ffprobe_FieldOrder[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorRange[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorSpace[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorTransfert[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorPrimaries[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_AttachedPic[i]}" "2")" \
+				| awk '{$2=$2};1' | awk '{print "  " $0}'
+
+			# Video
+			else
+				echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}:\
+				$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
+				$(Display_Variable_Trick "${ffprobe_Codec[i]}")\
+				$(Display_Variable_Trick "${ffprobe_Profile[i]}" "3") \
+				$(Display_Variable_Trick "${ffprobe_Bitrate[i]}" "1" "kb/s") \
+				$(Display_Variable_Trick "${ffprobe_Width[i]}x${ffprobe_Height[i]}")\
+				$(Display_Variable_Trick "${ffprobe_SAR[i]}" "4")\
+				$(Display_Variable_Trick "${ffprobe_DAR[i]}" "5")\
+				$(Display_Variable_Trick "${ffprobe_fps[i]}" "1" "fps")\
+				$(Display_Variable_Trick "${ffprobe_Pixfmt[i]}")\
+				$(Display_Variable_Trick "${ffprobe_FieldOrder[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorRange[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorSpace[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorTransfert[i]}" "2")\
+				$(Display_Variable_Trick "${ffprobe_ColorPrimaries[i]}" "2")" \
+				| awk '{$2=$2};1' | awk '{print "  " $0}'
+
+			fi
+		fi
+
+		# Audio
+		if [[ "${ffprobe_StreamType[$i]}" = "audio" ]]; then
+			echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}: \
+			$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
+			$(Display_Variable_Trick "${ffprobe_Codec[i]}" "1") \
+			$(Display_Variable_Trick "${ffprobe_SampleFormat[i]}" "1") \
+			$(Display_Variable_Trick "${ffprobe_Bitrate[i]}" "1" "kb/s") \
+			$(Display_Variable_Trick "${ffprobe_SampleRate[i]}" "1" "kHz") \
+			$(Display_Variable_Trick "${ffprobe_ChannelLayout[i]}") \
+			$(Display_Variable_Trick "${ffprobe_language[i]}" "2") \
+			$(Display_Variable_Trick "${ffprobe_default[i]}" "2")" \
+			| awk '{$2=$2};1' | awk '{print "  " $0}'
+		fi
+
+		# Subtitle
+		if [[ "${ffprobe_StreamType[$i]}" = "subtitle" ]]; then
+			echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}: \
+			$(Display_Variable_Trick "${ffprobe_Codec[i]}") \
+			$(Display_Variable_Trick "${ffprobe_language[i]}" "2") \
+			$(Display_Variable_Trick "${ffprobe_default[i]}" "2") \
+			$(Display_Variable_Trick "${ffprobe_forced[i]}" "2")" \
+			| awk '{$2=$2};1' | awk '{print "  " $0}'
+		fi
+
+		# Data
+		if [[ "${ffprobe_StreamType[$i]}" = "data" ]]; then
+			echo "  Stream #${ffprobe_StreamIndex[i]}: ${ffprobe_StreamType[i]}: \
+			$(Display_Variable_Trick "${ffprobe_StreamSize[i]}" "1" "Mb") \
+			$(Display_Variable_Trick "${ffprobe_Codec[i]}")" \
+			| awk '{$2=$2};1' | awk '{print "  " $0}'
+		fi
+
+	done
+
+	printf "%*s" "$TERM_WIDTH_TRUNC" "" | tr ' ' "-"; echo
+
+done
 
 # Only display if launched in argument
 if [[ "$force_compare_audio" = "1" ]]; then
@@ -1103,7 +1207,7 @@ else
 	echo " Stats of the first entry on a batch of ${#source_files[@]} files:"
 fi
 Echo_Separator_Light
-echo "  File: $(basename "${source_files[0]}")"
+echo "  File: ${source_files##*/}"
 echo "  Duration: $ffprobe_DurationFormated, Start: $ffprobe_StartTime, Bitrate: $ffprobe_OverallBitrate kb/s, Size: ${FilesSize}Mb\
 		$(Display_Variable_Trick "$ffprobe_ChapterNumberFormated" "2")" \
 		| awk '{$2=$2};1' | awk '{print "  " $0}'
@@ -1690,6 +1794,9 @@ if (( "${#source_files[@]}" )); then
 				fi
 			fi
 
+			# Progress
+			ProgressBar "" "$((i+1))" "${#source_files[@]}" "validation" "1"
+
 			# File fail
 			if [[ -s "$tmp_error" ]]; then
 				cp "$tmp_error" "${source_files[$i]%.*}.error.log"
@@ -1703,6 +1810,8 @@ if (( "${#source_files[@]}" )); then
 				if [[ "$media_type" = "video" ]];then
 					# If mkv regenerate stats tag
 					if [[ "${source_files[$i]##*.}" = "mkv" ]]; then
+						# Progress
+						ProgressBar "" "$((i+1))" "${#source_files[@]}" "mkvpropedit stats regen" "1"
 						if [[ "$VERBOSE" = "1" ]]; then
 							mkvpropedit --add-track-statistics-tags "${source_files[$i]}"
 						else
@@ -1722,8 +1831,6 @@ if (( "${#source_files[@]}" )); then
 			filesPass+=("${source_files[$i]}")
 		fi
 
-		# Progress
-		ProgressBar "" "$((i+1))" "${#source_files[@]}" "Validation" "1"
 	done
 
 fi
@@ -7515,6 +7622,15 @@ while true; do
 			Clean
 		else
 			Echo_Mess_Error "Only DVD subtitle extention type (idx/sub)" "1"
+		fi
+		;;
+
+	 17 ) # tools -> multi file view stats
+		if (( "${#LSTVIDEO[@]}" )); then
+			Display_Video_Stats_List "${LSTVIDEO[@]}"
+			Clean
+		else
+			Echo_Mess_Error "$MESS_ONE_VIDEO_ONLY" "1"
 		fi
 		;;
 
