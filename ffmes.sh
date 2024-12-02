@@ -6529,7 +6529,7 @@ elif [[ "${#LSTCUE[@]}" -eq "1" ]] && [[ "${#LSTAUDIO[@]}" -eq "1" ]]; then
 		rm 00*.flac 2>/dev/null
 
 		# Move source audio file
-		mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]}##*/".backup 2>/dev/null
+		mv "${LSTAUDIO[0]}" "$backup_dir"/"${LSTAUDIO[0]##*/}".backup 2>/dev/null
 
 		# Generate target file array
 		mapfile -t LSTAUDIO < <( Find_Files "flac" "1" )
