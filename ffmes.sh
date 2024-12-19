@@ -6644,7 +6644,8 @@ for i in "${!LSTAUDIO[@]}"; do
 
 	# Parsing
 	if [[ "$tag_option" = "ftitle" ]]; then
-		tag_value="${LSTAUDIO[$i]%.*}"
+		tag_value="${LSTAUDIO[$i]##*/}"
+		tag_value="${tag_value%.*}"
 	elif [[ "$tag_option" = "stitle" ]]; then
 		tag_value="${TAG_TITLE[$i]:${tag_cut}}"
 		# Remove leading space
